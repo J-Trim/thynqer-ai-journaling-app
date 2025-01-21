@@ -17,8 +17,6 @@ const JournalEntryForm = () => {
 
   // Check authentication on mount with better error handling
   useEffect(() => {
-    let mounted = true;
-    
     const checkAuth = async () => {
       try {
         console.log('Checking auth status in JournalEntryForm...');
@@ -51,17 +49,11 @@ const JournalEntryForm = () => {
         });
         navigate("/auth", { replace: true });
       } finally {
-        if (mounted) {
-          setIsInitializing(false);
-        }
+        setIsInitializing(false);
       }
     };
 
     checkAuth();
-
-    return () => {
-      mounted = false;
-    };
   }, [navigate, toast]);
 
   // Auto-save functionality with better error handling
@@ -146,7 +138,7 @@ const JournalEntryForm = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
       <div className="space-y-4">
         <Input
           type="text"
