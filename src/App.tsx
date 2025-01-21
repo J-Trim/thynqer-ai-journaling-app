@@ -9,7 +9,14 @@ import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
 import JournalList from "./pages/JournalList";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export const AuthContext = createContext<{
   isAuthenticated: boolean | null;
@@ -31,12 +38,14 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (mounted) {
           setIsAuthenticated(!!session);
-          setIsLoading(false);
         }
       } catch (error) {
         console.error("Auth check error:", error);
         if (mounted) {
           setIsAuthenticated(false);
+        }
+      } finally {
+        if (mounted) {
           setIsLoading(false);
         }
       }
@@ -57,14 +66,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
       {children}
@@ -73,8 +74,16 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, isLoading } = useContext(AuthContext);
   const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
@@ -84,9 +93,16 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, isLoading } = useContext(AuthContext);
 
-  // If we know the auth state, render the appropriate route
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
   if (isAuthenticated === false) {
     return (
       <Routes>
