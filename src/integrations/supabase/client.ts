@@ -12,9 +12,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Changed to false to prevent URL parsing issues
+    storage: window.localStorage,
     flowType: 'pkce',
-    storage: window.localStorage
+    debug: true // Added debug mode to help track auth issues
   },
   global: {
     headers: {
@@ -25,20 +26,24 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 
 // Enhanced error logging for debugging
 supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Supabase auth event:', event, 'Session:', session?.user?.id);
+  console.log(`[Auth] Event: ${event}`, session ? `User: ${session.user.id}` : 'No session');
   
   if (event === 'SIGNED_OUT') {
-    console.log('User signed out, clearing local storage');
+    console.log('[Auth] User signed out, clearing local storage');
     window.localStorage.removeItem('supabase.auth.token');
-  } else if (event === 'SIGNED_IN') {
-    console.log('User signed in:', session?.user?.email);
-  } else if (event === 'TOKEN_REFRESHED') {
-    console.log('Token refreshed for user:', session?.user?.id);
-  } else if (event === 'USER_UPDATED') {
-    console.log('User updated:', session?.user?.id);
-  } else if (event === 'INITIAL_SESSION') {
-    console.log('Initial auth state:', session ? 'authenticated' : 'not authenticated');
-  } else if (event === 'MFA_CHALLENGE_VERIFIED') {
-    console.log('MFA challenge verified for user:', session?.user?.id);
   }
+});
+
+// Add error handling for failed requests
+supabase.auth.onError((error) => {
+  console.error('[Auth] Error:', error);
+});
+
+// Initialize auth state
+supabase.auth.getSession().then(({ data: { session }, error }) => {
+  if (error) {
+    console.error('[Auth] Initial session error:', error);
+    return;
+  }
+  console.log('[Auth] Initial session loaded:', session ? 'Authenticated' : 'Not authenticated');
 });

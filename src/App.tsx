@@ -41,45 +41,21 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
-
-    const checkAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error checking auth:', error);
-          if (mounted) {
-            setIsAuthenticated(false);
-            setIsLoading(false);
-          }
-          return;
-        }
-
-        if (mounted) {
-          setIsAuthenticated(!!session);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setIsLoading(false);
-        }
-      }
-    };
-
-    checkAuth();
-
+    // Single source of truth for auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (mounted) {
-        setIsAuthenticated(!!session);
-        setIsLoading(false);
-      }
+      console.log('[AuthProvider] Auth state changed:', event);
+      setIsAuthenticated(!!session);
+      setIsLoading(false);
+    });
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthProvider] Initial session check:', session ? 'Authenticated' : 'Not authenticated');
+      setIsAuthenticated(!!session);
+      setIsLoading(false);
     });
 
     return () => {
-      mounted = false;
       subscription?.unsubscribe();
     };
   }, []);
