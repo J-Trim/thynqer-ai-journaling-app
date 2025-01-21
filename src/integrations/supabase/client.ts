@@ -12,10 +12,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false, // Changed to false to prevent URL parsing issues
+    detectSessionInUrl: false, // Keep false to prevent URL parsing issues
     storage: window.localStorage,
     flowType: 'pkce',
-    debug: true // Added debug mode to help track auth issues
+    debug: true // Keep debug mode for tracking auth issues
   },
   global: {
     headers: {
@@ -25,18 +25,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 });
 
 // Enhanced error logging for debugging
-supabase.auth.onAuthStateChange((event, session) => {
+supabase.auth.onAuthStateChange((event, session, error) => {
+  if (error) {
+    console.error('[Auth] Error during state change:', error);
+    return;
+  }
+
   console.log(`[Auth] Event: ${event}`, session ? `User: ${session.user.id}` : 'No session');
   
   if (event === 'SIGNED_OUT') {
     console.log('[Auth] User signed out, clearing local storage');
     window.localStorage.removeItem('supabase.auth.token');
   }
-});
-
-// Add error handling for failed requests
-supabase.auth.onError((error) => {
-  console.error('[Auth] Error:', error);
 });
 
 // Initialize auth state
