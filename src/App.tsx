@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useEffect, useState, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
@@ -36,11 +36,13 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Auth check error:", error);
         if (mounted) {
-          setIsAuthenticated(null);
+          setIsAuthenticated(false);
           setIsLoading(false);
         }
       }
     };
+
+    checkAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
@@ -49,23 +51,11 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    checkAuth();
-
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
   }, []);
-
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useContext(AuthContext);
 
   if (isLoading) {
     return (
@@ -75,41 +65,74 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
+  return (
+    <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated } = useContext(AuthContext);
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" state={{ from: location }} replace />;
+  }
+
+  return <>{children}</>;
+};
+
+const AppRoutes = () => {
+  const { isAuthenticated } = useContext(AuthContext);
+
+  // If we know the auth state, render the appropriate route
+  if (isAuthenticated === false) {
+    return (
+      <Routes>
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/auth" element={<AuthPage />} />
+      <Route
+        path="/"
+        element={<Navigate to="/journal" replace />}
+      />
+      <Route
+        path="/journal"
+        element={
+          <ProtectedRoute>
+            <JournalList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/journal/new"
+        element={
+          <ProtectedRoute>
+            <Index />
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
+  );
 };
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<AuthPage />} />
-            <Route
-              path="/"
-              element={<Navigate to="/journal" replace />}
-            />
-            <Route
-              path="/journal"
-              element={
-                <ProtectedRoute>
-                  <JournalList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/journal/new"
-              element={
-                <ProtectedRoute>
-                  <Index />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <Toaster />
+          <Sonner />
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
