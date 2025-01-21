@@ -12,18 +12,39 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce',
+    storage: window.localStorage
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'supabase-js-web'
+    }
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 });
 
-// Add error logging for debugging
+// Enhanced error logging for debugging
 supabase.auth.onAuthStateChange((event, session) => {
-  console.log('Supabase auth event:', event);
+  console.log('Supabase auth event:', event, 'Session:', session?.user?.id);
+  
   if (event === 'SIGNED_OUT') {
-    console.log('User signed out');
+    console.log('User signed out, clearing local storage');
+    window.localStorage.removeItem('supabase.auth.token');
   } else if (event === 'SIGNED_IN') {
     console.log('User signed in:', session?.user?.email);
   } else if (event === 'TOKEN_REFRESHED') {
-    console.log('Token refreshed');
+    console.log('Token refreshed for user:', session?.user?.id);
+  } else if (event === 'USER_UPDATED') {
+    console.log('User updated:', session?.user?.id);
   }
+});
+
+// Add error handling for failed requests
+supabase.auth.onError((error) => {
+  console.error('Supabase auth error:', error);
 });

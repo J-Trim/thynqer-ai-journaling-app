@@ -15,25 +15,58 @@ const JournalEntryForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Check authentication on mount
+  // Check authentication on mount with better error handling
   useEffect(() => {
+    let mounted = true;
+    
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        console.log('Checking auth status in JournalEntryForm...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Auth check error:', error);
+          toast({
+            title: "Authentication Error",
+            description: "Please try logging in again",
+            variant: "destructive",
+          });
           navigate("/auth", { replace: true });
           return;
         }
+
+        if (!session) {
+          console.log('No session found, redirecting to auth');
+          navigate("/auth", { replace: true });
+          return;
+        }
+
+        console.log('Auth check successful, user:', session.user.id);
+      } catch (error) {
+        console.error('Unexpected error during auth check:', error);
+        toast({
+          title: "Error",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        });
+        navigate("/auth", { replace: true });
       } finally {
-        setIsInitializing(false);
+        if (mounted) {
+          setIsInitializing(false);
+        }
       }
     };
-    checkAuth();
-  }, [navigate]);
 
-  // Auto-save functionality
+    checkAuth();
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate, toast]);
+
+  // Auto-save functionality with better error handling
   useEffect(() => {
-    if (isInitializing) return; // Don't auto-save while initializing
+    if (isInitializing) return;
 
     const saveTimeout = setTimeout(async () => {
       if (content || title) {
@@ -49,17 +82,18 @@ const JournalEntryForm = () => {
     
     try {
       setIsSaving(true);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      console.log('Attempting to save entry...');
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error('Error getting user:', userError);
+        throw userError;
+      }
 
       if (!user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to save entries",
-          variant: "destructive",
-        });
-        return;
+        console.log('No user found, redirecting to auth');
+        throw new Error('You must be logged in to save entries');
       }
 
       const entryData = {
@@ -69,24 +103,29 @@ const JournalEntryForm = () => {
         has_been_edited: false,
       };
 
-      const { error } = await supabase
+      console.log('Saving entry data:', { ...entryData, text: content.length + ' chars' });
+
+      const { error: saveError } = await supabase
         .from("journal_entries")
         .insert([entryData]);
 
-      if (error) throw error;
+      if (saveError) {
+        console.error('Error saving entry:', saveError);
+        throw saveError;
+      }
 
+      console.log('Entry saved successfully');
       toast({
         title: "Success",
         description: "Journal entry saved successfully",
       });
       
-      // Navigate after successful save
       navigate("/journal", { replace: true });
     } catch (error) {
       console.error("Error saving entry:", error);
       toast({
         title: "Error",
-        description: "Failed to save journal entry",
+        description: error instanceof Error ? error.message : "Failed to save journal entry",
         variant: "destructive",
       });
     } finally {
