@@ -1,10 +1,36 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import AudioRecorder from "@/components/AudioRecorder";
 import JournalEntry from "@/components/JournalEntry";
 import Header from "@/components/Header";
 import JournalEntryForm from "@/components/JournalEntryForm";
 
 const Index = () => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate a minimum loading time to prevent flash
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto p-4 md:p-8">
+          <div className="max-w-2xl mx-auto space-y-8">
+            <div className="text-center">
+              <div className="animate-pulse text-muted-foreground">Loading...</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const sampleEntries = [
     {
       title: "Morning Reflection",
