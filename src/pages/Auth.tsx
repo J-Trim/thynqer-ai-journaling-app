@@ -15,7 +15,7 @@ const AuthPage = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === "SIGNED_IN" && session) {
-          navigate("/");
+          navigate("/journal");
         }
         if (event === "USER_UPDATED") {
           const { error } = await supabase.auth.getSession();

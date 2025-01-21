@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
+import JournalList from "./pages/JournalList";
 
 const queryClient = new QueryClient();
 
@@ -45,9 +46,13 @@ const App = () => (
           <Route path="/auth" element={<AuthPage />} />
           <Route
             path="/"
+            element={<Navigate to="/journal" replace />}
+          />
+          <Route
+            path="/journal"
             element={
               <ProtectedRoute>
-                <Index />
+                <JournalList />
               </ProtectedRoute>
             }
           />
