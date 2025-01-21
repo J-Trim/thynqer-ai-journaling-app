@@ -56,6 +56,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/journal/new"
+            element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

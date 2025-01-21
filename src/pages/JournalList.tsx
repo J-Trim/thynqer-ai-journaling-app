@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { PlusCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const JournalList = () => {
+  const navigate = useNavigate();
   const [userName, setUserName] = useState<string>("");
 
   useEffect(() => {
@@ -23,6 +27,14 @@ const JournalList = () => {
           <div className="text-center space-y-2">
             <h2 className="text-4xl font-bold">Welcome, {userName}!</h2>
             <p className="text-muted-foreground">Your journal entries will appear here</p>
+            <Button 
+              onClick={() => navigate("/journal/new")} 
+              className="mt-4"
+              size="lg"
+            >
+              <PlusCircle className="mr-2" />
+              New Journal Entry
+            </Button>
           </div>
         </div>
       </main>
