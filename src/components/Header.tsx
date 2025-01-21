@@ -25,7 +25,12 @@ const Header = () => {
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Thynqer</h1>
+        <h1 
+          className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors"
+          onClick={() => navigate("/journal")}
+        >
+          Thynqer
+        </h1>
         <div className="flex items-center gap-4">
           {userEmail && (
             <span className="text-sm text-muted-foreground">{userEmail}</span>
