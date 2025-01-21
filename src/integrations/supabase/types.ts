@@ -9,7 +9,146 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      custom_prompts: {
+        Row: {
+          id: string
+          prompt_name: string
+          prompt_template: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          prompt_name: string
+          prompt_template: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          prompt_name?: string
+          prompt_template?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      entry_tags: {
+        Row: {
+          entry_id: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          entry_id: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          entry_id?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entry_tags_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entry_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_entries: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          has_been_edited: boolean | null
+          id: string
+          text: string | null
+          title: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          has_been_edited?: boolean | null
+          id?: string
+          text?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          has_been_edited?: boolean | null
+          id?: string
+          text?: string | null
+          title?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      summaries: {
+        Row: {
+          created_at: string | null
+          depth_level: string
+          entry_id: string
+          id: string
+          summary_text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          depth_level: string
+          entry_id: string
+          id?: string
+          summary_text: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          depth_level?: string
+          entry_id?: string
+          id?: string
+          summary_text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "summaries_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tags: {
+        Row: {
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
