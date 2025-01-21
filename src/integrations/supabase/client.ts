@@ -41,11 +41,9 @@ supabase.auth.onAuthStateChange((event, session) => {
     console.log('Token refreshed for user:', session?.user?.id);
   } else if (event === 'USER_UPDATED') {
     console.log('User updated:', session?.user?.id);
-  } else if (event === 'USER_DELETED') {
-    console.log('User deleted');
-  } else if (event === 'PASSWORD_RECOVERY') {
-    console.log('Password recovery requested');
-  } else if (event === 'ERROR') {
-    console.error('Auth error occurred:', session);
+  } else if (event === 'INITIAL_SESSION') {
+    console.log('Initial auth state:', session ? 'authenticated' : 'not authenticated');
+  } else if (event === 'MFA_CHALLENGE_VERIFIED') {
+    console.log('MFA challenge verified for user:', session?.user?.id);
   }
 });
