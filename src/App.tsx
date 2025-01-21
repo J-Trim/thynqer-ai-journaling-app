@@ -14,6 +14,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5000, // Consider data fresh for 5 seconds
     },
   },
 });
@@ -33,19 +34,30 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
+    // Initial session check
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Checking initial auth state...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error checking auth:', error);
+          if (mounted) {
+            setIsAuthenticated(false);
+            setIsLoading(false);
+          }
+          return;
+        }
+
         if (mounted) {
+          console.log('Initial auth state:', session ? 'authenticated' : 'not authenticated');
           setIsAuthenticated(!!session);
+          setIsLoading(false);
         }
       } catch (error) {
-        console.error("Auth check error:", error);
+        console.error('Auth check error:', error);
         if (mounted) {
           setIsAuthenticated(false);
-        }
-      } finally {
-        if (mounted) {
           setIsLoading(false);
         }
       }
@@ -53,7 +65,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event);
+      
       if (mounted) {
         setIsAuthenticated(!!session);
         setIsLoading(false);
@@ -62,7 +77,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
@@ -86,6 +101,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to auth page');
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
