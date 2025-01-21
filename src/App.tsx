@@ -28,8 +28,8 @@ export const AuthContext = createContext<{
 });
 
 const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background transition-opacity duration-300">
-    <div className="space-y-4 text-center">
+  <div className="min-h-screen flex items-center justify-center bg-background transition-opacity duration-500">
+    <div className="space-y-4 text-center animate-fade-in">
       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
       <div className="text-muted-foreground animate-pulse">Loading...</div>
     </div>
@@ -60,8 +60,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (mounted) {
           setIsAuthenticated(!!session);
           setIsLoading(false);
-          // Add a small delay before showing content to ensure smooth transition
-          setTimeout(() => setShowContent(true), 100);
+          // Add a longer delay before showing content to ensure smooth transition
+          setTimeout(() => setShowContent(true), 500);
         }
       } catch (error) {
         console.error('Auth check error:', error);

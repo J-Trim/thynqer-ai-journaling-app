@@ -4,31 +4,37 @@ import JournalEntry from "@/components/JournalEntry";
 import Header from "@/components/Header";
 import JournalEntryForm from "@/components/JournalEntryForm";
 
+const LoadingScreen = () => (
+  <div className="min-h-screen bg-background animate-fade-in">
+    <Header />
+    <main className="container mx-auto p-4 md:p-8">
+      <div className="max-w-2xl mx-auto space-y-8">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="text-muted-foreground animate-pulse">Loading your journal...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+);
+
 const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    // Simulate a minimum loading time to prevent flash
+    // Simulate a minimum loading time for smooth transition
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 100);
+      // Add a small delay before showing content
+      setTimeout(() => setShowContent(true), 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto p-4 md:p-8">
-          <div className="max-w-2xl mx-auto space-y-8">
-            <div className="text-center">
-              <div className="animate-pulse text-muted-foreground">Loading...</div>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+  if (isLoading || !showContent) {
+    return <LoadingScreen />;
   }
 
   const sampleEntries = [
@@ -45,7 +51,7 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-fade-in">
       <Header />
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-2xl mx-auto space-y-8">
