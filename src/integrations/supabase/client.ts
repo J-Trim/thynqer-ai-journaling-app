@@ -41,10 +41,11 @@ supabase.auth.onAuthStateChange((event, session) => {
     console.log('Token refreshed for user:', session?.user?.id);
   } else if (event === 'USER_UPDATED') {
     console.log('User updated:', session?.user?.id);
+  } else if (event === 'USER_DELETED') {
+    console.log('User deleted');
+  } else if (event === 'PASSWORD_RECOVERY') {
+    console.log('Password recovery requested');
+  } else if (event === 'ERROR') {
+    console.error('Auth error occurred:', session);
   }
-});
-
-// Add error handling for failed requests
-supabase.auth.onError((error) => {
-  console.error('Supabase auth error:', error);
 });
