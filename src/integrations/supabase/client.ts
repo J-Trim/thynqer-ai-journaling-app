@@ -25,12 +25,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 });
 
 // Enhanced error logging for debugging
-supabase.auth.onAuthStateChange((event, session, error) => {
-  if (error) {
-    console.error('[Auth] Error during state change:', error);
-    return;
-  }
-
+supabase.auth.onAuthStateChange((event, session) => {
   console.log(`[Auth] Event: ${event}`, session ? `User: ${session.user.id}` : 'No session');
   
   if (event === 'SIGNED_OUT') {
