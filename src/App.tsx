@@ -11,7 +11,6 @@ import JournalList from "./pages/JournalList";
 
 const queryClient = new QueryClient();
 
-// Create an auth context to share authentication state
 export const AuthContext = createContext<{
   isAuthenticated: boolean | null;
   isLoading: boolean;
@@ -25,25 +24,37 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    console.log("AuthProvider: Initial auth check");
+    let mounted = true;
+
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        console.log("AuthProvider: Session check complete", !!session);
-        setIsAuthenticated(!!session);
-      } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsAuthenticated(!!session);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Auth check error:", error);
+        if (mounted) {
+          setIsAuthenticated(null);
+          setIsLoading(false);
+        }
       }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("AuthProvider: Auth state changed", !!session);
-      setIsAuthenticated(!!session);
-      setIsLoading(false);
+      if (mounted) {
+        setIsAuthenticated(!!session);
+        setIsLoading(false);
+      }
     });
 
     checkAuth();
-    return () => subscription.unsubscribe();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (
@@ -64,7 +75,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/auth" />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/auth" replace />;
 };
 
 const App = () => (
