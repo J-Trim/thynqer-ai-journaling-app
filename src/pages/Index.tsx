@@ -2,6 +2,7 @@ import React from "react";
 import AudioRecorder from "@/components/AudioRecorder";
 import JournalEntry from "@/components/JournalEntry";
 import Header from "@/components/Header";
+import JournalEntryForm from "@/components/JournalEntryForm";
 
 const Index = () => {
   const sampleEntries = [
@@ -23,11 +24,11 @@ const Index = () => {
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-bold">Audio Journal</h2>
-            <p className="text-muted-foreground">Capture your thoughts with voice</p>
+            <h2 className="text-4xl font-bold">Journal Entry</h2>
+            <p className="text-muted-foreground">Capture your thoughts with text and voice</p>
           </div>
 
-          <AudioRecorder />
+          <JournalEntryForm />
 
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold">Recent Entries</h2>
