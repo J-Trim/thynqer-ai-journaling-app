@@ -14,7 +14,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: 5000, // Consider data fresh for 5 seconds
+      staleTime: 5000,
     },
   },
 });
@@ -27,17 +27,25 @@ export const AuthContext = createContext<{
   isLoading: true,
 });
 
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background transition-opacity duration-300">
+    <div className="space-y-4 text-center">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <div className="text-muted-foreground animate-pulse">Loading...</div>
+    </div>
+  </div>
+);
+
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    // Initial session check
     const checkAuth = async () => {
       try {
-        console.log('Checking initial auth state...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -50,9 +58,10 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (mounted) {
-          console.log('Initial auth state:', session ? 'authenticated' : 'not authenticated');
           setIsAuthenticated(!!session);
           setIsLoading(false);
+          // Add a small delay before showing content to ensure smooth transition
+          setTimeout(() => setShowContent(true), 100);
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -65,10 +74,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     checkAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event);
-      
       if (mounted) {
         setIsAuthenticated(!!session);
         setIsLoading(false);
@@ -81,9 +87,15 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
+  if (!showContent) {
+    return <LoadingScreen />;
+  }
+
   return (
     <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
-      {children}
+      <div className="animate-fade-in">
+        {children}
+      </div>
     </AuthContext.Provider>
   );
 };
@@ -93,15 +105,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to auth page');
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
@@ -112,11 +119,7 @@ const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useContext(AuthContext);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (isAuthenticated === false) {
