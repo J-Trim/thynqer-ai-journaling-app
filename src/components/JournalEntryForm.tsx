@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useBeforeUnload } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,8 +19,22 @@ const JournalEntryForm = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Warn before closing/navigating away with unsaved changes
+  useBeforeUnload(
+    React.useCallback(
+      (event) => {
+        if (hasUnsavedChanges) {
+          event.preventDefault();
+          return (event.returnValue = "You have unsaved changes. Are you sure you want to leave?");
+        }
+      },
+      [hasUnsavedChanges]
+    )
+  );
 
   // Load existing entry if editing
   useEffect(() => {
@@ -97,16 +111,23 @@ const JournalEntryForm = () => {
     checkAuth();
   }, [navigate, toast]);
 
+  // Track unsaved changes
+  useEffect(() => {
+    if (!isInitializing) {
+      setHasUnsavedChanges(true);
+    }
+  }, [title, content, audioUrl, isInitializing]);
+
   // Auto-save functionality
   useEffect(() => {
-    if (isInitializing || isSaveInProgress) return;
+    if (isInitializing || isSaveInProgress || !hasUnsavedChanges) return;
 
     if (autoSaveTimeout) {
       clearTimeout(autoSaveTimeout);
     }
 
     const timeout = setTimeout(async () => {
-      if (content || title) {
+      if (content || title || audioUrl) {
         await saveEntry(true);
       }
     }, AUTO_SAVE_DELAY);
@@ -118,10 +139,11 @@ const JournalEntryForm = () => {
         clearTimeout(autoSaveTimeout);
       }
     };
-  }, [content, title, isInitializing, isSaveInProgress]);
+  }, [content, title, audioUrl, isInitializing, isSaveInProgress, hasUnsavedChanges]);
 
   const handleAudioSaved = async (audioFileName: string) => {
     setAudioUrl(audioFileName);
+    setHasUnsavedChanges(true);
     
     try {
       console.log('Transcribing audio:', audioFileName);
@@ -197,6 +219,7 @@ const JournalEntryForm = () => {
       }
 
       console.log('Entry saved successfully');
+      setHasUnsavedChanges(false);
       
       if (!isAutoSave) {
         toast({
@@ -221,6 +244,16 @@ const JournalEntryForm = () => {
       setIsSaving(false);
       setIsSaveInProgress(false);
     }
+  };
+
+  const handleNavigateAway = async () => {
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm("You have unsaved changes. Do you want to save before leaving?");
+      if (confirmed) {
+        await saveEntry(false);
+      }
+    }
+    navigate("/journal");
   };
 
   if (isInitializing) {
@@ -255,7 +288,7 @@ const JournalEntryForm = () => {
         <div className="flex justify-end space-x-4">
           <Button
             variant="outline"
-            onClick={() => navigate("/journal")}
+            onClick={handleNavigateAway}
             disabled={isSaving}
           >
             Cancel
