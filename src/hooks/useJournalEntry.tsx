@@ -53,14 +53,19 @@ export const useJournalEntry = (id?: string) => {
         if (error) throw error;
 
         if (entry) {
+          const [mainContent, transcribed] = entry.text ? 
+            entry.text.split("\n\n---\nTranscribed Audio:\n") : 
+            ["", ""];
+
           setTitle(entry.title || '');
-          setContent(entry.text || '');
+          setContent(mainContent || '');
+          setTranscribedAudio(transcribed || '');
           setAudioUrl(entry.audio_url);
           setInitialContent({
             title: entry.title || '',
-            content: entry.text || '',
+            content: mainContent || '',
             audioUrl: entry.audio_url,
-            transcribedAudio: ''
+            transcribedAudio: transcribed || ''
           });
         }
       } catch (error) {
@@ -94,12 +99,45 @@ export const useJournalEntry = (id?: string) => {
         throw new Error('You must be logged in to save entries');
       }
 
+      let finalContent = content;
+      
+      if (audioUrl && !transcribedAudio) {
+        console.log('Transcribing audio before saving:', audioUrl);
+        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+          body: { audioUrl }
+        });
+
+        if (error) {
+          console.error('Transcription error:', error);
+          throw new Error('Failed to transcribe audio');
+        }
+
+        if (data.text) {
+          const newTranscribedText = data.text;
+          setTranscribedAudio(newTranscribedText);
+          finalContent = content ? content : '';
+        }
+      }
+
+      // Combine content and transcribed audio only when saving to database
+      const fullText = transcribedAudio 
+        ? `${finalContent}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
+        : finalContent;
+
+      const entryData = {
+        user_id: user.id,
+        title: title || `Journal Entry - ${format(new Date(), 'P')}`,
+        text: fullText,
+        audio_url: audioUrl,
+        has_been_edited: id ? hasActualChanges() : false,
+      };
+
       // Check if an entry with the same content already exists
       if (!id) {
         const { data: existingEntries, error: checkError } = await supabase
           .from("journal_entries")
           .select("id")
-          .eq('text', content)
+          .eq('text', fullText)
           .eq('user_id', user.id)
           .limit(1);
 
@@ -118,14 +156,6 @@ export const useJournalEntry = (id?: string) => {
         }
       }
 
-      const entryData = {
-        user_id: user.id,
-        title: title || `Journal Entry - ${format(new Date(), 'P')}`,
-        text: content,
-        audio_url: audioUrl,
-        has_been_edited: id ? hasActualChanges() : false,
-      };
-
       const { error: saveError } = id
         ? await supabase
             .from("journal_entries")
@@ -139,9 +169,9 @@ export const useJournalEntry = (id?: string) => {
 
       setInitialContent({
         title: entryData.title,
-        content: entryData.text,
+        content: finalContent,
         audioUrl: entryData.audio_url,
-        transcribedAudio: ''
+        transcribedAudio: transcribedAudio
       });
       
       setHasUnsavedChanges(false);
