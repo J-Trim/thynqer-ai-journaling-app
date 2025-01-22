@@ -41,14 +41,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Single source of truth for auth state
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[AuthProvider] Auth state changed:', event);
       setIsAuthenticated(!!session);
       setIsLoading(false);
     });
 
-    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('[AuthProvider] Initial session check:', session ? 'Authenticated' : 'Not authenticated');
       setIsAuthenticated(!!session);
@@ -85,7 +83,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  return <div className="animate-fade-in">{children}</div>;
 };
 
 const AppRoutes = () => {
@@ -95,39 +93,32 @@ const AppRoutes = () => {
     return <LoadingScreen />;
   }
 
-  if (isAuthenticated === false) {
-    return (
+  return (
+    <div className="animate-fade-in">
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
-        <Route path="*" element={<Navigate to="/auth" replace />} />
+        <Route
+          path="/"
+          element={<Navigate to="/journal" replace />}
+        />
+        <Route
+          path="/journal"
+          element={
+            <ProtectedRoute>
+              <JournalList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/journal/new"
+          element={
+            <ProtectedRoute>
+              <Index />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
-    );
-  }
-
-  return (
-    <Routes>
-      <Route path="/auth" element={<AuthPage />} />
-      <Route
-        path="/"
-        element={<Navigate to="/journal" replace />}
-      />
-      <Route
-        path="/journal"
-        element={
-          <ProtectedRoute>
-            <JournalList />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/journal/new"
-        element={
-          <ProtectedRoute>
-            <Index />
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+    </div>
   );
 };
 

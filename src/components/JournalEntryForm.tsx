@@ -15,7 +15,6 @@ const JournalEntryForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Check authentication on mount with better error handling
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -56,7 +55,6 @@ const JournalEntryForm = () => {
     checkAuth();
   }, [navigate, toast]);
 
-  // Auto-save functionality with better error handling
   useEffect(() => {
     if (isInitializing) return;
 
