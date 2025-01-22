@@ -60,23 +60,25 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background animate-fade-in">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="container mx-auto p-4 md:p-8">
-        <div className="max-w-2xl mx-auto space-y-8">
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-4xl font-bold">Journal Entry</h2>
-            <p className="text-muted-foreground">Capture your thoughts with text and voice</p>
+            <h2 className="text-3xl font-semibold text-text">Journal Entry</h2>
+            <p className="text-text-muted">Capture your thoughts with text and voice</p>
           </div>
 
-          <JournalEntryForm />
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <JournalEntryForm />
+          </div>
 
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold">Recent Entries</h2>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold text-text">Recent Entries</h2>
             {isLoading ? (
               <LoadingState />
             ) : (
-              <div className="space-y-4">
+              <div className="grid gap-4">
                 {entries && entries.map((entry) => (
                   <JournalEntry
                     key={entry.id}
@@ -88,7 +90,7 @@ const Index = () => {
                   />
                 ))}
                 {entries && entries.length === 0 && (
-                  <p className="text-center text-text-muted">No journal entries yet. Create your first one!</p>
+                  <p className="text-center text-text-muted py-8">No journal entries yet. Create your first one!</p>
                 )}
               </div>
             )}

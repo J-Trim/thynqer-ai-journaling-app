@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import AudioRecorder from './AudioRecorder';
-import { useNavigate } from 'react-router-dom';
+import { useToast } from "@/components/ui/use-toast";
+import AudioRecorder from "./AudioRecorder";
 
 const JournalEntryForm = () => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -19,22 +19,18 @@ const JournalEntryForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Get the current user's session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (sessionError || !session) {
-        console.error('No authenticated session found:', sessionError);
+      if (!session) {
         toast({
-          title: "Authentication Error",
-          description: "Please sign in to create journal entries",
+          title: "Error",
+          description: "You must be logged in to create an entry",
           variant: "destructive",
         });
-        navigate('/auth');
+        navigate("/auth");
         return;
       }
 
-      console.log('Creating entry for user:', session.user.id);
-      
       const { data, error } = await supabase
         .from('journal_entries')
         .insert([
@@ -44,33 +40,36 @@ const JournalEntryForm = () => {
             user_id: session.user.id,
           }
         ])
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Error creating entry:', error);
-        throw error;
+        toast({
+          title: "Error",
+          description: "Failed to create journal entry",
+          variant: "destructive",
+        });
+        return;
       }
 
-      console.log('Entry created successfully:', data);
-      
+      console.log('Created entry:', data);
       toast({
         title: "Success",
-        description: "Journal entry saved successfully",
+        description: "Journal entry created successfully",
       });
 
-      // Clear the form
-      setTitle('');
-      setContent('');
-      
-      // Refresh the page to show the new entry
+      // Reset form
+      setTitle("");
+      setContent("");
+
+      // Reload the page to show the new entry
       window.location.reload();
-      
+
     } catch (error) {
-      console.error('Error saving journal entry:', error);
+      console.error('Error in form submission:', error);
       toast({
         title: "Error",
-        description: "Failed to save journal entry",
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -86,7 +85,7 @@ const JournalEntryForm = () => {
             placeholder="Entry Title (optional)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full"
+            className="w-full bg-secondary/50 border-0 focus:ring-1 ring-primary/20"
           />
         </div>
         <div>
@@ -94,12 +93,16 @@ const JournalEntryForm = () => {
             placeholder="Write your thoughts..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="min-h-[200px] w-full"
+            className="min-h-[200px] w-full bg-secondary/50 border-0 focus:ring-1 ring-primary/20"
           />
         </div>
         <AudioRecorder />
         <div className="flex justify-end">
-          <Button type="submit" disabled={isSubmitting || !content.trim()}>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || !content.trim()}
+            className="bg-primary hover:bg-primary-hover text-white"
+          >
             {isSubmitting ? "Saving..." : "Save Entry"}
           </Button>
         </div>
