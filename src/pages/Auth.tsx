@@ -103,10 +103,6 @@ const AuthPage = () => {
               },
             }}
             providers={[]}
-            onError={(error) => {
-              console.error('[AuthPage] Auth UI error:', error);
-              setErrorMessage(getErrorMessage(error));
-            }}
           />
         </div>
       </div>
