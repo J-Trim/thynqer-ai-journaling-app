@@ -58,15 +58,57 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
     }
   };
 
+  const requestPermissions = async () => {
+    try {
+      // Request both audio and notification permissions for mobile
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Check if we're in a PWA or native app context
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        await Notification.requestPermission();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Permission error:', error);
+      return false;
+    }
+  };
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder.current = new MediaRecorder(stream);
+      const hasPermissions = await requestPermissions();
+      if (!hasPermissions) {
+        toast({
+          title: "Permission Required",
+          description: "Microphone access is required for recording.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
+      });
+      
+      mediaRecorder.current = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
       
       mediaRecorder.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunks.current.push(event.data);
         }
+      };
+
+      // Handle mobile specific interruptions
+      stream.getAudioTracks()[0].onended = () => {
+        console.log("Audio recording interrupted");
+        stopRecording();
       };
 
       mediaRecorder.current.start();
