@@ -1,10 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState, createContext } from "react";
+
+// Create a context for managing unsaved changes
+export const UnsavedChangesContext = createContext<{
+  hasUnsavedChanges: boolean;
+  setHasUnsavedChanges: (value: boolean) => void;
+}>({
+  hasUnsavedChanges: false,
+  setHasUnsavedChanges: () => {},
+});
 
 const Header = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,12 +32,26 @@ const Header = () => {
     navigate("/auth");
   };
 
+  const handleNavigation = (path: string) => {
+    // Check if we're on a journal entry page
+    const isJournalEntryPage = location.pathname.includes('/journal/new') || 
+                              location.pathname.includes('/journal/edit');
+
+    if (isJournalEntryPage) {
+      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+      if (!confirmed) {
+        return;
+      }
+    }
+    navigate(path);
+  };
+
   return (
     <header className="border-b">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         <h1 
           className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors"
-          onClick={() => navigate("/journal")}
+          onClick={() => handleNavigation("/journal")}
         >
           Thynqer
         </h1>

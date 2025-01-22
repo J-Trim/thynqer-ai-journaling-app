@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams, useBeforeUnload } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { UnsavedChangesContext } from "@/components/Header";
 
 const AUTO_SAVE_DELAY = 3000; // 3 seconds
 
