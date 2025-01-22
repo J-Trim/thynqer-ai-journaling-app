@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,36 +10,59 @@ interface AudioHandlerProps {
 
 const AudioHandler = ({ onAudioSaved, onTranscriptionComplete }: AudioHandlerProps) => {
   const { toast } = useToast();
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
   const handleAudioSaved = async (audioFileName: string) => {
-    onAudioSaved(audioFileName);
-    
     try {
-      console.log('Transcribing audio:', audioFileName);
+      setIsTranscribing(true);
+      console.log('Starting audio transcription process for:', audioFileName);
+      
+      // Save the audio URL first
+      onAudioSaved(audioFileName);
+      
+      console.log('Invoking transcribe-audio function...');
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audioUrl: audioFileName }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Transcription error:', error);
+        throw error;
+      }
 
-      if (data.text) {
+      if (data?.text) {
+        console.log('Transcription completed successfully');
         onTranscriptionComplete(data.text);
         toast({
           title: "Success",
           description: "Audio transcribed successfully",
         });
+      } else {
+        console.error('No transcription text received');
+        throw new Error('No transcription text received');
       }
     } catch (error) {
       console.error('Transcription error:', error);
       toast({
         title: "Error",
-        description: "Failed to transcribe audio",
+        description: "Failed to transcribe audio. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsTranscribing(false);
     }
   };
 
-  return <AudioRecorder onAudioSaved={handleAudioSaved} />;
+  return (
+    <div>
+      <AudioRecorder onAudioSaved={handleAudioSaved} />
+      {isTranscribing && (
+        <div className="mt-2 text-sm text-muted-foreground animate-pulse">
+          Transcribing audio...
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default AudioHandler;

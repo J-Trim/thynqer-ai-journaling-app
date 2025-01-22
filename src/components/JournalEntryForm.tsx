@@ -31,6 +31,8 @@ const JournalEntryForm = () => {
     handleNavigateAway
   } = useJournalEntry(id);
 
+  const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -58,6 +60,7 @@ const JournalEntryForm = () => {
       const newContent = prev ? `${prev}\n\n---\nTranscribed Audio:\n${transcribedText}` : transcribedText;
       return newContent;
     });
+    setIsTranscriptionPending(false);
   };
 
   const getAudioUrl = async (audioFileName: string) => {
@@ -105,6 +108,14 @@ const JournalEntryForm = () => {
     return <LoadingState />;
   }
 
+  const handleSave = async (isAutoSave = false) => {
+    if (isTranscriptionPending) {
+      console.log('Waiting for transcription to complete before saving...');
+      return;
+    }
+    await saveEntry(isAutoSave);
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
       <AutoSave
@@ -114,7 +125,7 @@ const JournalEntryForm = () => {
         isInitializing={isInitializing}
         isSaveInProgress={isSaveInProgress}
         hasUnsavedChanges={hasUnsavedChanges}
-        onSave={saveEntry}
+        onSave={handleSave}
       />
       <div className="space-y-4">
         <EntryHeader title={title} onTitleChange={setTitle} />
@@ -123,14 +134,17 @@ const JournalEntryForm = () => {
         {audioUrl && <AudioPlayer audioFileName={audioUrl} />}
         {canRecord && (
           <AudioHandler
-            onAudioSaved={setAudioUrl}
+            onAudioSaved={(url) => {
+              setAudioUrl(url);
+              setIsTranscriptionPending(true);
+            }}
             onTranscriptionComplete={handleTranscriptionComplete}
           />
         )}
         <ActionButtons
           onCancel={handleNavigateAway}
-          onSave={() => saveEntry(false)}
-          isSaving={isSaving}
+          onSave={() => handleSave(false)}
+          isSaving={isSaving || isTranscriptionPending}
         />
       </div>
     </div>
