@@ -66,7 +66,7 @@ const JournalEntry = ({ id, title, date, preview, hasBeenEdited, onClick, onDele
   return (
     <>
       <Card 
-        className="hover:shadow-md transition-shadow duration-200 cursor-pointer bg-white relative group"
+        className="hover:shadow-md transition-shadow duration-200 cursor-pointer bg-white relative"
         onClick={onClick}
       >
         <CardHeader className="pb-2">
@@ -78,13 +78,17 @@ const JournalEntry = ({ id, title, date, preview, hasBeenEdited, onClick, onDele
                   Edited
                 </Badge>
               )}
-              <button
-                onClick={handleDelete}
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-secondary rounded-full"
-                aria-label="Delete entry"
-              >
-                <Trash2 className="h-4 w-4 text-text-muted hover:text-destructive transition-colors" />
-              </button>
+              <div className="relative">
+                <div className="absolute -top-2 -right-2 w-8 h-8 group">
+                  <button
+                    onClick={handleDelete}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-secondary rounded-full absolute top-0 right-0"
+                    aria-label="Delete entry"
+                  >
+                    <Trash2 className="h-4 w-4 text-text-muted hover:text-destructive transition-colors" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
           <p className="text-sm text-text-muted">{date}</p>
