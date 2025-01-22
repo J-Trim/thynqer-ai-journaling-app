@@ -62,8 +62,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
-        <div className="space-y-8">
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-2">
             <h2 className="text-3xl font-semibold text-text">Journal Entry</h2>
             <p className="text-text-muted">Capture your thoughts with text and voice</p>
