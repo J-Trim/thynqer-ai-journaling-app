@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, Pause, Square, Play } from "lucide-react";
+import { Mic, Square, FileAudio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -12,6 +12,7 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [canTranscribe, setCanTranscribe] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<number | null>(null);
   const audioChunks = useRef<Blob[]>([]);
@@ -60,14 +61,10 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
 
   const requestPermissions = async () => {
     try {
-      // Request both audio and notification permissions for mobile
       await navigator.mediaDevices.getUserMedia({ audio: true });
-      
-      // Check if we're in a PWA or native app context
       if ('Notification' in window && Notification.permission !== 'granted') {
         await Notification.requestPermission();
       }
-      
       return true;
     } catch (error) {
       console.error('Permission error:', error);
@@ -75,71 +72,69 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
     }
   };
 
-  const startRecording = async () => {
-    try {
-      const hasPermissions = await requestPermissions();
-      if (!hasPermissions) {
+  const toggleRecording = async () => {
+    if (!isRecording) {
+      try {
+        const hasPermissions = await requestPermissions();
+        if (!hasPermissions) {
+          toast({
+            title: "Permission Required",
+            description: "Microphone access is required for recording.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          } 
+        });
+        
+        mediaRecorder.current = new MediaRecorder(stream, {
+          mimeType: 'audio/webm;codecs=opus'
+        });
+        
+        mediaRecorder.current.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.current.push(event.data);
+          }
+        };
+
+        stream.getAudioTracks()[0].onended = () => {
+          console.log("Audio recording interrupted");
+          stopRecording();
+        };
+
+        mediaRecorder.current.start();
+        setIsRecording(true);
+        setIsPaused(false);
+        startTimer();
+        console.log("Recording started");
+      } catch (error) {
+        console.error("Error starting recording:", error);
         toast({
-          title: "Permission Required",
-          description: "Microphone access is required for recording.",
+          title: "Error",
+          description: "Could not start recording. Please check your microphone permissions.",
           variant: "destructive",
         });
-        return;
       }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        } 
-      });
-      
-      mediaRecorder.current = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
-      
-      mediaRecorder.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.current.push(event.data);
-        }
-      };
-
-      // Handle mobile specific interruptions
-      stream.getAudioTracks()[0].onended = () => {
-        console.log("Audio recording interrupted");
-        stopRecording();
-      };
-
-      mediaRecorder.current.start();
-      setIsRecording(true);
-      startTimer();
-      console.log("Recording started");
-    } catch (error) {
-      console.error("Error starting recording:", error);
-      toast({
-        title: "Error",
-        description: "Could not start recording. Please check your microphone permissions.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const pauseRecording = () => {
-    if (mediaRecorder.current && isRecording) {
-      mediaRecorder.current.pause();
-      setIsPaused(true);
-      stopTimer();
-      console.log("Recording paused");
-    }
-  };
-
-  const resumeRecording = () => {
-    if (mediaRecorder.current && isRecording) {
-      mediaRecorder.current.resume();
-      setIsPaused(false);
-      startTimer();
-      console.log("Recording resumed");
+    } else if (!isPaused) {
+      if (mediaRecorder.current && isRecording) {
+        mediaRecorder.current.pause();
+        setIsPaused(true);
+        stopTimer();
+        console.log("Recording paused");
+      }
+    } else {
+      if (mediaRecorder.current && isRecording) {
+        mediaRecorder.current.resume();
+        setIsPaused(false);
+        startTimer();
+        console.log("Recording resumed");
+      }
     }
   };
 
@@ -148,7 +143,6 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
       mediaRecorder.current.stop();
       mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
       
-      // Wait for the last chunk to be processed
       await new Promise<void>((resolve) => {
         if (mediaRecorder.current) {
           mediaRecorder.current.onstop = () => resolve();
@@ -157,33 +151,47 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
         }
       });
 
-      try {
-        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-        const fileName = await uploadAudio(audioBlob);
-        
-        if (onAudioSaved) {
-          onAudioSaved(fileName);
-        }
-
-        toast({
-          title: "Success",
-          description: "Audio recording saved successfully",
-        });
-      } catch (error) {
-        console.error("Error saving audio:", error);
-        toast({
-          title: "Error",
-          description: "Failed to save audio recording",
-          variant: "destructive",
-        });
-      }
-
       setIsRecording(false);
       setIsPaused(false);
       stopTimer();
+      setCanTranscribe(true);
+      console.log("Recording stopped");
+    }
+  };
+
+  const handleTranscribe = async () => {
+    if (audioChunks.current.length === 0) {
+      toast({
+        title: "Error",
+        description: "No audio recording available to transcribe",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+      const fileName = await uploadAudio(audioBlob);
+      
+      if (onAudioSaved) {
+        onAudioSaved(fileName);
+      }
+
       setRecordingTime(0);
       audioChunks.current = [];
-      console.log("Recording stopped");
+      setCanTranscribe(false);
+
+      toast({
+        title: "Success",
+        description: "Audio recording saved and transcription started",
+      });
+    } catch (error) {
+      console.error("Error saving audio:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save audio recording",
+        variant: "destructive",
+      });
     }
   };
 
@@ -193,36 +201,41 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
         {formatTime(recordingTime)}
       </div>
       <div className="flex space-x-4">
-        {!isRecording ? (
-          <Button
-            onClick={startRecording}
-            className="bg-primary hover:bg-primary-hover text-white"
-          >
-            <Mic className="w-6 h-6" />
-          </Button>
-        ) : (
+        {isRecording ? (
           <>
-            {!isPaused ? (
-              <Button
-                onClick={pauseRecording}
-                className="bg-accent hover:bg-accent-hover text-text"
-              >
-                <Pause className="w-6 h-6" />
-              </Button>
-            ) : (
-              <Button
-                onClick={resumeRecording}
-                className="bg-primary hover:bg-primary-hover text-white"
-              >
-                <Play className="w-6 h-6" />
-              </Button>
-            )}
+            <Button
+              onClick={toggleRecording}
+              className={`${
+                isPaused 
+                  ? "bg-primary hover:bg-primary-hover text-white" 
+                  : "bg-accent hover:bg-accent-hover text-text"
+              }`}
+            >
+              <Mic className="w-6 h-6" />
+            </Button>
             <Button
               onClick={stopRecording}
               variant="destructive"
             >
               <Square className="w-6 h-6" />
             </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={toggleRecording}
+              className="bg-primary hover:bg-primary-hover text-white"
+            >
+              <Mic className="w-6 h-6" />
+            </Button>
+            {canTranscribe && (
+              <Button
+                onClick={handleTranscribe}
+                className="bg-accent hover:bg-accent-hover text-text"
+              >
+                <FileAudio className="w-6 h-6" />
+              </Button>
+            )}
           </>
         )}
       </div>
