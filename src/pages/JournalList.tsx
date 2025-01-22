@@ -26,8 +26,13 @@ const JournalList = () => {
         throw error;
       }
 
-      console.log('Fetched entries:', entries);
-      return entries;
+      // Remove any potential duplicates by using Set with unique IDs
+      const uniqueEntries = Array.from(
+        new Map(entries?.map(entry => [entry.id, entry])).values()
+      );
+
+      console.log('Fetched unique entries:', uniqueEntries);
+      return uniqueEntries;
     }
   });
 
