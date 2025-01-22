@@ -248,6 +248,9 @@ const JournalEntryForm = () => {
     );
   };
 
+  // Determine if recording should be allowed
+  const canRecord = !id || hasUnsavedChanges;
+
   if (isInitializing) {
     return (
       <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -286,10 +289,12 @@ const JournalEntryForm = () => {
           className="min-h-[200px] resize-y"
         />
         {audioUrl && <AudioPlayer audioFileName={audioUrl} />}
-        <AudioHandler
-          onAudioSaved={setAudioUrl}
-          onTranscriptionComplete={handleTranscriptionComplete}
-        />
+        {canRecord && (
+          <AudioHandler
+            onAudioSaved={setAudioUrl}
+            onTranscriptionComplete={handleTranscriptionComplete}
+          />
+        )}
         <div className="flex justify-end space-x-4">
           <Button
             variant="outline"
