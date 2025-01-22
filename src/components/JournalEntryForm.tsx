@@ -158,8 +158,9 @@ const JournalEntryForm = () => {
       console.log('Waiting for transcription to complete before saving...');
       return;
     }
+    
     const savedEntry = await saveEntry(isAutoSave);
-    if (savedEntry?.id && selectedTags.length > 0) {
+    if (savedEntry && savedEntry.id && selectedTags.length > 0) {
       await updateEntryTagsMutation.mutateAsync({
         entryId: savedEntry.id,
         tagIds: selectedTags
