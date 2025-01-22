@@ -31,6 +31,7 @@ const JournalEntryForm = () => {
   } = useJournalEntry(id);
 
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
+  const [audioPublicUrl, setAudioPublicUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -54,43 +55,33 @@ const JournalEntryForm = () => {
     checkAuth();
   }, [navigate]);
 
-  const handleTranscriptionComplete = (transcribedText: string) => {
-    setContent(prev => prev || ''); // Only set content if it's empty or keep existing
-    setIsTranscriptionPending(false);
-  };
-
-  const AudioPlayer = ({ audioFileName }: { audioFileName: string }) => {
-    const [publicUrl, setPublicUrl] = useState<string | null>(null);
-
-    useEffect(() => {
-      const fetchAudioUrl = async () => {
-        try {
-          const { data } = supabase.storage
-            .from('audio_files')
-            .getPublicUrl(audioFileName);
-          
-          console.log('Fetched audio URL:', data.publicUrl);
-          setPublicUrl(data.publicUrl);
-        } catch (error) {
-          console.error('Error fetching audio URL:', error);
-        }
-      };
-
-      if (audioFileName) {
-        fetchAudioUrl();
+  useEffect(() => {
+    const fetchAudioUrl = async () => {
+      if (!audioUrl) {
+        setAudioPublicUrl(null);
+        return;
       }
-    }, [audioFileName]);
 
-    if (!publicUrl) return null;
+      try {
+        console.log('Fetching public URL for audio:', audioUrl);
+        const { data } = supabase.storage
+          .from('audio_files')
+          .getPublicUrl(audioUrl);
+        
+        console.log('Fetched audio public URL:', data.publicUrl);
+        setAudioPublicUrl(data.publicUrl);
+      } catch (error) {
+        console.error('Error fetching audio URL:', error);
+        setAudioPublicUrl(null);
+      }
+    };
 
-    return (
-      <div className="mt-4 p-4 bg-secondary rounded-lg">
-        <audio controls className="w-full">
-          <source src={publicUrl} type="audio/webm" />
-          Your browser does not support the audio element.
-        </audio>
-      </div>
-    );
+    fetchAudioUrl();
+  }, [audioUrl]);
+
+  const handleTranscriptionComplete = (transcribedText: string) => {
+    setContent(prev => prev || '');
+    setIsTranscriptionPending(false);
   };
 
   // Determine if recording should be allowed
@@ -123,7 +114,14 @@ const JournalEntryForm = () => {
         <EntryHeader title={title} onTitleChange={setTitle} />
         <EntryContent content={content} onContentChange={setContent} />
         {transcribedAudio && <TranscribedSection transcribedAudio={transcribedAudio} />}
-        {audioUrl && <AudioPlayer audioFileName={audioUrl} />}
+        {audioPublicUrl && (
+          <div className="mt-4 p-4 bg-secondary rounded-lg">
+            <audio controls className="w-full">
+              <source src={audioPublicUrl} type="audio/webm" />
+              Your browser does not support the audio element.
+            </audio>
+          </div>
+        )}
         {canRecord && (
           <AudioHandler
             onAudioSaved={(url) => {
