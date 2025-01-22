@@ -23,6 +23,7 @@ const JournalEntryForm = () => {
     content,
     setContent,
     transcribedAudio,
+    setTranscribedAudio,
     audioUrl,
     setAudioUrl,
     isSaving,
@@ -134,6 +135,7 @@ const JournalEntryForm = () => {
   }, [audioUrl]);
 
   const handleTranscriptionComplete = (transcribedText: string) => {
+    setTranscribedAudio(transcribedText);
     setContent(prev => prev || '');
     setIsTranscriptionPending(false);
   };
@@ -181,12 +183,15 @@ const JournalEntryForm = () => {
       />
       <div className="space-y-4">
         <EntryHeader title={title} onTitleChange={setTitle} />
-        <EntryContent content={content} onContentChange={setContent} />
+        <EntryContent 
+          content={content} 
+          transcribedAudio={transcribedAudio}
+          onContentChange={setContent} 
+        />
         <TagSelector
           selectedTags={selectedTags}
           onTagToggle={handleTagToggle}
         />
-        {transcribedAudio && <TranscribedSection transcribedAudio={transcribedAudio} />}
         {audioPublicUrl && (
           <div className="mt-4 p-4 bg-secondary rounded-lg">
             <audio controls className="w-full">

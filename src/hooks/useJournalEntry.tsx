@@ -51,6 +51,7 @@ export const useJournalEntry = (id?: string) => {
       }
 
       try {
+        console.log('Loading entry:', id);
         const { data: entry, error } = await supabase
           .from('journal_entries')
           .select('*')
@@ -60,6 +61,7 @@ export const useJournalEntry = (id?: string) => {
         if (error) throw error;
 
         if (entry) {
+          console.log('Entry loaded:', entry);
           const [mainContent, transcribed] = entry.text ? 
             entry.text.split("\n\n---\nTranscribed Audio:\n") : 
             ["", ""];
@@ -108,24 +110,7 @@ export const useJournalEntry = (id?: string) => {
 
       let finalContent = content;
       
-      if (audioUrl && !transcribedAudio) {
-        console.log('Transcribing audio before saving:', audioUrl);
-        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-          body: { audioUrl }
-        });
-
-        if (error) {
-          console.error('Transcription error:', error);
-          throw new Error('Failed to transcribe audio');
-        }
-
-        if (data.text) {
-          const newTranscribedText = data.text;
-          setTranscribedAudio(newTranscribedText);
-          finalContent = content ? content : '';
-        }
-      }
-
+      // Combine content with transcribed audio if present
       const fullText = transcribedAudio 
         ? `${finalContent}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
         : finalContent;
@@ -138,29 +123,7 @@ export const useJournalEntry = (id?: string) => {
         has_been_edited: id ? hasActualChanges() : false,
       };
 
-      // Check if an entry with the same content already exists
-      if (!id) {
-        const { data: existingEntries, error: checkError } = await supabase
-          .from("journal_entries")
-          .select("id")
-          .eq('text', fullText)
-          .eq('user_id', user.id)
-          .limit(1);
-
-        if (checkError) throw checkError;
-
-        if (existingEntries && existingEntries.length > 0) {
-          console.log('Duplicate entry detected, skipping save');
-          if (!isAutoSave) {
-            toast({
-              title: "Info",
-              description: "This entry has already been saved.",
-            });
-            navigate("/journal", { replace: true });
-          }
-          return null;
-        }
-      }
+      console.log('Saving entry:', entryData);
 
       const { data: savedEntry, error: saveError } = id
         ? await supabase
@@ -176,6 +139,8 @@ export const useJournalEntry = (id?: string) => {
             .single();
 
       if (saveError) throw saveError;
+
+      console.log('Entry saved successfully:', savedEntry);
 
       setInitialContent({
         title: entryData.title,
