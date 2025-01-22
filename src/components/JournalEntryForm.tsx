@@ -4,12 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { UnsavedChangesContext } from "@/components/Header";
-
-const AUTO_SAVE_DELAY = 3000; // 3 seconds
+import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
+import AutoSave from "./journal/AutoSave";
+import AudioHandler from "./journal/AudioHandler";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
@@ -18,13 +17,11 @@ const JournalEntryForm = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useContext(UnsavedChangesContext);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Warn before closing/navigating away with unsaved changes
   useBeforeUnload(
     React.useCallback(
       (event) => {
@@ -37,7 +34,6 @@ const JournalEntryForm = () => {
     )
   );
 
-  // Load existing entry if editing
   useEffect(() => {
     const loadEntry = async () => {
       if (!id) {
@@ -80,19 +76,8 @@ const JournalEntryForm = () => {
         console.log('Checking auth status in JournalEntryForm...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
+        if (error || !session) {
           console.error('Auth check error:', error);
-          toast({
-            title: "Authentication Error",
-            description: "Please try logging in again",
-            variant: "destructive",
-          });
-          navigate("/auth", { replace: true });
-          return;
-        }
-
-        if (!session) {
-          console.log('No session found, redirecting to auth');
           navigate("/auth", { replace: true });
           return;
         }
@@ -100,80 +85,18 @@ const JournalEntryForm = () => {
         console.log('Auth check successful, user:', session.user.id);
       } catch (error) {
         console.error('Unexpected error during auth check:', error);
-        toast({
-          title: "Error",
-          description: "An unexpected error occurred",
-          variant: "destructive",
-        });
         navigate("/auth", { replace: true });
       }
     };
 
     checkAuth();
-  }, [navigate, toast]);
+  }, [navigate]);
 
-  // Track unsaved changes
   useEffect(() => {
     if (!isInitializing) {
       setHasUnsavedChanges(true);
     }
-  }, [title, content, audioUrl, isInitializing]);
-
-  // Auto-save functionality
-  useEffect(() => {
-    if (isInitializing || isSaveInProgress || !hasUnsavedChanges) return;
-
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
-    }
-
-    const timeout = setTimeout(async () => {
-      if (content || title || audioUrl) {
-        await saveEntry(true);
-      }
-    }, AUTO_SAVE_DELAY);
-
-    setAutoSaveTimeout(timeout);
-
-    return () => {
-      if (autoSaveTimeout) {
-        clearTimeout(autoSaveTimeout);
-      }
-    };
-  }, [content, title, audioUrl, isInitializing, isSaveInProgress, hasUnsavedChanges]);
-
-  const handleAudioSaved = async (audioFileName: string) => {
-    setAudioUrl(audioFileName);
-    setHasUnsavedChanges(true);
-    
-    try {
-      console.log('Transcribing audio:', audioFileName);
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audioUrl: audioFileName }
-      });
-
-      if (error) throw error;
-
-      if (data.text) {
-        setContent(prev => {
-          const newContent = prev ? `${prev}\n\n---\nTranscribed Audio:\n${data.text}` : data.text;
-          return newContent;
-        });
-        
-        toast({
-          title: "Success",
-          description: "Audio transcribed successfully",
-        });
-      }
-    } catch (error) {
-      console.error('Transcription error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to transcribe audio",
-        variant: "destructive",
-      });
-    }
-  };
+  }, [title, content, audioUrl, isInitializing, setHasUnsavedChanges]);
 
   const saveEntry = async (isAutoSave = false) => {
     if (isInitializing || isSaveInProgress) return;
@@ -181,17 +104,10 @@ const JournalEntryForm = () => {
     try {
       setIsSaveInProgress(true);
       setIsSaving(true);
-      console.log('Attempting to save entry...');
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (userError) {
-        console.error('Error getting user:', userError);
-        throw userError;
-      }
-
-      if (!user) {
-        console.log('No user found, redirecting to auth');
+      if (userError || !user) {
         throw new Error('You must be logged in to save entries');
       }
 
@@ -203,8 +119,6 @@ const JournalEntryForm = () => {
         has_been_edited: id ? true : false,
       };
 
-      console.log('Saving entry data:', { ...entryData, text: content.length + ' chars' });
-
       const { error: saveError } = id
         ? await supabase
             .from("journal_entries")
@@ -214,12 +128,8 @@ const JournalEntryForm = () => {
             .from("journal_entries")
             .insert([entryData]);
 
-      if (saveError) {
-        console.error('Error saving entry:', saveError);
-        throw saveError;
-      }
+      if (saveError) throw saveError;
 
-      console.log('Entry saved successfully');
       setHasUnsavedChanges(false);
       
       if (!isAutoSave) {
@@ -228,11 +138,6 @@ const JournalEntryForm = () => {
           description: "Journal entry saved successfully",
         });
         navigate("/journal", { replace: true });
-      } else {
-        toast({
-          title: "Auto-saved",
-          description: "Draft saved automatically",
-        });
       }
     } catch (error) {
       console.error("Error saving entry:", error);
@@ -257,6 +162,13 @@ const JournalEntryForm = () => {
     navigate("/journal");
   };
 
+  const handleTranscriptionComplete = (transcribedText: string) => {
+    setContent(prev => {
+      const newContent = prev ? `${prev}\n\n---\nTranscribed Audio:\n${transcribedText}` : transcribedText;
+      return newContent;
+    });
+  };
+
   if (isInitializing) {
     return (
       <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -271,6 +183,15 @@ const JournalEntryForm = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
+      <AutoSave
+        content={content}
+        title={title}
+        audioUrl={audioUrl}
+        isInitializing={isInitializing}
+        isSaveInProgress={isSaveInProgress}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSave={saveEntry}
+      />
       <div className="space-y-4">
         <Input
           type="text"
@@ -285,7 +206,10 @@ const JournalEntryForm = () => {
           onChange={(e) => setContent(e.target.value)}
           className="min-h-[200px] resize-y"
         />
-        <AudioRecorder onAudioSaved={handleAudioSaved} />
+        <AudioHandler
+          onAudioSaved={setAudioUrl}
+          onTranscriptionComplete={handleTranscriptionComplete}
+        />
         <div className="flex justify-end space-x-4">
           <Button
             variant="outline"

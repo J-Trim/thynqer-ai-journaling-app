@@ -1,21 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState, createContext } from "react";
-
-// Create a context for managing unsaved changes
-export const UnsavedChangesContext = createContext<{
-  hasUnsavedChanges: boolean;
-  setHasUnsavedChanges: (value: boolean) => void;
-}>({
-  hasUnsavedChanges: false,
-  setHasUnsavedChanges: () => {},
-});
+import { useEffect, useState, useContext } from "react";
+import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const { hasUnsavedChanges } = useContext(UnsavedChangesContext);
 
   useEffect(() => {
     const getUser = async () => {
@@ -33,11 +26,10 @@ const Header = () => {
   };
 
   const handleNavigation = (path: string) => {
-    // Check if we're on a journal entry page
     const isJournalEntryPage = location.pathname.includes('/journal/new') || 
                               location.pathname.includes('/journal/edit');
 
-    if (isJournalEntryPage) {
+    if (isJournalEntryPage && hasUnsavedChanges) {
       const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
       if (!confirmed) {
         return;
