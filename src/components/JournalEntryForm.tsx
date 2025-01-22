@@ -41,7 +41,7 @@ const JournalEntryForm = () => {
           {
             title: title || 'Untitled Entry',
             text: content,
-            user_id: session.user.id, // Explicitly set the user_id
+            user_id: session.user.id,
           }
         ])
         .select()
@@ -79,29 +79,32 @@ const JournalEntryForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Input
-          placeholder="Entry Title (optional)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="w-full"
-        />
-      </div>
-      <div>
-        <Textarea
-          placeholder="Write your thoughts..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="min-h-[200px] w-full"
-        />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting || !content.trim()}>
-          {isSubmitting ? "Saving..." : "Save Entry"}
-        </Button>
-      </div>
-    </form>
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Input
+            placeholder="Entry Title (optional)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <Textarea
+            placeholder="Write your thoughts..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="min-h-[200px] w-full"
+          />
+        </div>
+        <AudioRecorder />
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isSubmitting || !content.trim()}>
+            {isSubmitting ? "Saving..." : "Save Entry"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 
