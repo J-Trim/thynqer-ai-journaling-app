@@ -23,14 +23,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthProvider] Auth state changed:', event);
+    // First, check the current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthProvider] Initial session check:', session ? 'Authenticated' : 'Not authenticated');
       setIsAuthenticated(!!session);
       setIsLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthProvider] Initial session check:', session ? 'Authenticated' : 'Not authenticated');
+    // Then set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthProvider] Auth state changed:', event);
       setIsAuthenticated(!!session);
       setIsLoading(false);
     });
@@ -40,15 +42,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
-
   return (
     <AuthContext.Provider value={{ isAuthenticated, isLoading }}>
-      <div className="animate-fade-in">
-        {children}
-      </div>
+      {children}
     </AuthContext.Provider>
   );
 };
