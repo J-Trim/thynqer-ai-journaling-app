@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { format } from "date-fns";
 const JournalList = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>("");
+  const queryClient = useQueryClient();
 
   const { data: entries, isLoading } = useQuery({
     queryKey: ['journal-entries'],
@@ -54,6 +55,11 @@ const JournalList = () => {
     navigate(`/journal/edit/${entryId}`);
   };
 
+  const handleEntryDelete = () => {
+    // Invalidate and refetch the journal entries query
+    queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -92,11 +98,13 @@ const JournalList = () => {
               entries.map((entry) => (
                 <JournalEntry
                   key={entry.id}
+                  id={entry.id}
                   title={entry.title || "Untitled Entry"}
                   date={format(new Date(entry.created_at), 'PPP')}
                   preview={entry.text || "No content"}
                   hasBeenEdited={entry.has_been_edited}
                   onClick={() => handleEntryClick(entry.id)}
+                  onDelete={handleEntryDelete}
                 />
               ))
             ) : (
