@@ -45,6 +45,10 @@ const JournalList = () => {
     getUser();
   }, []);
 
+  const handleEntryClick = (entryId: string) => {
+    navigate(`/journal/edit/${entryId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -86,6 +90,8 @@ const JournalList = () => {
                   title={entry.title || "Untitled Entry"}
                   date={format(new Date(entry.created_at), 'PPP')}
                   preview={entry.text || "No content"}
+                  hasBeenEdited={entry.has_been_edited}
+                  onClick={() => handleEntryClick(entry.id)}
                 />
               ))
             ) : (

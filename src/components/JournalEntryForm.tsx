@@ -1,20 +1,62 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+
+const AUTO_SAVE_DELAY = 3000; // 3 seconds
 
 const JournalEntryForm = () => {
+  const { id } = useParams();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Load existing entry if editing
+  useEffect(() => {
+    const loadEntry = async () => {
+      if (!id) {
+        setIsInitializing(false);
+        return;
+      }
+
+      try {
+        const { data: entry, error } = await supabase
+          .from('journal_entries')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
+        if (entry) {
+          setTitle(entry.title || '');
+          setContent(entry.text || '');
+          setAudioUrl(entry.audio_url);
+        }
+      } catch (error) {
+        console.error('Error loading entry:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load journal entry",
+          variant: "destructive",
+        });
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    loadEntry();
+  }, [id, toast]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,24 +90,33 @@ const JournalEntryForm = () => {
           variant: "destructive",
         });
         navigate("/auth", { replace: true });
-      } finally {
-        setIsInitializing(false);
       }
     };
 
     checkAuth();
   }, [navigate, toast]);
 
+  // Auto-save functionality
   useEffect(() => {
     if (isInitializing) return;
 
-    const saveTimeout = setTimeout(async () => {
-      if (content || title) {
-        await saveEntry();
-      }
-    }, 3000);
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+    }
 
-    return () => clearTimeout(saveTimeout);
+    const timeout = setTimeout(async () => {
+      if (content || title) {
+        await saveEntry(true);
+      }
+    }, AUTO_SAVE_DELAY);
+
+    setAutoSaveTimeout(timeout);
+
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+    };
   }, [content, title, isInitializing]);
 
   const handleAudioSaved = async (audioFileName: string) => {
@@ -100,7 +151,7 @@ const JournalEntryForm = () => {
     }
   };
 
-  const saveEntry = async () => {
+  const saveEntry = async (isAutoSave = false) => {
     if (isInitializing) return;
     
     try {
@@ -121,17 +172,22 @@ const JournalEntryForm = () => {
 
       const entryData = {
         user_id: user.id,
-        title: title || `Journal Entry - ${new Date().toLocaleDateString()}`,
+        title: title || `Journal Entry - ${format(new Date(), 'P')}`,
         text: content,
         audio_url: audioUrl,
-        has_been_edited: false,
+        has_been_edited: id ? true : false,
       };
 
       console.log('Saving entry data:', { ...entryData, text: content.length + ' chars' });
 
-      const { error: saveError } = await supabase
-        .from("journal_entries")
-        .insert([entryData]);
+      const { error: saveError } = id
+        ? await supabase
+            .from("journal_entries")
+            .update(entryData)
+            .eq('id', id)
+        : await supabase
+            .from("journal_entries")
+            .insert([entryData]);
 
       if (saveError) {
         console.error('Error saving entry:', saveError);
@@ -139,12 +195,19 @@ const JournalEntryForm = () => {
       }
 
       console.log('Entry saved successfully');
-      toast({
-        title: "Success",
-        description: "Journal entry saved successfully",
-      });
       
-      navigate("/journal", { replace: true });
+      if (!isAutoSave) {
+        toast({
+          title: "Success",
+          description: "Journal entry saved successfully",
+        });
+        navigate("/journal", { replace: true });
+      } else {
+        toast({
+          title: "Auto-saved",
+          description: "Draft saved automatically",
+        });
+      }
     } catch (error) {
       console.error("Error saving entry:", error);
       toast({
@@ -195,7 +258,7 @@ const JournalEntryForm = () => {
             Cancel
           </Button>
           <Button
-            onClick={saveEntry}
+            onClick={() => saveEntry(false)}
             disabled={isSaving}
           >
             {isSaving ? "Saving..." : "Save Entry"}
