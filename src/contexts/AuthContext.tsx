@@ -23,22 +23,44 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // First, check the current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthProvider] Initial session check:', session ? 'Authenticated' : 'Not authenticated');
-      setIsAuthenticated(!!session);
-      setIsLoading(false);
-    });
+    let mounted = true;
 
-    // Then set up the auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthProvider] Auth state changed:', event);
-      setIsAuthenticated(!!session);
-      setIsLoading(false);
-    });
+    const initialize = async () => {
+      try {
+        // Check initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AuthProvider] Initial session:', session ? 'Authenticated' : 'Not authenticated');
+        
+        if (mounted) {
+          setIsAuthenticated(!!session);
+          setIsLoading(false);
+        }
+
+        // Set up auth state listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('[AuthProvider] Auth state changed:', event, session ? 'Authenticated' : 'Not authenticated');
+          if (mounted) {
+            setIsAuthenticated(!!session);
+            setIsLoading(false);
+          }
+        });
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('[AuthProvider] Error:', error);
+        if (mounted) {
+          setIsLoading(false);
+          setIsAuthenticated(false);
+        }
+      }
+    };
+
+    initialize();
 
     return () => {
-      subscription?.unsubscribe();
+      mounted = false;
     };
   }, []);
 
