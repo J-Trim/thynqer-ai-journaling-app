@@ -18,6 +18,7 @@ const JournalEntryForm = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isSaveInProgress, setIsSaveInProgress] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -98,7 +99,7 @@ const JournalEntryForm = () => {
 
   // Auto-save functionality
   useEffect(() => {
-    if (isInitializing) return;
+    if (isInitializing || isSaveInProgress) return;
 
     if (autoSaveTimeout) {
       clearTimeout(autoSaveTimeout);
@@ -117,7 +118,7 @@ const JournalEntryForm = () => {
         clearTimeout(autoSaveTimeout);
       }
     };
-  }, [content, title, isInitializing]);
+  }, [content, title, isInitializing, isSaveInProgress]);
 
   const handleAudioSaved = async (audioFileName: string) => {
     setAudioUrl(audioFileName);
@@ -152,9 +153,10 @@ const JournalEntryForm = () => {
   };
 
   const saveEntry = async (isAutoSave = false) => {
-    if (isInitializing) return;
+    if (isInitializing || isSaveInProgress) return;
     
     try {
+      setIsSaveInProgress(true);
       setIsSaving(true);
       console.log('Attempting to save entry...');
       
@@ -217,6 +219,7 @@ const JournalEntryForm = () => {
       });
     } finally {
       setIsSaving(false);
+      setIsSaveInProgress(false);
     }
   };
 
