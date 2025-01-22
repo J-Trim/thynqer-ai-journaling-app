@@ -123,6 +123,27 @@ const JournalEntryForm = () => {
         throw new Error('You must be logged in to save entries');
       }
 
+      // If there's audio that hasn't been transcribed yet, handle it first
+      if (audioUrl && !content.includes("Transcribed Audio:")) {
+        console.log('Transcribing audio before saving:', audioUrl);
+        const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+          body: { audioUrl }
+        });
+
+        if (error) {
+          console.error('Transcription error:', error);
+          throw new Error('Failed to transcribe audio');
+        }
+
+        if (data.text) {
+          const transcribedText = data.text;
+          const newContent = content 
+            ? `${content}\n\n---\nTranscribed Audio:\n${transcribedText}`
+            : transcribedText;
+          setContent(newContent);
+        }
+      }
+
       const entryData = {
         user_id: user.id,
         title: title || `Journal Entry - ${format(new Date(), 'P')}`,
