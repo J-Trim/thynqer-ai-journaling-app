@@ -160,7 +160,7 @@ const JournalEntryForm = () => {
     }
     
     const savedEntry = await saveEntry(isAutoSave);
-    if (savedEntry && savedEntry.id && selectedTags.length > 0) {
+    if (savedEntry && selectedTags.length > 0) {
       await updateEntryTagsMutation.mutateAsync({
         entryId: savedEntry.id,
         tagIds: selectedTags

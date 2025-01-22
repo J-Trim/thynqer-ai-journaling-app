@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
 
+interface JournalEntry {
+  id: string;
+  title: string;
+  text: string;
+  audio_url: string | null;
+}
+
 export const useJournalEntry = (id?: string) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -86,7 +93,7 @@ export const useJournalEntry = (id?: string) => {
   const saveEntry = async (isAutoSave = false) => {
     if (isInitializing || isSaveInProgress) {
       console.log('Save prevented - initialization or save in progress');
-      return;
+      return null;
     }
     
     try {
@@ -119,7 +126,6 @@ export const useJournalEntry = (id?: string) => {
         }
       }
 
-      // Combine content and transcribed audio only when saving to database
       const fullText = transcribedAudio 
         ? `${finalContent}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
         : finalContent;
@@ -152,18 +158,22 @@ export const useJournalEntry = (id?: string) => {
             });
             navigate("/journal", { replace: true });
           }
-          return;
+          return null;
         }
       }
 
-      const { error: saveError } = id
+      const { data: savedEntry, error: saveError } = id
         ? await supabase
             .from("journal_entries")
             .update(entryData)
             .eq('id', id)
+            .select()
+            .single()
         : await supabase
             .from("journal_entries")
-            .insert([entryData]);
+            .insert([entryData])
+            .select()
+            .single();
 
       if (saveError) throw saveError;
 
@@ -183,6 +193,8 @@ export const useJournalEntry = (id?: string) => {
         });
         navigate("/journal", { replace: true });
       }
+
+      return savedEntry as JournalEntry;
     } catch (error) {
       console.error("Error saving entry:", error);
       toast({
@@ -190,6 +202,7 @@ export const useJournalEntry = (id?: string) => {
         description: error instanceof Error ? error.message : "Failed to save journal entry",
         variant: "destructive",
       });
+      return null;
     } finally {
       setIsSaving(false);
       setIsSaveInProgress(false);
