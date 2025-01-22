@@ -154,16 +154,18 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
       setIsRecording(false);
       setIsPaused(false);
       stopTimer();
-      setCanTranscribe(true);
-      console.log("Recording stopped");
+      // Only set canTranscribe if we actually have audio data
+      setCanTranscribe(audioChunks.current.length > 0 && audioChunks.current.some(chunk => chunk.size > 0));
+      console.log("Recording stopped, chunks:", audioChunks.current.length);
     }
   };
 
   const handleTranscribe = async () => {
-    if (audioChunks.current.length === 0) {
+    // Validate that we have actual audio data
+    if (!audioChunks.current.length || !audioChunks.current.some(chunk => chunk.size > 0)) {
       toast({
         title: "Error",
-        description: "No audio recording available to transcribe",
+        description: "No audio was recorded. Please record some audio first.",
         variant: "destructive",
       });
       return;
@@ -171,6 +173,16 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
 
     try {
       const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+      // Additional validation for the blob size
+      if (audioBlob.size === 0) {
+        toast({
+          title: "Error",
+          description: "The recording is empty. Please try recording again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const fileName = await uploadAudio(audioBlob);
       
       if (onAudioSaved) {
