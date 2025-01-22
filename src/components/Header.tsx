@@ -3,12 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState, useContext } from "react";
 import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const { hasUnsavedChanges } = useContext(UnsavedChangesContext);
+  const { toast } = useToast();
 
   useEffect(() => {
     const getUser = async () => {
@@ -21,6 +23,21 @@ const Header = () => {
   }, []);
 
   const handleSignOut = async () => {
+    const isJournalEntryPage = location.pathname.includes('/journal/new') || 
+                              location.pathname.includes('/journal/edit');
+
+    if (isJournalEntryPage && hasUnsavedChanges) {
+      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+      if (!confirmed) {
+        return;
+      }
+      toast({
+        title: "Warning",
+        description: "You have unsaved changes that will be lost.",
+        variant: "destructive",
+      });
+    }
+
     await supabase.auth.signOut();
     navigate("/auth");
   };
@@ -34,6 +51,11 @@ const Header = () => {
       if (!confirmed) {
         return;
       }
+      toast({
+        title: "Warning",
+        description: "You have unsaved changes that will be lost.",
+        variant: "destructive",
+      });
     }
     navigate(path);
   };
