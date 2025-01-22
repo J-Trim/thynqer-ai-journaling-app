@@ -18,6 +18,7 @@ const JournalEntryForm = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  const [initialContent, setInitialContent] = useState({ title: "", content: "", audioUrl: null });
   const { hasUnsavedChanges, setHasUnsavedChanges } = useContext(UnsavedChangesContext);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -54,6 +55,11 @@ const JournalEntryForm = () => {
           setTitle(entry.title || '');
           setContent(entry.text || '');
           setAudioUrl(entry.audio_url);
+          setInitialContent({
+            title: entry.title || '',
+            content: entry.text || '',
+            audioUrl: entry.audio_url
+          });
         }
       } catch (error) {
         console.error('Error loading entry:', error);
@@ -92,9 +98,15 @@ const JournalEntryForm = () => {
     checkAuth();
   }, [navigate]);
 
+  const hasActualChanges = () => {
+    return title !== initialContent.title || 
+           content !== initialContent.content || 
+           audioUrl !== initialContent.audioUrl;
+  };
+
   useEffect(() => {
     if (!isInitializing) {
-      setHasUnsavedChanges(true);
+      setHasUnsavedChanges(hasActualChanges());
     }
   }, [title, content, audioUrl, isInitializing, setHasUnsavedChanges]);
 
@@ -116,7 +128,7 @@ const JournalEntryForm = () => {
         title: title || `Journal Entry - ${format(new Date(), 'P')}`,
         text: content,
         audio_url: audioUrl,
-        has_been_edited: id ? true : false,
+        has_been_edited: id ? hasActualChanges() : false,
       };
 
       const { error: saveError } = id
@@ -130,6 +142,13 @@ const JournalEntryForm = () => {
 
       if (saveError) throw saveError;
 
+      // Update initial content after successful save
+      setInitialContent({
+        title: entryData.title,
+        content: entryData.text,
+        audioUrl: entryData.audio_url
+      });
+      
       setHasUnsavedChanges(false);
       
       if (!isAutoSave) {
