@@ -15,11 +15,17 @@ const JournalEntryForm = () => {
   const { id } = useParams();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [transcribedAudio, setTranscribedAudio] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
-  const [initialContent, setInitialContent] = useState({ title: "", content: "", audioUrl: null });
+  const [initialContent, setInitialContent] = useState({ 
+    title: "", 
+    content: "", 
+    audioUrl: null,
+    transcribedAudio: "" 
+  });
   const { hasUnsavedChanges, setHasUnsavedChanges } = useContext(UnsavedChangesContext);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -53,13 +59,19 @@ const JournalEntryForm = () => {
         if (error) throw error;
 
         if (entry) {
+          const [mainContent, transcribed] = entry.text ? 
+            entry.text.split("\n\n---\nTranscribed Audio:\n") : 
+            ["", ""];
+
           setTitle(entry.title || '');
-          setContent(entry.text || '');
+          setContent(mainContent || '');
+          setTranscribedAudio(transcribed || '');
           setAudioUrl(entry.audio_url);
           setInitialContent({
             title: entry.title || '',
-            content: entry.text || '',
-            audioUrl: entry.audio_url
+            content: mainContent || '',
+            audioUrl: entry.audio_url,
+            transcribedAudio: transcribed || ''
           });
         }
       } catch (error) {
@@ -124,8 +136,10 @@ const JournalEntryForm = () => {
         throw new Error('You must be logged in to save entries');
       }
 
+      let finalContent = content;
+      
       // If there's audio that hasn't been transcribed yet, handle it first
-      if (audioUrl && !content.includes("Transcribed Audio:")) {
+      if (audioUrl && !transcribedAudio) {
         console.log('Transcribing audio before saving:', audioUrl);
         const { data, error } = await supabase.functions.invoke('transcribe-audio', {
           body: { audioUrl }
@@ -137,18 +151,21 @@ const JournalEntryForm = () => {
         }
 
         if (data.text) {
-          const transcribedText = data.text;
-          const newContent = content 
-            ? `${content}\n\n---\nTranscribed Audio:\n${transcribedText}`
-            : transcribedText;
-          setContent(newContent);
+          const newTranscribedText = data.text;
+          setTranscribedAudio(newTranscribedText);
+          finalContent = content 
+            ? `${content}\n\n---\nTranscribed Audio:\n${newTranscribedText}`
+            : newTranscribedText;
         }
+      } else if (transcribedAudio) {
+        // If there's existing transcribed audio, append it to the content
+        finalContent = `${content}\n\n---\nTranscribed Audio:\n${transcribedAudio}`;
       }
 
       const entryData = {
         user_id: user.id,
         title: title || `Journal Entry - ${format(new Date(), 'P')}`,
-        text: content,
+        text: finalContent,
         audio_url: audioUrl,
         has_been_edited: id ? hasActualChanges() : false,
       };
@@ -164,11 +181,11 @@ const JournalEntryForm = () => {
 
       if (saveError) throw saveError;
 
-      // Update initial content after successful save
       setInitialContent({
         title: entryData.title,
-        content: entryData.text,
-        audioUrl: entryData.audio_url
+        content: content,
+        audioUrl: entryData.audio_url,
+        transcribedAudio: transcribedAudio
       });
       
       setHasUnsavedChanges(false);
@@ -288,6 +305,14 @@ const JournalEntryForm = () => {
           onChange={(e) => setContent(e.target.value)}
           className="min-h-[200px] resize-y"
         />
+        {transcribedAudio && (
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <h3 className="text-sm font-medium mb-2">Transcribed Audio</h3>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {transcribedAudio}
+            </p>
+          </div>
+        )}
         {audioUrl && <AudioPlayer audioFileName={audioUrl} />}
         {canRecord && (
           <AudioHandler
