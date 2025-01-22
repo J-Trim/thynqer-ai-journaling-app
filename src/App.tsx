@@ -17,7 +17,7 @@ function App() {
       <UnsavedChangesProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Navigate to="/journal" replace />} />
             <Route path="/auth" element={<Auth />} />
             <Route
               path="/journal"
