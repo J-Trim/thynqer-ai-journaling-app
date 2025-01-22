@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import EntryHeader from "./journal/EntryHeader";
 import EntryContent from "./journal/EntryContent";
-import TranscribedSection from "./journal/TranscribedSection";
 import ActionButtons from "./journal/ActionButtons";
 import LoadingState from "./journal/LoadingState";
 import AudioHandler from "./journal/AudioHandler";
@@ -80,7 +79,9 @@ const JournalEntryForm = () => {
   }, [audioUrl]);
 
   const handleTranscriptionComplete = (transcribedText: string) => {
-    setContent(prev => prev || '');
+    // Format the transcribed text in a readme-style format
+    const formattedTranscription = `\n\n# Transcribed Audio\n\n${transcribedText}`;
+    setContent(prev => (prev || '') + formattedTranscription);
     setIsTranscriptionPending(false);
   };
 
@@ -113,7 +114,6 @@ const JournalEntryForm = () => {
       <div className="space-y-4">
         <EntryHeader title={title} onTitleChange={setTitle} />
         <EntryContent content={content} onContentChange={setContent} />
-        {transcribedAudio && <TranscribedSection transcribedAudio={transcribedAudio} />}
         {audioPublicUrl && (
           <div className="mt-4 p-4 bg-secondary rounded-lg">
             <audio controls className="w-full">
