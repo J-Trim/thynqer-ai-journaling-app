@@ -115,18 +115,19 @@ export const useJournalEntry = (id?: string) => {
         if (data.text) {
           const newTranscribedText = data.text;
           setTranscribedAudio(newTranscribedText);
-          finalContent = content 
-            ? `${content}\n\n---\nTranscribed Audio:\n${newTranscribedText}`
-            : newTranscribedText;
+          finalContent = content ? content : '';
         }
-      } else if (transcribedAudio) {
-        finalContent = `${content}\n\n---\nTranscribed Audio:\n${transcribedAudio}`;
       }
+
+      // Combine content and transcribed audio only when saving to database
+      const fullText = transcribedAudio 
+        ? `${finalContent}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
+        : finalContent;
 
       const entryData = {
         user_id: user.id,
         title: title || `Journal Entry - ${format(new Date(), 'P')}`,
-        text: finalContent,
+        text: fullText,
         audio_url: audioUrl,
         has_been_edited: id ? hasActualChanges() : false,
       };
@@ -136,7 +137,7 @@ export const useJournalEntry = (id?: string) => {
         const { data: existingEntries, error: checkError } = await supabase
           .from("journal_entries")
           .select("id")
-          .eq('text', finalContent)
+          .eq('text', fullText)
           .eq('user_id', user.id)
           .limit(1);
 
@@ -168,7 +169,7 @@ export const useJournalEntry = (id?: string) => {
 
       setInitialContent({
         title: entryData.title,
-        content: content,
+        content: finalContent,
         audioUrl: entryData.audio_url,
         transcribedAudio: transcribedAudio
       });

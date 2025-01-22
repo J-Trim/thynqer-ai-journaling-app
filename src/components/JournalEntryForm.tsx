@@ -55,10 +55,7 @@ const JournalEntryForm = () => {
   }, [navigate]);
 
   const handleTranscriptionComplete = (transcribedText: string) => {
-    setContent(prev => {
-      const newContent = prev ? `${prev}\n\n---\nTranscribed Audio:\n${transcribedText}` : transcribedText;
-      return newContent;
-    });
+    setContent(prev => prev || ''); // Only set content if it's empty or keep existing
     setIsTranscriptionPending(false);
   };
 
@@ -125,7 +122,7 @@ const JournalEntryForm = () => {
       <div className="space-y-4">
         <EntryHeader title={title} onTitleChange={setTitle} />
         <EntryContent content={content} onContentChange={setContent} />
-        <TranscribedSection transcribedAudio={transcribedAudio} />
+        {transcribedAudio && <TranscribedSection transcribedAudio={transcribedAudio} />}
         {audioUrl && <AudioPlayer audioFileName={audioUrl} />}
         {canRecord && (
           <AudioHandler
