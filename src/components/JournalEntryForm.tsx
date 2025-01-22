@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
 import AutoSave from "./journal/AutoSave";
 import AudioHandler from "./journal/AudioHandler";
+import { PlayCircle } from "lucide-react";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
@@ -209,6 +210,49 @@ const JournalEntryForm = () => {
     });
   };
 
+  const getAudioUrl = async (audioFileName: string) => {
+    try {
+      const { data: { publicUrl }, error } = supabase.storage
+        .from('audio_files')
+        .getPublicUrl(audioFileName);
+
+      if (error) {
+        console.error('Error getting audio URL:', error);
+        return null;
+      }
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error in getAudioUrl:', error);
+      return null;
+    }
+  };
+
+  const AudioPlayer = ({ audioFileName }: { audioFileName: string }) => {
+    const [publicUrl, setPublicUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+      const fetchAudioUrl = async () => {
+        const url = await getAudioUrl(audioFileName);
+        setPublicUrl(url);
+      };
+
+      fetchAudioUrl();
+    }, [audioFileName]);
+
+    if (!publicUrl) return null;
+
+    return (
+      <div className="flex items-center gap-2 mt-4 p-4 bg-secondary rounded-lg">
+        <PlayCircle className="w-6 h-6 text-primary" />
+        <audio controls className="w-full">
+          <source src={publicUrl} type="audio/webm" />
+          Your browser does not support the audio element.
+        </audio>
+      </div>
+    );
+  };
+
   if (isInitializing) {
     return (
       <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -246,6 +290,7 @@ const JournalEntryForm = () => {
           onChange={(e) => setContent(e.target.value)}
           className="min-h-[200px] resize-y"
         />
+        {audioUrl && <AudioPlayer audioFileName={audioUrl} />}
         <AudioHandler
           onAudioSaved={setAudioUrl}
           onTranscriptionComplete={handleTranscriptionComplete}
