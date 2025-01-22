@@ -7,11 +7,13 @@ import JournalEntryForm from "@/components/JournalEntryForm";
 const Index = () => {
   const sampleEntries = [
     {
+      id: "sample-1",
       title: "Morning Reflection",
       date: "March 19, 2024",
       preview: "Today started with a beautiful sunrise. I took a moment to appreciate the quiet morning and set my intentions for the day..."
     },
     {
+      id: "sample-2",
       title: "Afternoon Thoughts",
       date: "March 18, 2024",
       preview: "Had an interesting conversation with Sarah about the future of our project. We discussed several new approaches..."
@@ -36,6 +38,7 @@ const Index = () => {
               {sampleEntries.map((entry, index) => (
                 <JournalEntry
                   key={index}
+                  id={entry.id}
                   title={entry.title}
                   date={entry.date}
                   preview={entry.preview}
