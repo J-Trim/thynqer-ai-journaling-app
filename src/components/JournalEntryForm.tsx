@@ -8,6 +8,7 @@ import TranscribedSection from "./journal/TranscribedSection";
 import ActionButtons from "./journal/ActionButtons";
 import LoadingState from "./journal/LoadingState";
 import AudioHandler from "./journal/AudioHandler";
+import AudioPlayer from "./journal/AudioPlayer";
 import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
 import { supabase } from "@/integrations/supabase/client";
@@ -201,16 +202,7 @@ const JournalEntryForm = () => {
             onTagToggle={handleTagToggle}
           />
           {audioPublicUrl && (
-            <div className="mt-4 p-4 bg-secondary rounded-lg">
-              <audio 
-                controls 
-                className="w-full"
-                key={audioPublicUrl} // Force re-render when URL changes
-              >
-                <source src={audioPublicUrl} type="audio/webm" />
-                Your browser does not support the audio element.
-              </audio>
-            </div>
+            <AudioPlayer audioUrl={audioPublicUrl} />
           )}
           {canRecord && (
             <AudioHandler
