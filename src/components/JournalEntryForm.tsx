@@ -202,7 +202,11 @@ const JournalEntryForm = () => {
           />
           {audioPublicUrl && (
             <div className="mt-4 p-4 bg-secondary rounded-lg">
-              <audio controls className="w-full">
+              <audio 
+                controls 
+                className="w-full"
+                key={audioPublicUrl} // Force re-render when URL changes
+              >
                 <source src={audioPublicUrl} type="audio/webm" />
                 Your browser does not support the audio element.
               </audio>
