@@ -1,24 +1,36 @@
-import React, { useState, useEffect } from "react";
-import AudioRecorder from "@/components/AudioRecorder";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import JournalEntry from "@/components/JournalEntry";
 import Header from "@/components/Header";
 import JournalEntryForm from "@/components/JournalEntryForm";
+import LoadingState from "@/components/journal/LoadingState";
+import { format } from "date-fns";
 
 const Index = () => {
-  const sampleEntries = [
-    {
-      id: "sample-1",
-      title: "Morning Reflection",
-      date: "March 19, 2024",
-      preview: "Today started with a beautiful sunrise. I took a moment to appreciate the quiet morning and set my intentions for the day..."
+  const { data: entries, isLoading, error } = useQuery({
+    queryKey: ['journal-entries'],
+    queryFn: async () => {
+      console.log('Fetching journal entries...');
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching entries:', error);
+        throw error;
+      }
+
+      console.log('Fetched entries:', data);
+      return data;
     },
-    {
-      id: "sample-2",
-      title: "Afternoon Thoughts",
-      date: "March 18, 2024",
-      preview: "Had an interesting conversation with Sarah about the future of our project. We discussed several new approaches..."
-    },
-  ];
+  });
+
+  if (error) {
+    console.error('Error in journal entries query:', error);
+    return <div>Error loading journal entries</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background animate-fade-in">
@@ -34,17 +46,25 @@ const Index = () => {
 
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold">Recent Entries</h2>
-            <div className="space-y-4">
-              {sampleEntries.map((entry, index) => (
-                <JournalEntry
-                  key={index}
-                  id={entry.id}
-                  title={entry.title}
-                  date={entry.date}
-                  preview={entry.preview}
-                />
-              ))}
-            </div>
+            {isLoading ? (
+              <LoadingState />
+            ) : (
+              <div className="space-y-4">
+                {entries && entries.map((entry) => (
+                  <JournalEntry
+                    key={entry.id}
+                    id={entry.id}
+                    title={entry.title || "Untitled Entry"}
+                    date={format(new Date(entry.created_at), 'MMMM d, yyyy')}
+                    preview={entry.text || "No content"}
+                    hasBeenEdited={entry.has_been_edited}
+                  />
+                ))}
+                {entries && entries.length === 0 && (
+                  <p className="text-center text-text-muted">No journal entries yet. Create your first one!</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>
