@@ -8,12 +8,15 @@ import ActionButtons from "./journal/ActionButtons";
 import LoadingState from "./journal/LoadingState";
 import AudioHandler from "./journal/AudioHandler";
 import AutoSave from "./journal/AutoSave";
+import TagSelector from "./journal/TagSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     title,
     setTitle,
@@ -32,6 +35,57 @@ const JournalEntryForm = () => {
 
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const [audioPublicUrl, setAudioPublicUrl] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Fetch existing tags for this entry
+  const { data: entryTags } = useQuery({
+    queryKey: ['entry-tags', id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data, error } = await supabase
+        .from('entry_tags')
+        .select('tag_id')
+        .eq('entry_id', id);
+
+      if (error) throw error;
+      return data.map(et => et.tag_id);
+    },
+    enabled: !!id
+  });
+
+  // Update selected tags when entry tags are loaded
+  useEffect(() => {
+    if (entryTags) {
+      setSelectedTags(entryTags);
+    }
+  }, [entryTags]);
+
+  const updateEntryTagsMutation = useMutation({
+    mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
+      // First, remove all existing tags for this entry
+      const { error: deleteError } = await supabase
+        .from('entry_tags')
+        .delete()
+        .eq('entry_id', entryId);
+
+      if (deleteError) throw deleteError;
+
+      // Then, insert new tags
+      if (tagIds.length > 0) {
+        const { error: insertError } = await supabase
+          .from('entry_tags')
+          .insert(tagIds.map(tagId => ({
+            entry_id: entryId,
+            tag_id: tagId
+          })));
+
+        if (insertError) throw insertError;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entry-tags'] });
+    }
+  });
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -84,6 +138,14 @@ const JournalEntryForm = () => {
     setIsTranscriptionPending(false);
   };
 
+  const handleTagToggle = (tagId: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
   // Determine if recording should be allowed
   const canRecord = !id || hasUnsavedChanges;
 
@@ -96,7 +158,13 @@ const JournalEntryForm = () => {
       console.log('Waiting for transcription to complete before saving...');
       return;
     }
-    await saveEntry(isAutoSave);
+    const savedEntry = await saveEntry(isAutoSave);
+    if (savedEntry?.id && selectedTags.length > 0) {
+      await updateEntryTagsMutation.mutateAsync({
+        entryId: savedEntry.id,
+        tagIds: selectedTags
+      });
+    }
   };
 
   return (
@@ -113,6 +181,10 @@ const JournalEntryForm = () => {
       <div className="space-y-4">
         <EntryHeader title={title} onTitleChange={setTitle} />
         <EntryContent content={content} onContentChange={setContent} />
+        <TagSelector
+          selectedTags={selectedTags}
+          onTagToggle={handleTagToggle}
+        />
         {transcribedAudio && <TranscribedSection transcribedAudio={transcribedAudio} />}
         {audioPublicUrl && (
           <div className="mt-4 p-4 bg-secondary rounded-lg">
