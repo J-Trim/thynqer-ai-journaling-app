@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { PlayCircle } from "lucide-react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import EntryHeader from "./journal/EntryHeader";
 import EntryContent from "./journal/EntryContent";
@@ -63,36 +62,32 @@ const JournalEntryForm = () => {
     setIsTranscriptionPending(false);
   };
 
-  const getAudioUrl = async (audioFileName: string) => {
-    try {
-      const { data } = supabase.storage
-        .from('audio_files')
-        .getPublicUrl(audioFileName);
-
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error in getAudioUrl:', error);
-      return null;
-    }
-  };
-
   const AudioPlayer = ({ audioFileName }: { audioFileName: string }) => {
     const [publicUrl, setPublicUrl] = useState<string | null>(null);
 
     useEffect(() => {
       const fetchAudioUrl = async () => {
-        const url = await getAudioUrl(audioFileName);
-        setPublicUrl(url);
+        try {
+          const { data } = supabase.storage
+            .from('audio_files')
+            .getPublicUrl(audioFileName);
+          
+          console.log('Fetched audio URL:', data.publicUrl);
+          setPublicUrl(data.publicUrl);
+        } catch (error) {
+          console.error('Error fetching audio URL:', error);
+        }
       };
 
-      fetchAudioUrl();
+      if (audioFileName) {
+        fetchAudioUrl();
+      }
     }, [audioFileName]);
 
     if (!publicUrl) return null;
 
     return (
-      <div className="flex items-center gap-2 mt-4 p-4 bg-secondary rounded-lg">
-        <PlayCircle className="w-6 h-6 text-primary" />
+      <div className="mt-4 p-4 bg-secondary rounded-lg">
         <audio controls className="w-full">
           <source src={publicUrl} type="audio/webm" />
           Your browser does not support the audio element.
