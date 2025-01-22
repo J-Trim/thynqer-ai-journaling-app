@@ -1,4 +1,6 @@
 import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { PlayCircle } from "lucide-react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import EntryHeader from "./journal/EntryHeader";
 import EntryContent from "./journal/EntryContent";
@@ -6,8 +8,8 @@ import TranscribedSection from "./journal/TranscribedSection";
 import ActionButtons from "./journal/ActionButtons";
 import LoadingState from "./journal/LoadingState";
 import AudioHandler from "./journal/AudioHandler";
+import AutoSave from "./journal/AutoSave";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const JournalEntryForm = () => {
@@ -23,6 +25,7 @@ const JournalEntryForm = () => {
     setAudioUrl,
     isSaving,
     isInitializing,
+    isSaveInProgress,
     hasUnsavedChanges,
     saveEntry,
     handleNavigateAway
