@@ -85,7 +85,7 @@ const JournalEntryForm = () => {
             placeholder="Entry Title (optional)"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full bg-secondary/50 border-0 focus:ring-1 ring-primary/20"
+            className="w-full bg-secondary/50 border-0 focus:ring-1 ring-primary/20 text-lg"
           />
         </div>
         <div>
@@ -93,7 +93,7 @@ const JournalEntryForm = () => {
             placeholder="Write your thoughts..."
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="min-h-[200px] w-full bg-secondary/50 border-0 focus:ring-1 ring-primary/20"
+            className="min-h-[200px] w-full bg-secondary/50 border-0 focus:ring-1 ring-primary/20 resize-y"
           />
         </div>
         <AudioRecorder />
@@ -101,7 +101,7 @@ const JournalEntryForm = () => {
           <Button 
             type="submit" 
             disabled={isSubmitting || !content.trim()}
-            className="bg-primary hover:bg-primary-hover text-white"
+            className="bg-primary hover:bg-primary-hover text-white transition-colors"
           >
             {isSubmitting ? "Saving..." : "Save Entry"}
           </Button>

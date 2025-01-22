@@ -61,8 +61,8 @@ const Header = () => {
   };
 
   return (
-    <header className="border-b">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+    <header className="sticky top-0 z-50 bg-background border-b shadow-sm">
+      <div className="container mx-auto px-4 py-4 flex justify-between items-center max-w-3xl">
         <h1 
           className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors"
           onClick={() => handleNavigation("/journal")}
