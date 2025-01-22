@@ -84,7 +84,10 @@ export const useJournalEntry = (id?: string) => {
   }, [id, toast]);
 
   const saveEntry = async (isAutoSave = false) => {
-    if (isInitializing || isSaveInProgress) return;
+    if (isInitializing || isSaveInProgress) {
+      console.log('Save prevented - initialization or save in progress');
+      return;
+    }
     
     try {
       setIsSaveInProgress(true);
@@ -127,6 +130,30 @@ export const useJournalEntry = (id?: string) => {
         audio_url: audioUrl,
         has_been_edited: id ? hasActualChanges() : false,
       };
+
+      // Check if an entry with the same content already exists
+      if (!id) {
+        const { data: existingEntries, error: checkError } = await supabase
+          .from("journal_entries")
+          .select("id")
+          .eq('text', finalContent)
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (checkError) throw checkError;
+
+        if (existingEntries && existingEntries.length > 0) {
+          console.log('Duplicate entry detected, skipping save');
+          if (!isAutoSave) {
+            toast({
+              title: "Info",
+              description: "This entry has already been saved.",
+            });
+            navigate("/journal", { replace: true });
+          }
+          return;
+        }
+      }
 
       const { error: saveError } = id
         ? await supabase
