@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
+import Header from "@/components/Header";
 import EntryHeader from "./journal/EntryHeader";
 import EntryContent from "./journal/EntryContent";
 import TranscribedSection from "./journal/TranscribedSection";
@@ -152,7 +153,12 @@ const JournalEntryForm = () => {
   const canRecord = !id || hasUnsavedChanges;
 
   if (isInitializing) {
-    return <LoadingState />;
+    return (
+      <>
+        <Header />
+        <LoadingState />
+      </>
+    );
   }
 
   const handleSave = async (isAutoSave = false) => {
@@ -171,51 +177,54 @@ const JournalEntryForm = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
-      <AutoSave
-        content={content}
-        title={title}
-        audioUrl={audioUrl}
-        isInitializing={isInitializing}
-        isSaveInProgress={isSaveInProgress}
-        hasUnsavedChanges={hasUnsavedChanges}
-        onSave={handleSave}
-      />
-      <div className="space-y-4">
-        <EntryHeader title={title} onTitleChange={setTitle} />
-        <EntryContent 
-          content={content} 
-          transcribedAudio={transcribedAudio}
-          onContentChange={setContent} 
+    <>
+      <Header />
+      <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
+        <AutoSave
+          content={content}
+          title={title}
+          audioUrl={audioUrl}
+          isInitializing={isInitializing}
+          isSaveInProgress={isSaveInProgress}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onSave={handleSave}
         />
-        <TagSelector
-          selectedTags={selectedTags}
-          onTagToggle={handleTagToggle}
-        />
-        {audioPublicUrl && (
-          <div className="mt-4 p-4 bg-secondary rounded-lg">
-            <audio controls className="w-full">
-              <source src={audioPublicUrl} type="audio/webm" />
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        )}
-        {canRecord && (
-          <AudioHandler
-            onAudioSaved={(url) => {
-              setAudioUrl(url);
-              setIsTranscriptionPending(true);
-            }}
-            onTranscriptionComplete={handleTranscriptionComplete}
+        <div className="space-y-4">
+          <EntryHeader title={title} onTitleChange={setTitle} />
+          <EntryContent 
+            content={content} 
+            transcribedAudio={transcribedAudio}
+            onContentChange={setContent} 
           />
-        )}
-        <ActionButtons
-          onCancel={handleNavigateAway}
-          onSave={() => handleSave(false)}
-          isSaving={isSaving || isTranscriptionPending}
-        />
+          <TagSelector
+            selectedTags={selectedTags}
+            onTagToggle={handleTagToggle}
+          />
+          {audioPublicUrl && (
+            <div className="mt-4 p-4 bg-secondary rounded-lg">
+              <audio controls className="w-full">
+                <source src={audioPublicUrl} type="audio/webm" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+          {canRecord && (
+            <AudioHandler
+              onAudioSaved={(url) => {
+                setAudioUrl(url);
+                setIsTranscriptionPending(true);
+              }}
+              onTranscriptionComplete={handleTranscriptionComplete}
+            />
+          )}
+          <ActionButtons
+            onCancel={handleNavigateAway}
+            onSave={() => handleSave(false)}
+            isSaving={isSaving || isTranscriptionPending}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
