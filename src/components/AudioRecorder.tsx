@@ -1,14 +1,21 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Pause, Square, Play } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
-const AudioRecorder = () => {
+interface AudioRecorderProps {
+  onAudioSaved?: (url: string) => void;
+}
+
+const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<number | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+  const { toast } = useToast();
 
   const startTimer = () => {
     timerRef.current = window.setInterval(() => {
@@ -28,6 +35,29 @@ const AudioRecorder = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
+  const uploadAudio = async (audioBlob: Blob) => {
+    try {
+      const fileName = `${crypto.randomUUID()}.webm`;
+      const { data, error } = await supabase.storage
+        .from('audio_files')
+        .upload(fileName, audioBlob, {
+          contentType: 'audio/webm',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading audio:', error);
+        throw error;
+      }
+
+      console.log('Audio uploaded successfully:', fileName);
+      return fileName;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -45,6 +75,11 @@ const AudioRecorder = () => {
       console.log("Recording started");
     } catch (error) {
       console.error("Error starting recording:", error);
+      toast({
+        title: "Error",
+        description: "Could not start recording. Please check your microphone permissions.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -66,14 +101,46 @@ const AudioRecorder = () => {
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (mediaRecorder.current) {
       mediaRecorder.current.stop();
       mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
+      
+      // Wait for the last chunk to be processed
+      await new Promise<void>((resolve) => {
+        if (mediaRecorder.current) {
+          mediaRecorder.current.onstop = () => resolve();
+        } else {
+          resolve();
+        }
+      });
+
+      try {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+        const fileName = await uploadAudio(audioBlob);
+        
+        if (onAudioSaved) {
+          onAudioSaved(fileName);
+        }
+
+        toast({
+          title: "Success",
+          description: "Audio recording saved successfully",
+        });
+      } catch (error) {
+        console.error("Error saving audio:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save audio recording",
+          variant: "destructive",
+        });
+      }
+
       setIsRecording(false);
       setIsPaused(false);
       stopTimer();
       setRecordingTime(0);
+      audioChunks.current = [];
       console.log("Recording stopped");
     }
   };

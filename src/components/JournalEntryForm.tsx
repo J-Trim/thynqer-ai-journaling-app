@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 const JournalEntryForm = () => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const { toast } = useToast();
@@ -67,6 +68,38 @@ const JournalEntryForm = () => {
     return () => clearTimeout(saveTimeout);
   }, [content, title, isInitializing]);
 
+  const handleAudioSaved = async (audioFileName: string) => {
+    setAudioUrl(audioFileName);
+    
+    try {
+      console.log('Transcribing audio:', audioFileName);
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audioUrl: audioFileName }
+      });
+
+      if (error) throw error;
+
+      if (data.text) {
+        setContent(prev => {
+          const newContent = prev ? `${prev}\n\n---\nTranscribed Audio:\n${data.text}` : data.text;
+          return newContent;
+        });
+        
+        toast({
+          title: "Success",
+          description: "Audio transcribed successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to transcribe audio",
+        variant: "destructive",
+      });
+    }
+  };
+
   const saveEntry = async () => {
     if (isInitializing) return;
     
@@ -90,6 +123,7 @@ const JournalEntryForm = () => {
         user_id: user.id,
         title: title || `Journal Entry - ${new Date().toLocaleDateString()}`,
         text: content,
+        audio_url: audioUrl,
         has_been_edited: false,
       };
 
@@ -151,7 +185,7 @@ const JournalEntryForm = () => {
           onChange={(e) => setContent(e.target.value)}
           className="min-h-[200px] resize-y"
         />
-        <AudioRecorder />
+        <AudioRecorder onAudioSaved={handleAudioSaved} />
         <div className="flex justify-end space-x-4">
           <Button
             variant="outline"
