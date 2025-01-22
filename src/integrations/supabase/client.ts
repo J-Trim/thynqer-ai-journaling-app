@@ -12,15 +12,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false, // Keep false to prevent URL parsing issues
+    detectSessionInUrl: false,
     storage: window.localStorage,
-    flowType: 'pkce',
-    debug: true // Keep debug mode for tracking auth issues
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'supabase-js-web'
-    }
+    flowType: 'pkce'
   }
 });
 
