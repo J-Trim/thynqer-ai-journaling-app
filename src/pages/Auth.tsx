@@ -14,12 +14,14 @@ const AuthPage = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('[AuthPage] Auth state changed:', event, session);
         if (event === "SIGNED_IN" && session) {
           navigate("/journal");
         }
         if (event === "USER_UPDATED") {
           const { error } = await supabase.auth.getSession();
           if (error) {
+            console.error('[AuthPage] Session error:', error);
             setErrorMessage(getErrorMessage(error));
           }
         }
@@ -29,20 +31,37 @@ const AuthPage = () => {
       }
     );
 
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('[AuthPage] Initial session check:', session ? 'Authenticated' : 'Not authenticated');
+      if (error) {
+        console.error('[AuthPage] Initial session error:', error);
+        setErrorMessage(getErrorMessage(error));
+      } else if (session) {
+        navigate("/journal");
+      }
+    });
+
     return () => subscription.unsubscribe();
   }, [navigate]);
 
   const getErrorMessage = (error: AuthError) => {
+    console.error('[AuthPage] Auth error:', error);
+    
     if (error instanceof AuthApiError) {
-      switch (error.code) {
-        case "invalid_credentials":
-          return "Invalid email or password. Please check your credentials and try again.";
-        case "email_not_confirmed":
-          return "Please verify your email address before signing in.";
-        case "user_not_found":
-          return "No user found with these credentials.";
-        case "invalid_grant":
-          return "Invalid login credentials.";
+      switch (error.status) {
+        case 400:
+          if (error.message.includes("missing email")) {
+            return "Please enter your email address.";
+          }
+          if (error.message.includes("password")) {
+            return "Please enter your password.";
+          }
+          return "Please check your login credentials and try again.";
+        case 401:
+          return "Invalid credentials. Please check your email and password.";
+        case 422:
+          return "Invalid email format. Please enter a valid email address.";
         default:
           return error.message;
       }
@@ -51,7 +70,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary flex items-center justify-center p-4">
+    <div className="min-h-screen bg-secondary flex items-center justify-center p-4 animate-fade-in">
       <div className="w-full max-w-md space-y-4">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold">Welcome to Thynqer</h1>
@@ -59,7 +78,7 @@ const AuthPage = () => {
         </div>
         
         {errorMessage && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="animate-fade-in">
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         )}
@@ -77,8 +96,17 @@ const AuthPage = () => {
                   },
                 },
               },
+              className: {
+                container: 'animate-fade-in',
+                button: 'animate-fade-in',
+                input: 'animate-fade-in',
+              },
             }}
             providers={[]}
+            onError={(error) => {
+              console.error('[AuthPage] Auth UI error:', error);
+              setErrorMessage(getErrorMessage(error));
+            }}
           />
         </div>
       </div>
