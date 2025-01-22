@@ -212,16 +212,11 @@ const JournalEntryForm = () => {
 
   const getAudioUrl = async (audioFileName: string) => {
     try {
-      const { data: { publicUrl }, error } = supabase.storage
+      const { data } = supabase.storage
         .from('audio_files')
         .getPublicUrl(audioFileName);
 
-      if (error) {
-        console.error('Error getting audio URL:', error);
-        return null;
-      }
-
-      return publicUrl;
+      return data.publicUrl;
     } catch (error) {
       console.error('Error in getAudioUrl:', error);
       return null;
