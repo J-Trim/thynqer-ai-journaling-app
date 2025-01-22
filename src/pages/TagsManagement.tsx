@@ -32,20 +32,19 @@ const TagsManagement = () => {
         .select('*')
         .order('name');
 
-      if (error) {
-        console.error('Error fetching tags:', error);
-        throw error;
-      }
-
+      if (error) throw error;
       return data;
     }
   });
 
   const createTagMutation = useMutation({
     mutationFn: async (tagName: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('tags')
-        .insert([{ name: tagName }])
+        .insert([{ name: tagName, user_id: user.id }])
         .select()
         .single();
 

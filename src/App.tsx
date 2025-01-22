@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Index from "@/pages/Index";
 import Auth from "@/pages/Auth";
 import JournalList from "@/pages/JournalList";
+import JournalEntryForm from "@/components/JournalEntryForm";
 import TagsManagement from "@/pages/TagsManagement";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { UnsavedChangesProvider } from "@/contexts/UnsavedChangesContext";
