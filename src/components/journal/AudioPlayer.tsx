@@ -80,22 +80,35 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
-
-        // Add event listener for loadedmetadata before loading
-        const handleLoadedMetadata = () => {
-          console.log('Audio metadata loaded. Duration:', audio.duration);
-          if (isFinite(audio.duration)) {
-            setDuration(audio.duration);
-            setCurrentTime(0);
-            setProgress(0);
-          }
-        };
-
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
         
-        // Load the audio
-        console.log('Loading audio...');
+        // Create a promise to wait for metadata to load
+        const metadataLoaded = new Promise((resolve, reject) => {
+          const handleLoadedMetadata = () => {
+            console.log('Audio metadata loaded. Duration:', audio.duration);
+            if (isFinite(audio.duration)) {
+              setDuration(audio.duration);
+              setCurrentTime(0);
+              setProgress(0);
+              audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              resolve(audio.duration);
+            }
+          };
+
+          const handleError = (e: Event) => {
+            console.error('Error loading audio metadata:', e);
+            audio.removeEventListener('error', handleError);
+            reject(new Error('Failed to load audio metadata'));
+          };
+
+          audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+          audio.addEventListener('error', handleError);
+        });
+
+        // Load the audio and wait for metadata
+        console.log('Loading audio and waiting for metadata...');
         audio.load();
+        await metadataLoaded;
+        console.log('Metadata loaded successfully. Duration:', audio.duration);
 
         setError(null);
         setIsLoading(false);
@@ -133,9 +146,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (!audio) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
+      const newDuration = audio.duration;
       
-      if (newDuration > 0) {
+      if (isFinite(newDuration) && newDuration > 0) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
@@ -159,13 +172,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
-      updateProgress();
-    };
-
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -178,8 +184,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
-      if (newDuration > 0) {
+      const newDuration = audio.duration;
+      if (isFinite(newDuration) && newDuration > 0) {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
         setProgress(newProgress);
@@ -188,14 +194,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    
-    // Initial progress update if metadata is already loaded
-    if (audio.readyState >= 1) {
-      handleLoadedMetadata();
-    }
     
     return () => {
       if (animationFrameRef.current) {
@@ -203,7 +203,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
