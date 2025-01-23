@@ -81,42 +81,63 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.volume = volume;
         audio.muted = isMuted;
 
-        // Wait for metadata to load
+        // Create a promise that resolves when either canplay or loadedmetadata fires
         await new Promise((resolve, reject) => {
+          let metadataLoaded = false;
+          let canPlay = false;
+
+          const checkComplete = () => {
+            if (metadataLoaded && canPlay) {
+              cleanup();
+              resolve(true);
+            }
+          };
+
           const handleCanPlay = () => {
-            audio.removeEventListener('canplay', handleCanPlay);
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            setIsMetadataLoaded(true);
-            resolve(true);
+            console.log('Audio can play');
+            canPlay = true;
+            checkComplete();
           };
 
           const handleLoadedMetadata = () => {
+            console.log('Audio metadata loaded, duration:', audio.duration);
             if (audio.duration && isFinite(audio.duration)) {
+              metadataLoaded = true;
               setDuration(audio.duration);
               setCurrentTime(0);
               setProgress(0);
-              handleCanPlay();
+              checkComplete();
             }
           };
 
           const handleError = (e: Event) => {
-            audio.removeEventListener('error', handleError);
+            cleanup();
+            reject(new Error('Failed to load audio'));
+          };
+
+          const cleanup = () => {
             audio.removeEventListener('canplay', handleCanPlay);
             audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            reject(new Error('Failed to load audio'));
+            audio.removeEventListener('error', handleError);
           };
 
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('error', handleError);
-          
+
+          // Check if the audio is already loaded
+          if (audio.readyState >= 3) {
+            handleCanPlay();
+          }
           if (audio.readyState >= 2 && audio.duration && isFinite(audio.duration)) {
             handleLoadedMetadata();
-          } else {
-            audio.load();
           }
+
+          // Start loading
+          audio.load();
         });
 
+        setIsMetadataLoaded(true);
         setError(null);
         setIsLoading(false);
         
