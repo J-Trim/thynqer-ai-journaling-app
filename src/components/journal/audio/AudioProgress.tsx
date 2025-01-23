@@ -10,6 +10,10 @@ interface AudioProgressProps {
 }
 
 const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: AudioProgressProps) => {
+  // Format duration with proper checks
+  const formattedDuration = isFinite(duration) ? formatTime(duration) : '0:00';
+  const formattedCurrentTime = isFinite(currentTime) ? formatTime(currentTime) : '0:00';
+
   return (
     <div className="flex-1 space-y-2">
       <div className="relative">
@@ -23,8 +27,8 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{formatTime(currentTime)}</span>
-        <span>{formatTime(duration)}</span>
+        <span>{formattedCurrentTime}</span>
+        <span>{formattedDuration}</span>
       </div>
     </div>
   );
