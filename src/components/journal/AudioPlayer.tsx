@@ -147,11 +147,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
         setDuration(newDuration);
-        console.log('Progress update:', { 
-          currentTime: newCurrentTime,
-          duration: newDuration,
-          progress: newProgress 
-        });
       }
 
       if (isPlaying) {
@@ -200,11 +195,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
         setProgress(newProgress);
-        console.log('Time update:', {
-          time: newTime,
-          duration: newDuration,
-          progress: newProgress
-        });
       }
     };
 
@@ -213,11 +203,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    
-    // Initial progress update
-    if (audio.duration) {
-      updateProgress();
-    }
     
     return () => {
       if (animationFrameRef.current) {
@@ -244,12 +229,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (isPlaying) {
         console.log('Attempting to pause audio');
         audioRef.current.pause();
+        setIsPlaying(false);
         console.log('Audio paused successfully');
       } else {
         console.log('Attempting to play audio');
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
+          setIsPlaying(true);
           console.log('Playback started successfully');
         }
       }
@@ -296,10 +283,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               audioRef.current.currentTime = newTime;
               setProgress(newProgress[0]);
               setCurrentTime(newTime);
-              console.log('Progress changed manually:', { 
-                newTime, 
-                newProgress: newProgress[0] 
-              });
             }
           }}
         />
