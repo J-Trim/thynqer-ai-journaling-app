@@ -139,11 +139,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const updateProgress = () => {
       if (!audio) return;
       
-      setCurrentTime(audio.currentTime);
+      const newCurrentTime = audio.currentTime;
+      setCurrentTime(newCurrentTime);
+      
       if (audio.duration) {
-        const currentProgress = (audio.currentTime / audio.duration) * 100;
-        setProgress(currentProgress);
+        const newProgress = (newCurrentTime / audio.duration) * 100;
+        setProgress(newProgress);
         setDuration(audio.duration);
+        console.log('Progress update:', { 
+          currentTime: newCurrentTime,
+          duration: audio.duration,
+          progress: newProgress 
+        });
       }
 
       if (isPlaying) {
@@ -186,7 +193,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
+      const newTime = audio.currentTime;
+      console.log('Time update:', newTime);
+      setCurrentTime(newTime);
+      const newProgress = (newTime / audio.duration) * 100;
+      setProgress(newProgress);
     };
 
     audio.addEventListener('play', handlePlay);
@@ -266,6 +277,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               audioRef.current.currentTime = newTime;
               setProgress(newProgress[0]);
               setCurrentTime(newTime);
+              console.log('Progress changed manually:', { 
+                newTime, 
+                newProgress: newProgress[0] 
+              });
             }
           }}
         />
