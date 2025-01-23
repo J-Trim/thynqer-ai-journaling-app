@@ -105,11 +105,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         console.log('Audio loaded successfully');
         setError(null);
+        setIsLoading(false);
         
       } catch (error) {
         console.error('Error in audio setup:', error);
         setError(`Error setting up audio: ${error.message}`);
-      } finally {
         setIsLoading(false);
       }
     };
@@ -140,15 +140,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (!audio) return;
       
       const newCurrentTime = audio.currentTime;
-      setCurrentTime(newCurrentTime);
+      const newDuration = audio.duration || 0;
       
-      if (audio.duration) {
-        const newProgress = (newCurrentTime / audio.duration) * 100;
+      if (newDuration > 0) {
+        const newProgress = (newCurrentTime / newDuration) * 100;
+        setCurrentTime(newCurrentTime);
         setProgress(newProgress);
-        setDuration(audio.duration);
+        setDuration(newDuration);
         console.log('Progress update:', { 
           currentTime: newCurrentTime,
-          duration: audio.duration,
+          duration: newDuration,
           progress: newProgress 
         });
       }
@@ -194,10 +195,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
-      console.log('Time update:', newTime);
-      setCurrentTime(newTime);
-      const newProgress = (newTime / audio.duration) * 100;
-      setProgress(newProgress);
+      const newDuration = audio.duration || 0;
+      if (newDuration > 0) {
+        const newProgress = (newTime / newDuration) * 100;
+        setCurrentTime(newTime);
+        setProgress(newProgress);
+        console.log('Time update:', {
+          time: newTime,
+          duration: newDuration,
+          progress: newProgress
+        });
+      }
     };
 
     audio.addEventListener('play', handlePlay);
@@ -205,6 +213,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
+    
+    // Initial progress update
+    if (audio.duration) {
+      updateProgress();
+    }
     
     return () => {
       if (animationFrameRef.current) {
