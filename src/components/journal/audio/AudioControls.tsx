@@ -42,16 +42,25 @@ const AudioControls = ({
           variant="ghost"
           size="icon"
           onClick={() => {
-            onMuteToggle();
             setShowVolumeSlider(prev => !prev);
+          }}
+          onMouseLeave={() => {
+            setTimeout(() => {
+              setShowVolumeSlider(false);
+            }, 2000);
           }}
           className="hover:bg-primary/20"
         >
-          {isMuted ? (
-            <VolumeX className="h-6 w-6" />
-          ) : (
-            <Volume2 className="h-6 w-6" />
-          )}
+          <div onClick={(e) => {
+            e.stopPropagation();
+            onMuteToggle();
+          }}>
+            {isMuted ? (
+              <VolumeX className="h-6 w-6" />
+            ) : (
+              <Volume2 className="h-6 w-6" />
+            )}
+          </div>
         </Button>
         <div 
           className={cn(
@@ -60,6 +69,15 @@ const AudioControls = ({
               ? "opacity-100 translate-y-0" 
               : "opacity-0 translate-y-2 pointer-events-none"
           )}
+          onMouseEnter={() => {
+            clearTimeout();
+            setShowVolumeSlider(true);
+          }}
+          onMouseLeave={() => {
+            setTimeout(() => {
+              setShowVolumeSlider(false);
+            }, 1000);
+          }}
         >
           <Slider
             defaultValue={[volume * 100]}
