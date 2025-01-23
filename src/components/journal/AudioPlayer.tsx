@@ -15,24 +15,45 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
   useEffect(() => {
     if (audioRef.current) {
-      // Reset audio element when URL changes
+      // Initialize audio element
+      audioRef.current.volume = volume;
+      audioRef.current.muted = isMuted;
+      
+      // Reset when URL changes
       audioRef.current.pause();
       setIsPlaying(false);
       audioRef.current.load();
+      
+      // Add event listeners
+      const audio = audioRef.current;
+      audio.addEventListener('play', () => setIsPlaying(true));
+      audio.addEventListener('pause', () => setIsPlaying(false));
+      audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('error', handleError);
+
+      return () => {
+        // Cleanup event listeners
+        audio.removeEventListener('play', () => setIsPlaying(true));
+        audio.removeEventListener('pause', () => setIsPlaying(false));
+        audio.removeEventListener('ended', handleEnded);
+        audio.removeEventListener('error', handleError);
+      };
     }
-  }, [audioUrl]);
+  }, [audioUrl, volume, isMuted]);
 
   const togglePlay = async () => {
     if (audioRef.current) {
       try {
+        console.log('Attempting to toggle play state...');
         if (isPlaying) {
+          console.log('Pausing audio...');
           await audioRef.current.pause();
         } else {
+          console.log('Playing audio...');
           await audioRef.current.play();
         }
-        setIsPlaying(!isPlaying);
       } catch (error) {
-        console.error('Error playing audio:', error);
+        console.error('Error toggling audio playback:', error);
       }
     }
   };
@@ -58,6 +79,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   };
 
   const handleEnded = () => {
+    console.log('Audio playback ended');
     setIsPlaying(false);
   };
 
@@ -71,8 +93,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       <audio
         ref={audioRef}
         src={audioUrl}
-        onEnded={handleEnded}
-        onError={handleError}
+        preload="auto"
       />
       <div className="flex items-center gap-4">
         <Button
