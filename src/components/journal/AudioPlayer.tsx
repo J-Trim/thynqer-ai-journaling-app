@@ -19,6 +19,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
@@ -28,6 +29,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       try {
         setIsLoading(true);
         setError(null);
+        setIsMetadataLoaded(false);
         
         if (!audioUrl) {
           console.error('No audio URL provided');
@@ -79,9 +81,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.volume = volume;
         audio.muted = isMuted;
         
+        // Wait for metadata to load
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
             audio.removeEventListener('canplay', handleCanPlay);
+            setIsMetadataLoaded(true);
             resolve(true);
           };
 
@@ -92,9 +96,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
-          audio.load();
+          
+          // If metadata is already loaded, resolve immediately
+          if (audio.readyState >= 2) {
+            handleCanPlay();
+          } else {
+            audio.load();
+          }
         });
 
+        setDuration(audio.duration);
+        setCurrentTime(0);
+        setProgress(0);
         setError(null);
         setIsLoading(false);
         
@@ -123,7 +136,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }, [audioUrl, volume, isMuted]);
 
   useEffect(() => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !isMetadataLoaded) return;
 
     const audio = audioRef.current;
 
@@ -131,7 +144,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (!audio) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
+      const newDuration = audio.duration;
       
       if (newDuration > 0) {
         const newProgress = (newCurrentTime / newDuration) * 100;
@@ -176,7 +189,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
+      const newDuration = audio.duration;
       if (newDuration > 0) {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
@@ -191,7 +204,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('timeupdate', handleTimeUpdate);
     
     // Initial progress update if metadata is already loaded
-    if (audio.readyState >= 1) {
+    if (audio.readyState >= 2) {
       handleLoadedMetadata();
     }
     
@@ -205,7 +218,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [isPlaying]);
+  }, [isPlaying, isMetadataLoaded]);
 
   const togglePlay = async () => {
     if (!audioRef.current) {
@@ -217,12 +230,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     try {
       if (isPlaying) {
         audioRef.current.pause();
-        setIsPlaying(false);
       } else {
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
-          setIsPlaying(true);
         }
       }
     } catch (error) {
