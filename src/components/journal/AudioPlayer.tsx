@@ -85,7 +85,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         // Create a promise that resolves when metadata is properly loaded
         await new Promise((resolve, reject) => {
-          const maxWaitTime = 10000; // 10 seconds timeout
+          const maxWaitTime = 30000; // Increase timeout to 30 seconds
 
           const cleanup = () => {
             audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -100,6 +100,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               setDuration(audio.duration);
               setCurrentTime(0);
               setProgress(0);
+              setIsMetadataLoaded(true);
               cleanup();
               resolve(true);
             }
@@ -113,6 +114,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           };
 
           const handleError = (e: Event) => {
+            console.error('Audio loading error:', e);
             cleanup();
             reject(new Error('Failed to load audio'));
           };
@@ -124,21 +126,26 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           // Set a timeout to prevent infinite loading
           loadTimeout = window.setTimeout(() => {
             cleanup();
-            reject(new Error('Audio loading timeout'));
+            reject(new Error('Audio loading timeout - please try again'));
           }, maxWaitTime);
 
-          // Start loading
-          audio.load();
+          // Check if audio is already loaded
+          if (audio.readyState >= 3 && audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+            handleLoadedMetadata();
+          } else {
+            // Start loading
+            audio.load();
+          }
         });
 
-        setIsMetadataLoaded(true);
-        setError(null);
         setIsLoading(false);
+        setError(null);
         
       } catch (error) {
         console.error('Error in audio setup:', error);
         setError(`Error setting up audio: ${error.message}`);
         setIsLoading(false);
+        setIsMetadataLoaded(false);
       }
     };
 
@@ -265,7 +272,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }
 
   if (isLoading || !isMetadataLoaded) {
-    return <div className="text-muted-foreground">Loading audio...</div>;
+    return (
+      <div className="flex items-center justify-center p-4 space-x-2 bg-secondary rounded-lg">
+        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <span className="text-muted-foreground">Loading audio...</span>
+      </div>
+    );
   }
 
   return (
