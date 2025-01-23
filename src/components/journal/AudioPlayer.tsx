@@ -33,7 +33,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Extract filename from URL
         const filename = audioUrl.split('/').pop()?.split('?')[0];
         if (!filename) {
           console.error('Invalid audio URL format:', audioUrl);
@@ -67,7 +66,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         const audioBlob = new Blob([audioData], { type: mimeType });
         console.log('Created audio blob, size:', audioBlob.size);
 
-        // Clean up previous blob URL
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
         }
@@ -76,12 +74,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         console.log('Created blob URL:', newBlobUrl);
         blobUrlRef.current = newBlobUrl;
 
-        // Create new audio element if it doesn't exist
         if (!audioRef.current) {
           audioRef.current = new Audio();
         }
 
-        // Reset and prepare audio element
         const audio = audioRef.current;
         audio.pause();
         audio.currentTime = 0;
@@ -89,7 +85,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.volume = volume;
         audio.muted = isMuted;
         
-        // Wait for audio to be loaded
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
             console.log('Audio can play event triggered');
@@ -105,8 +100,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
-          
-          // Force load
           audio.load();
         });
 
@@ -142,7 +135,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       if (audio.duration) {
-        setProgress((audio.currentTime / audio.duration) * 100);
+        const currentProgress = (audio.currentTime / audio.duration) * 100;
+        setProgress(currentProgress);
+        console.log('Time update:', { 
+          currentTime: audio.currentTime,
+          duration: audio.duration,
+          progress: currentProgress 
+        });
       }
     };
 
@@ -158,6 +157,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       console.log('Audio playback ended');
       setIsPlaying(false);
       setProgress(0);
+      audio.currentTime = 0;
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -215,18 +215,22 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           isPlaying={isPlaying}
           isMuted={isMuted}
           onPlayPause={togglePlay}
-          onMuteToggle={() => setIsMuted(!isMuted)}
+          onMuteToggle={() => {
+            if (audioRef.current) {
+              audioRef.current.muted = !isMuted;
+              setIsMuted(!isMuted);
+            }
+          }}
         />
         <AudioProgress
           progress={progress}
           duration={duration}
           currentTime={audioRef.current?.currentTime || 0}
           onProgressChange={(newProgress) => {
-            const progressValue = newProgress[0];
             if (audioRef.current && duration) {
-              const newTime = (progressValue / 100) * duration;
+              const newTime = (newProgress[0] / 100) * duration;
               audioRef.current.currentTime = newTime;
-              setProgress(progressValue);
+              setProgress(newProgress[0]);
             }
           }}
         />
