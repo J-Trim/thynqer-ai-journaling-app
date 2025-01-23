@@ -26,15 +26,35 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       
       // Add event listeners
       const audio = audioRef.current;
-      audio.addEventListener('play', () => setIsPlaying(true));
-      audio.addEventListener('pause', () => setIsPlaying(false));
+      const handlePlay = () => {
+        console.log('Audio play event triggered');
+        setIsPlaying(true);
+      };
+      
+      const handlePause = () => {
+        console.log('Audio pause event triggered');
+        setIsPlaying(false);
+      };
+      
+      const handleEnded = () => {
+        console.log('Audio playback ended');
+        setIsPlaying(false);
+      };
+      
+      const handleError = (event: Event) => {
+        console.error('Audio playback error:', event);
+        setIsPlaying(false);
+      };
+
+      audio.addEventListener('play', handlePlay);
+      audio.addEventListener('pause', handlePause);
       audio.addEventListener('ended', handleEnded);
       audio.addEventListener('error', handleError);
 
       return () => {
         // Cleanup event listeners
-        audio.removeEventListener('play', () => setIsPlaying(true));
-        audio.removeEventListener('pause', () => setIsPlaying(false));
+        audio.removeEventListener('play', handlePlay);
+        audio.removeEventListener('pause', handlePause);
         audio.removeEventListener('ended', handleEnded);
         audio.removeEventListener('error', handleError);
       };
@@ -76,16 +96,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setIsMuted(false);
       }
     }
-  };
-
-  const handleEnded = () => {
-    console.log('Audio playback ended');
-    setIsPlaying(false);
-  };
-
-  const handleError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
-    console.error('Audio playback error:', e);
-    setIsPlaying(false);
   };
 
   return (
