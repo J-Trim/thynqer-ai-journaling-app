@@ -11,19 +11,20 @@ interface AudioProgressProps {
 
 const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: AudioProgressProps) => {
   return (
-    <div className="flex-1">
-      <div className="mb-2">
+    <div className="flex-1 space-y-2">
+      <div className="relative">
         <Slider
           value={[progress]}
           min={0}
           max={100}
-          step={0.01}
-          className="cursor-pointer transition-all duration-100"
+          step={0.1}
+          className="w-full cursor-pointer"
           onValueChange={onProgressChange}
         />
       </div>
-      <div className="text-xs text-muted-foreground">
-        {`${formatTime(currentTime)} / ${formatTime(duration)}`}
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{formatTime(currentTime)}</span>
+        <span>{formatTime(duration)}</span>
       </div>
     </div>
   );
