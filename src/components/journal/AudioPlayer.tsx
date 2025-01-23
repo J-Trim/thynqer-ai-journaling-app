@@ -16,6 +16,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -138,15 +139,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const updateProgress = () => {
       if (!audio) return;
       
+      setCurrentTime(audio.currentTime);
       if (audio.duration) {
         const currentProgress = (audio.currentTime / audio.duration) * 100;
         setProgress(currentProgress);
         setDuration(audio.duration);
-        console.log('Progress update:', { 
-          currentTime: audio.currentTime,
-          duration: audio.duration,
-          progress: currentProgress 
-        });
       }
 
       if (isPlaying) {
@@ -181,16 +178,22 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       console.log('Audio playback ended');
       setIsPlaying(false);
       setProgress(0);
+      setCurrentTime(0);
       audio.currentTime = 0;
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
 
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
     
     return () => {
       if (animationFrameRef.current) {
@@ -200,6 +203,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [isPlaying]);
 
@@ -255,12 +259,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         <AudioProgress
           progress={progress}
           duration={duration}
-          currentTime={audioRef.current?.currentTime || 0}
+          currentTime={currentTime}
           onProgressChange={(newProgress) => {
             if (audioRef.current && duration) {
               const newTime = (newProgress[0] / 100) * duration;
               audioRef.current.currentTime = newTime;
               setProgress(newProgress[0]);
+              setCurrentTime(newTime);
             }
           }}
         />
