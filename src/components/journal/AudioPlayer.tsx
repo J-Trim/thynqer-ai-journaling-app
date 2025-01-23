@@ -21,14 +21,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
   const isDraggingRef = useRef(false);
-  const isReadyRef = useRef(false);
 
   useEffect(() => {
     const initializeAudio = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        isReadyRef.current = false;
         
         if (!audioUrl) {
           console.error('No audio URL provided');
@@ -80,18 +78,19 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         const audio = audioRef.current;
         audio.src = newBlobUrl;
         audio.muted = isMuted;
+        audio.preload = "metadata";
 
+        // Wait for the audio to be loaded
         await new Promise((resolve, reject) => {
-          const handleCanPlay = () => {
-            console.log('Audio can play. Duration:', audio.duration);
+          const handleLoadedMetadata = () => {
             if (isFinite(audio.duration)) {
+              console.log('Audio metadata loaded. Duration:', audio.duration);
               setDuration(audio.duration);
               setCurrentTime(0);
               setProgress(0);
-              isReadyRef.current = true;
+              audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+              resolve(true);
             }
-            audio.removeEventListener('canplay', handleCanPlay);
-            resolve(true);
           };
 
           const handleError = (e: Event) => {
@@ -100,12 +99,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
             reject(new Error('Failed to load audio'));
           };
 
-          audio.addEventListener('canplay', handleCanPlay);
+          audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('error', handleError);
         });
 
         setError(null);
         setIsLoading(false);
+        console.log('Audio initialized successfully');
         
       } catch (error) {
         console.error('Error in audio setup:', error);
@@ -137,16 +137,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const audio = audioRef.current;
 
     const updateProgress = () => {
-      if (!audio || isDraggingRef.current || !isReadyRef.current) return;
+      if (!audio || isDraggingRef.current || !isFinite(audio.duration)) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
+      const newDuration = audio.duration;
       
       if (isFinite(newDuration) && newDuration > 0 && isFinite(newCurrentTime)) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
-        setDuration(newDuration);
       }
 
       if (isPlaying) {
@@ -166,16 +165,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleLoadedMetadata = () => {
-      if (isFinite(audio.duration)) {
-        setDuration(audio.duration);
-        setCurrentTime(audio.currentTime);
-        setProgress((audio.currentTime / audio.duration) * 100);
-        isReadyRef.current = true;
-        updateProgress();
-      }
-    };
-
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -188,26 +177,20 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
-    
-    if (audio.readyState >= 1) {
-      handleLoadedMetadata();
-    }
-    
+
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
   }, [isPlaying]);
 
   const handleProgressChange = (newProgress: number[]) => {
-    if (!audioRef.current || !duration || !isReadyRef.current) return;
+    if (!audioRef.current || !isFinite(duration)) return;
     
     isDraggingRef.current = true;
     const newTime = (newProgress[0] / 100) * duration;
@@ -218,14 +201,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setCurrentTime(newTime);
     }
     
-    // Reset isDragging after a short delay to allow the change to take effect
     setTimeout(() => {
       isDraggingRef.current = false;
     }, 100);
   };
 
   const togglePlay = async () => {
-    if (!audioRef.current || !isReadyRef.current) {
+    if (!audioRef.current || !isFinite(audioRef.current.duration)) {
       console.error('Audio not ready');
       setError('Audio not ready');
       return;
@@ -236,7 +218,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        console.log('Attempting to play audio. Current duration:', audioRef.current.duration);
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
