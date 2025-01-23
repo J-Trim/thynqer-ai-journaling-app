@@ -16,16 +16,14 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
 
   return (
     <div className="flex-1 space-y-2">
-      <div className="relative">
-        <Slider
-          value={[progress]}
-          min={0}
-          max={100}
-          step={0.1}
-          className="w-full cursor-pointer transform-gpu"
-          onValueChange={onProgressChange}
-        />
-      </div>
+      <Slider
+        value={[progress]}
+        min={0}
+        max={100}
+        step={0.1}
+        className="w-full cursor-pointer transform-gpu"
+        onValueChange={onProgressChange}
+      />
       <div className="flex justify-between text-xs text-muted-foreground">
         <span>{formattedCurrentTime}</span>
         <span>{formattedDuration}</span>
