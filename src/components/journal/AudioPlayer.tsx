@@ -32,8 +32,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Extract just the filename from the full URL or path
-        const filename = audioUrl.split('/').pop();
+        // Extract just the filename, handling both full URLs and relative paths
+        const filename = audioUrl.split('/').pop()?.split('?')[0];
         if (!filename) {
           console.error('Invalid audio URL format');
           setError('Invalid audio URL format');
@@ -42,6 +42,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         console.log('Attempting to download audio file:', filename);
         
+        // First try to download directly
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
           .download(filename);
@@ -58,22 +59,24 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Create a blob URL from the audio data with explicit MIME type
+        // Create a blob URL from the audio data
         const audioBlob = new Blob([audioData], { type: 'audio/webm' });
         const newBlobUrl = URL.createObjectURL(audioBlob);
+        console.log('Audio blob URL created:', newBlobUrl);
         
-        // Store the blob URL for cleanup
+        // Clean up old blob URL if it exists
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
         }
         blobUrlRef.current = newBlobUrl;
 
+        // Set up audio element
         if (audioRef.current) {
           audioRef.current.src = newBlobUrl;
           audioRef.current.load();
+          console.log('Audio element source set and loaded');
         }
 
-        console.log('Audio blob URL created successfully');
       } catch (error) {
         console.error('Error setting up audio:', error);
         setError('Error setting up audio player');
@@ -167,7 +170,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     } catch (error) {
       console.error('Error toggling play state:', error);
-      setError('Error playing audio: Format may not be supported');
+      setError('Error playing audio');
       setIsPlaying(false);
     }
   };
