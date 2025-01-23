@@ -20,6 +20,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const progressUpdateInterval = useRef<number | null>(null);
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -117,6 +118,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     initializeAudio();
 
     return () => {
+      if (progressUpdateInterval.current) {
+        window.clearInterval(progressUpdateInterval.current);
+      }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -133,16 +137,38 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const audio = audioRef.current;
 
-    const handleTimeUpdate = () => {
-      if (audio.duration) {
-        const currentProgress = (audio.currentTime / audio.duration) * 100;
-        setProgress(currentProgress);
-        console.log('Time update:', { 
-          currentTime: audio.currentTime,
-          duration: audio.duration,
-          progress: currentProgress 
-        });
+    const startProgressUpdate = () => {
+      if (progressUpdateInterval.current) {
+        window.clearInterval(progressUpdateInterval.current);
       }
+      progressUpdateInterval.current = window.setInterval(() => {
+        if (audio.duration) {
+          const currentProgress = (audio.currentTime / audio.duration) * 100;
+          setProgress(currentProgress);
+          console.log('Progress update:', { 
+            currentTime: audio.currentTime,
+            duration: audio.duration,
+            progress: currentProgress 
+          });
+        }
+      }, 50); // Update every 50ms for smooth animation
+    };
+
+    const stopProgressUpdate = () => {
+      if (progressUpdateInterval.current) {
+        window.clearInterval(progressUpdateInterval.current);
+        progressUpdateInterval.current = null;
+      }
+    };
+
+    const handlePlay = () => {
+      console.log('Audio started playing');
+      startProgressUpdate();
+    };
+
+    const handlePause = () => {
+      console.log('Audio paused');
+      stopProgressUpdate();
     };
 
     const handleLoadedMetadata = () => {
@@ -158,14 +184,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
       setProgress(0);
       audio.currentTime = 0;
+      stopProgressUpdate();
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      stopProgressUpdate();
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };

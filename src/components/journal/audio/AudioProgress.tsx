@@ -17,9 +17,9 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
           value={[progress]}
           min={0}
           max={100}
-          step={0.1}
+          step={0.01}
+          className="cursor-pointer transition-all duration-100"
           onValueChange={onProgressChange}
-          className="cursor-pointer"
         />
       </div>
       <div className="text-xs text-muted-foreground">
