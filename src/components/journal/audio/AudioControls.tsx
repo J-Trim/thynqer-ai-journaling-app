@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Volume2, VolumeX, Repeat } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -76,7 +76,7 @@ const AudioControls = ({
           variant="ghost"
           size="icon"
           onClick={() => {
-            setShowVolumeSlider(prev => !prev);
+            setShowVolumeSlider(!showVolumeSlider);
             if (!showVolumeSlider) {
               handleHideSlider();
             }

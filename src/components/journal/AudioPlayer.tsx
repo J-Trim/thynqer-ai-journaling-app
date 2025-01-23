@@ -1,7 +1,9 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAudioProgress } from '@/hooks/useAudioProgress';
 import { useAudioVolume } from '@/hooks/useAudioVolume';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
+import { getMimeType } from '@/utils/audio';
 import AudioControls from './audio/AudioControls';
 import AudioProgress from './audio/AudioProgress';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -138,7 +140,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setError(null);
         setIsLoading(false);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error in audio setup:', error);
         setError(`Error setting up audio: ${error.message}`);
         setIsLoading(false);
