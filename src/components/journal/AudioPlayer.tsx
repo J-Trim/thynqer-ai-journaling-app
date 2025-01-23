@@ -15,13 +15,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const fetchPublicUrl = async () => {
+    const fetchAndSetupAudio = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -32,32 +31,55 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        console.log('Fetching public URL for:', audioUrl);
-        const { data: publicUrlData } = supabase.storage
+        console.log('Setting up audio for URL:', audioUrl);
+        
+        // Get the audio file directly from storage
+        const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
-          .getPublicUrl(audioUrl);
+          .download(audioUrl);
 
-        if (!publicUrlData?.publicUrl) {
-          console.error('Failed to get public URL');
-          setError('Failed to get public URL');
+        if (downloadError) {
+          console.error('Error downloading audio:', downloadError);
+          setError('Error downloading audio file');
           return;
         }
 
-        console.log('Public URL:', publicUrlData.publicUrl);
-        setPublicUrl(publicUrlData.publicUrl);
+        if (!audioData) {
+          console.error('No audio data received');
+          setError('No audio data received');
+          return;
+        }
+
+        // Create a blob URL from the audio data
+        const audioBlob = new Blob([audioData], { type: 'audio/webm' });
+        const blobUrl = URL.createObjectURL(audioBlob);
+
+        if (audioRef.current) {
+          audioRef.current.src = blobUrl;
+          audioRef.current.load();
+        }
+
+        console.log('Audio blob URL created:', blobUrl);
       } catch (error) {
-        console.error('Error fetching audio URL:', error);
-        setError('Error fetching audio URL');
+        console.error('Error setting up audio:', error);
+        setError('Error setting up audio player');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchPublicUrl();
+    fetchAndSetupAudio();
+
+    // Cleanup function
+    return () => {
+      if (audioRef.current?.src) {
+        URL.revokeObjectURL(audioRef.current.src);
+      }
+    };
   }, [audioUrl]);
 
   useEffect(() => {
-    if (!audioRef.current || !publicUrl) return;
+    if (!audioRef.current) return;
 
     const audio = audioRef.current;
 
@@ -102,23 +124,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     // Set initial audio properties
     audio.volume = volume;
     audio.muted = isMuted;
-    audio.preload = "metadata";
     
-    // Set source after event listeners are attached
-    audio.src = publicUrl;
-    audio.load();
-
     return () => {
       // Cleanup
       audio.pause();
-      audio.src = '';
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('error', handleError);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [publicUrl, volume, isMuted]);
+  }, [volume, isMuted]);
 
   const togglePlay = async () => {
     if (!audioRef.current) return;
@@ -126,46 +142,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     try {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
-        if (!audioRef.current.src && publicUrl) {
-          audioRef.current.src = publicUrl;
-          audioRef.current.load();
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
         }
-        await audioRef.current.play();
       }
     } catch (error) {
       console.error('Error toggling play state:', error);
       setError('Error playing audio: Format may not be supported');
-    }
-  };
-
-  const toggleMute = () => {
-    if (audioRef.current) {
-      const newMutedState = !isMuted;
-      audioRef.current.muted = newMutedState;
-      setIsMuted(newMutedState);
-    }
-  };
-
-  const handleVolumeChange = (newVolume: number[]) => {
-    const volumeValue = newVolume[0];
-    if (audioRef.current) {
-      audioRef.current.volume = volumeValue;
-      setVolume(volumeValue);
-      if (volumeValue === 0) {
-        setIsMuted(true);
-      } else if (isMuted) {
-        setIsMuted(false);
-      }
-    }
-  };
-
-  const handleProgressChange = (newProgress: number[]) => {
-    const progressValue = newProgress[0];
-    if (audioRef.current && duration) {
-      const newTime = (progressValue / 100) * duration;
-      audioRef.current.currentTime = newTime;
-      setProgress(progressValue);
+      setIsPlaying(false);
     }
   };
 
@@ -209,7 +197,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={toggleMute}
+          onClick={() => {
+            if (audioRef.current) {
+              const newMutedState = !isMuted;
+              audioRef.current.muted = newMutedState;
+              setIsMuted(newMutedState);
+            }
+          }}
           className="hover:bg-primary/20"
         >
           {isMuted ? (
@@ -225,7 +219,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               min={0}
               max={100}
               step={0.1}
-              onValueChange={handleProgressChange}
+              onValueChange={(newProgress) => {
+                const progressValue = newProgress[0];
+                if (audioRef.current && duration) {
+                  const newTime = (progressValue / 100) * duration;
+                  audioRef.current.currentTime = newTime;
+                  setProgress(progressValue);
+                }
+              }}
               className="cursor-pointer"
             />
           </div>
@@ -241,7 +242,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
             min={0}
             max={1}
             step={0.01}
-            onValueChange={handleVolumeChange}
+            onValueChange={(newVolume) => {
+              const volumeValue = newVolume[0];
+              if (audioRef.current) {
+                audioRef.current.volume = volumeValue;
+                setVolume(volumeValue);
+                if (volumeValue === 0) {
+                  setIsMuted(true);
+                } else if (isMuted) {
+                  setIsMuted(false);
+                }
+              }
+            }}
           />
         </div>
       </div>
