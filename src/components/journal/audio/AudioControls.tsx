@@ -33,25 +33,21 @@ const AudioControls = ({
   };
 
   const handleHideSlider = () => {
-    if (!isDragging) {
-      const currentTime = Date.now();
-      const timeSinceLastInteraction = currentTime - lastInteraction;
-      
-      if (timeSinceLastInteraction >= 2000) {
+    clearHideTimeout();
+    hideTimeoutRef.current = setTimeout(() => {
+      if (!isDragging) {
         setShowVolumeSlider(false);
-      } else {
-        clearHideTimeout();
-        hideTimeoutRef.current = setTimeout(() => {
-          handleHideSlider();
-        }, 2000 - timeSinceLastInteraction);
       }
-    }
+    }, 3000); // Changed to 3 seconds
   };
 
   const handleVolumeChange = (values: number[]) => {
     const newVolume = values[0] / 100;
     onVolumeChange(newVolume);
     setLastInteraction(Date.now());
+    
+    // Reset the hide timer when volume changes
+    handleHideSlider();
     
     // Automatically handle mute state based on volume
     if (newVolume === 0 && !isMuted) {
@@ -82,11 +78,9 @@ const AudioControls = ({
           onClick={() => {
             setShowVolumeSlider(prev => !prev);
             setLastInteraction(Date.now());
-          }}
-          onMouseEnter={() => {
-            clearHideTimeout();
-            setShowVolumeSlider(true);
-            setLastInteraction(Date.now());
+            if (!showVolumeSlider) {
+              handleHideSlider();
+            }
           }}
           className="hover:bg-primary/20"
         >
@@ -106,7 +100,6 @@ const AudioControls = ({
           onMouseEnter={() => {
             clearHideTimeout();
             setShowVolumeSlider(true);
-            setLastInteraction(Date.now());
           }}
           onMouseLeave={() => {
             if (!isDragging) {
@@ -123,7 +116,6 @@ const AudioControls = ({
             onPointerDown={() => {
               clearHideTimeout();
               setIsDragging(true);
-              setLastInteraction(Date.now());
             }}
             onPointerUp={() => {
               setIsDragging(false);
