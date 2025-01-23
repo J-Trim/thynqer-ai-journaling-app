@@ -33,14 +33,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
+        // Extract filename from URL
         const filename = audioUrl.split('/').pop()?.split('?')[0];
         if (!filename) {
-          console.error('Invalid audio URL format');
+          console.error('Invalid audio URL format:', audioUrl);
           setError('Invalid audio URL format');
           return;
         }
 
-        console.log('Attempting to download audio file:', filename);
+        console.log('Downloading audio file:', filename);
         
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
@@ -48,19 +49,26 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         if (downloadError) {
           console.error('Error downloading audio:', downloadError);
-          setError('Error downloading audio file');
+          setError(`Error downloading audio: ${downloadError.message}`);
           return;
         }
 
         if (!audioData) {
-          console.error('No audio data received');
+          console.error('No audio data received from storage');
           setError('No audio data received');
           return;
         }
 
+        console.log('Audio file downloaded successfully, size:', audioData.size);
+
         const mimeType = getMimeType(filename);
+        console.log('Using MIME type:', mimeType);
+        
         const audioBlob = new Blob([audioData], { type: mimeType });
+        console.log('Created audio blob, size:', audioBlob.size);
+        
         const newBlobUrl = URL.createObjectURL(audioBlob);
+        console.log('Created blob URL:', newBlobUrl);
         
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
@@ -70,25 +78,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         if (audioRef.current) {
           audioRef.current.src = newBlobUrl;
           audioRef.current.load();
-          
-          const playTestPromise = audioRef.current.play();
-          if (playTestPromise !== undefined) {
-            playTestPromise
-              .then(() => {
-                console.log('Audio playback test successful');
-                audioRef.current?.pause();
-                setIsPlaying(false);
-              })
-              .catch(e => {
-                console.error('Audio playback test failed:', e);
-                setError(`Playback error: ${e.message}`);
-              });
-          }
+          console.log('Audio element loaded with new source');
         }
 
       } catch (error) {
-        console.error('Error setting up audio:', error);
-        setError('Error setting up audio player');
+        console.error('Error in audio setup:', error);
+        setError(`Error setting up audio: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
@@ -114,7 +109,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const audio = audioRef.current;
 
     const handleCanPlay = () => {
-      console.log('Audio can play');
+      console.log('Audio can play event triggered');
       setError(null);
       if (audio.duration) setDuration(audio.duration);
     };
@@ -127,8 +122,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleError = () => {
       const errorMessage = audio.error?.message || 'Unknown error';
-      console.error('Audio error:', errorMessage, 'Error code:', audio.error?.code);
-      setError(`Error playing audio: ${errorMessage}`);
+      const errorCode = audio.error?.code || 'No error code';
+      console.error('Audio error:', errorMessage, 'Code:', errorCode);
+      setError(`Playback error: ${errorMessage} (Code: ${errorCode})`);
       setIsPlaying(false);
     };
 
@@ -163,16 +159,22 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }, [volume, isMuted]);
 
   const togglePlay = async () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current) {
+      console.error('No audio element available');
+      return;
+    }
 
     try {
       if (isPlaying) {
+        console.log('Pausing audio');
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
+        console.log('Starting audio playback');
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
+          console.log('Playback started successfully');
           setIsPlaying(true);
         }
       }

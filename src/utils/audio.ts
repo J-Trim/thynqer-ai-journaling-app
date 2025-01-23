@@ -1,15 +1,26 @@
-export const formatTime = (timeInSeconds: number) => {
-  const minutes = Math.floor(timeInSeconds / 60);
-  const seconds = Math.floor(timeInSeconds % 60);
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+export const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
 export const getMimeType = (filename: string): string => {
-  if (filename.toLowerCase().endsWith('.webm')) return 'audio/webm';
-  if (filename.toLowerCase().endsWith('.mp3')) return 'audio/mpeg';
-  return 'audio/webm'; // Default to webm
+  const extension = filename.split('.').pop()?.toLowerCase();
+  switch (extension) {
+    case 'mp3':
+      return 'audio/mpeg';
+    case 'wav':
+      return 'audio/wav';
+    case 'ogg':
+      return 'audio/ogg';
+    case 'webm':
+      return 'audio/webm';
+    default:
+      console.log('Using default MIME type for unknown extension:', extension);
+      return 'audio/webm'; // Default to webm as it's our primary format
+  }
 };
 
-export const sanitizeFileName = (fileName: string): string => {
-  return fileName.replace(/[^\x00-\x7F]/g, '');
+export const sanitizeFileName = (filename: string): string => {
+  return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
 };
