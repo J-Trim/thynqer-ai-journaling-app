@@ -17,12 +17,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Fetch public URL when audioUrl changes
   useEffect(() => {
     const fetchPublicUrl = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
+        
         if (!audioUrl) {
           console.error('No audio URL provided');
           setError('No audio URL provided');
@@ -42,10 +46,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         console.log('Public URL:', data.publicUrl);
         setPublicUrl(data.publicUrl);
-        setError(null);
       } catch (error) {
         console.error('Error fetching audio URL:', error);
         setError('Error fetching audio URL');
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -53,21 +58,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }, [audioUrl]);
 
   useEffect(() => {
-    if (audioRef.current) {
+    if (audioRef.current && publicUrl) {
       const audio = audioRef.current;
 
       // Initialize audio element
       audio.volume = volume;
       audio.muted = isMuted;
       
-      // Reset when URL changes
-      audio.pause();
-      setIsPlaying(false);
-      if (publicUrl) {
-        console.log('Setting audio source to:', publicUrl);
-        audio.src = publicUrl;
-        audio.load();
-      }
+      // Set source and load audio
+      audio.src = publicUrl;
+      audio.load();
       
       const handlePlay = () => {
         console.log('Audio play event triggered');
@@ -113,7 +113,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.addEventListener('loadedmetadata', handleLoadedMetadata);
 
       return () => {
-        // Cleanup event listeners
+        // Cleanup
+        audio.pause();
+        audio.src = '';
+        
+        // Remove event listeners
         audio.removeEventListener('play', handlePlay);
         audio.removeEventListener('pause', handlePause);
         audio.removeEventListener('ended', handleEnded);
@@ -127,16 +131,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const togglePlay = async () => {
     if (audioRef.current) {
       try {
-        console.log('Attempting to toggle play state...');
         if (isPlaying) {
           console.log('Pausing audio...');
           audioRef.current.pause();
         } else {
           console.log('Playing audio...');
-          const playPromise = audioRef.current.play();
-          if (playPromise !== undefined) {
-            await playPromise;
-          }
+          await audioRef.current.play();
         }
       } catch (error) {
         console.error('Error toggling play state:', error);
@@ -147,8 +147,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
   const toggleMute = () => {
     if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+      const newMutedState = !isMuted;
+      audioRef.current.muted = newMutedState;
+      setIsMuted(newMutedState);
     }
   };
 
@@ -180,7 +181,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  if (!publicUrl) {
+  if (isLoading) {
     return <div className="text-muted-foreground">Loading audio...</div>;
   }
 
