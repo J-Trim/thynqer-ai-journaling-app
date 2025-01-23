@@ -72,7 +72,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
-              console.log('Blob validation successful, size:', reader.result?.byteLength);
+              if (reader.result instanceof ArrayBuffer) {
+                console.log('Blob validation successful, size:', reader.result.byteLength);
+              } else {
+                console.log('Blob validation successful, size:', reader.result.length);
+              }
               resolve(true);
             };
             reader.onerror = () => {
