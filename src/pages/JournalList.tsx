@@ -33,46 +33,59 @@ const JournalList = () => {
     queryKey: ['journal-entries', selectedTags],
     queryFn: async () => {
       try {
-        console.log('Starting journal entries fetch in JournalList...');
+        console.log('Starting journal entries fetch...');
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          console.log('No session found during fetch in JournalList');
+          console.log('No session found during fetch');
           throw new Error('Not authenticated');
         }
 
-        console.log('Fetching entries for user:', session.user.id);
-        let query = supabase
+        console.log('Authenticated user ID:', session.user.id);
+        
+        // First, get all entries for the user
+        const { data: entriesData, error: entriesError } = await supabase
           .from('journal_entries')
-          .select(`
-            *,
-            entry_tags (
-              tag_id
-            )
-          `)
+          .select('*')
           .eq('user_id', session.user.id)
           .order('created_at', { ascending: false });
 
+        if (entriesError) {
+          console.error('Error fetching entries:', entriesError);
+          throw entriesError;
+        }
+
+        console.log('Retrieved entries:', entriesData);
+
+        if (!entriesData || entriesData.length === 0) {
+          console.log('No entries found for user');
+          return [];
+        }
+
+        // If tags are selected, filter entries that have those tags
         if (selectedTags.length > 0) {
-          query = query.in('entry_tags.tag_id', selectedTags);
+          const { data: taggedEntries, error: tagError } = await supabase
+            .from('entry_tags')
+            .select('entry_id, tag_id')
+            .in('tag_id', selectedTags);
+
+          if (tagError) {
+            console.error('Error fetching tagged entries:', tagError);
+            throw tagError;
+          }
+
+          console.log('Tagged entries:', taggedEntries);
+
+          // Filter entries that have the selected tags
+          const filteredEntries = entriesData.filter(entry =>
+            taggedEntries.some(tag => tag.entry_id === entry.id)
+          );
+
+          console.log('Filtered entries by tags:', filteredEntries);
+          return filteredEntries;
         }
 
-        const { data: entries, error } = await query;
-
-        if (error) {
-          console.error('Error fetching entries:', error);
-          throw error;
-        }
-
-        console.log('Raw entries from database:', entries);
-
-        // Remove any potential duplicates by using Set with unique IDs
-        const uniqueEntries = Array.from(
-          new Map(entries?.map(entry => [entry.id, entry])).values()
-        );
-
-        console.log('Fetched unique entries:', uniqueEntries);
-        return uniqueEntries;
+        return entriesData;
       } catch (error) {
         console.error('Error in journal entries query:', error);
         throw error;
@@ -95,15 +108,6 @@ const JournalList = () => {
     };
     getUser();
   }, []);
-
-  const handleEntryClick = (entryId: string) => {
-    navigate(`/journal/edit/${entryId}`);
-  };
-
-  const handleEntryDelete = () => {
-    // Invalidate and refetch the journal entries query
-    queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
-  };
 
   const handleTagToggle = (tagId: string) => {
     setSelectedTags(prev => 
