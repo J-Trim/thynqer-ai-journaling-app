@@ -98,6 +98,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         blobUrlRef.current = newBlobUrl;
 
         if (audioRef.current) {
+          // Reset audio element state
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
           audioRef.current.src = newBlobUrl;
           
           // Force browser to load new audio source
@@ -119,6 +122,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
           // Test playback
           try {
+            console.log('Testing audio playback...');
+            console.log('Audio element state:', {
+              src: audioRef.current.src,
+              readyState: audioRef.current.readyState,
+              paused: audioRef.current.paused,
+              error: audioRef.current.error,
+              networkState: audioRef.current.networkState,
+              currentTime: audioRef.current.currentTime,
+              duration: audioRef.current.duration
+            });
+
             await audioRef.current.play();
             console.log('Playback test successful');
             audioRef.current.pause();
@@ -236,6 +250,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setIsPlaying(false);
       } else {
         console.log('Starting audio playback');
+        console.log('Audio state before play:', {
+          src: audioRef.current.src,
+          readyState: audioRef.current.readyState,
+          paused: audioRef.current.paused,
+          error: audioRef.current.error,
+          networkState: audioRef.current.networkState,
+          currentTime: audioRef.current.currentTime,
+          duration: audioRef.current.duration
+        });
+
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
