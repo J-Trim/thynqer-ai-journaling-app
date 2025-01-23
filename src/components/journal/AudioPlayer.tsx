@@ -15,27 +15,40 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [publicUrl, setPublicUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Fetch public URL when audioUrl changes
   useEffect(() => {
     const fetchPublicUrl = async () => {
       try {
+        if (!audioUrl) {
+          console.error('No audio URL provided');
+          setError('No audio URL provided');
+          return;
+        }
+
         console.log('Fetching public URL for:', audioUrl);
         const { data } = supabase.storage
           .from('audio_files')
           .getPublicUrl(audioUrl);
         
+        if (!data?.publicUrl) {
+          console.error('Failed to get public URL');
+          setError('Failed to get public URL');
+          return;
+        }
+
         console.log('Public URL:', data.publicUrl);
         setPublicUrl(data.publicUrl);
+        setError(null);
       } catch (error) {
         console.error('Error fetching audio URL:', error);
+        setError('Error fetching audio URL');
       }
     };
 
-    if (audioUrl) {
-      fetchPublicUrl();
-    }
+    fetchPublicUrl();
   }, [audioUrl]);
 
   useEffect(() => {
@@ -50,6 +63,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.pause();
       setIsPlaying(false);
       if (publicUrl) {
+        console.log('Setting audio source to:', publicUrl);
         audio.src = publicUrl;
         audio.load();
       }
@@ -71,7 +85,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       };
       
       const handleError = (event: Event) => {
-        console.error('Audio playback error:', event);
+        const audioError = (event.target as HTMLAudioElement).error;
+        console.error('Audio playback error:', audioError?.message || 'Unknown error');
+        setError(audioError?.message || 'Error playing audio');
         setIsPlaying(false);
       };
 
@@ -84,6 +100,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const handleLoadedMetadata = () => {
         console.log('Audio metadata loaded, duration:', audio.duration);
         setDuration(audio.duration);
+        setError(null);
       };
 
       // Add event listeners
@@ -122,6 +139,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         }
       } catch (error) {
         console.error('Error toggling play state:', error);
+        setError('Error playing audio');
       }
     }
   };
@@ -162,7 +180,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   };
 
   if (!publicUrl) {
-    return <div>Loading audio...</div>;
+    return <div className="text-muted-foreground">Loading audio...</div>;
+  }
+
+  if (error) {
+    return <div className="text-destructive">Error: {error}</div>;
   }
 
   return (
