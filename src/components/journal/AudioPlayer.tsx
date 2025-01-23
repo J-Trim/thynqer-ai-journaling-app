@@ -39,6 +39,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         return;
       }
 
+      // Extract filename from URL, handling both path formats
       const filename = audioUrl.includes('/')
         ? audioUrl.split('/').pop()?.split('?')[0]
         : audioUrl;
@@ -52,6 +53,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       console.log('Starting audio download for:', filename);
       console.log('Full audio URL:', audioUrl);
       
+      // Download the audio file from Supabase storage
       const { data: audioData, error: downloadError } = await supabase.storage
         .from('audio_files')
         .download(filename);
@@ -68,40 +70,45 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         return;
       }
 
-      console.log('Audio data received, size:', audioData.size);
+      console.log('Audio data received, size:', audioData.size, 'bytes');
       const mimeType = getMimeType(filename);
       console.log('Using MIME type:', mimeType);
       
+      // Create blob from audio data
       const audioBlob = new Blob([audioData], { type: mimeType });
-      console.log('Created audio blob, size:', audioBlob.size);
+      console.log('Created audio blob, size:', audioBlob.size, 'bytes');
 
+      // Clean up previous blob URL if it exists
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
       }
 
+      // Create new blob URL
       const newBlobUrl = URL.createObjectURL(audioBlob);
       console.log('Created blob URL:', newBlobUrl);
       blobUrlRef.current = newBlobUrl;
 
+      // Initialize audio element if not already created
       if (!audioRef.current) {
         audioRef.current = new Audio();
+        console.log('Created new Audio element');
       }
 
       const audio = audioRef.current;
       audio.src = newBlobUrl;
       audio.volume = volume;
       audio.muted = isMuted;
+      console.log('Set audio source to blob URL');
 
-      let loadTimeout: number;
-
+      // Set up promise to handle audio loading
       await new Promise((resolve, reject) => {
-        const maxWaitTime = 30000;
+        const maxWaitTime = 30000; // 30 seconds timeout
 
         const cleanup = () => {
           audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
           audio.removeEventListener('canplaythrough', handleCanPlayThrough);
           audio.removeEventListener('error', handleError);
-          window.clearTimeout(loadTimeout);
+          clearTimeout(loadTimeout);
         };
 
         const handleLoadedMetadata = () => {
@@ -124,20 +131,24 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         };
 
         const handleError = (e: Event) => {
-          console.error('Audio loading error:', e, audio.error);
+          const errorMessage = audio.error 
+            ? `Audio error: ${audio.error.code} - ${audio.error.message}`
+            : 'Unknown audio error';
+          console.error(errorMessage, e);
           cleanup();
-          reject(new Error(`Failed to load audio: ${audio.error?.message || 'Unknown error'}`));
+          reject(new Error(errorMessage));
         };
 
         audio.addEventListener('loadedmetadata', handleLoadedMetadata);
         audio.addEventListener('canplaythrough', handleCanPlayThrough);
         audio.addEventListener('error', handleError);
 
-        loadTimeout = window.setTimeout(() => {
+        const loadTimeout = setTimeout(() => {
           cleanup();
           reject(new Error('Audio loading timeout - please try again'));
         }, maxWaitTime);
 
+        console.log('Current audio readyState:', audio.readyState);
         if (audio.readyState >= 3 && audio.duration && isFinite(audio.duration) && audio.duration > 0) {
           handleLoadedMetadata();
         } else {
@@ -148,6 +159,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
       setIsLoading(false);
       setError(null);
+      console.log('Audio initialization completed successfully');
       
     } catch (error) {
       console.error('Error in audio setup:', error);
@@ -177,6 +189,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     if (!audioRef.current || !isMetadataLoaded) return;
 
     const audio = audioRef.current;
+    console.log('Setting up audio event listeners');
 
     const updateProgress = () => {
       if (!audio) return;
@@ -197,11 +210,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handlePlay = () => {
+      console.log('Audio play event triggered');
       setIsPlaying(true);
       updateProgress();
     };
 
     const handlePause = () => {
+      console.log('Audio pause event triggered');
       setIsPlaying(false);
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -209,6 +224,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
+      console.log('Audio loadedmetadata event triggered');
       if (audio.duration && isFinite(audio.duration)) {
         setDuration(audio.duration);
         setCurrentTime(audio.currentTime);
@@ -218,6 +234,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleEnded = () => {
+      console.log('Audio ended event triggered');
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
@@ -249,8 +266,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
   const togglePlay = async () => {
     if (!hasInitiatedLoad) {
+      console.log('Initiating audio load...');
       await initializeAudio();
       setHasInitiatedLoad(true);
+      return;
     }
 
     if (!audioRef.current) {
@@ -261,8 +280,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     try {
       if (isPlaying) {
+        console.log('Pausing audio...');
         audioRef.current.pause();
       } else {
+        console.log('Playing audio...');
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
@@ -302,7 +323,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     return (
       <div className="flex items-center justify-center p-4 space-x-2 bg-secondary rounded-lg">
         <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-muted-foreground">Loading audio... {audioRef.current?.readyState || 'Not initialized'}</span>
+        <span className="text-muted-foreground">
+          Loading audio... State: {audioRef.current?.readyState || 'Not initialized'}
+        </span>
       </div>
     );
   }
