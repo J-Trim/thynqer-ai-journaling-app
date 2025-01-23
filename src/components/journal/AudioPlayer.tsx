@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AudioPlayerProps {
@@ -87,7 +88,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const handleError = (event: Event) => {
         const audioError = (event.target as HTMLAudioElement).error;
         console.error('Audio playback error:', audioError?.message || 'Unknown error');
-        setError(audioError?.message || 'Error playing audio');
+        setError(`Error playing audio: ${audioError?.message || 'Format not supported'}`);
         setIsPlaying(false);
       };
 
@@ -139,7 +140,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         }
       } catch (error) {
         console.error('Error toggling play state:', error);
-        setError('Error playing audio');
+        setError('Error playing audio: Format may not be supported');
       }
     }
   };
@@ -184,15 +185,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }
 
   if (error) {
-    return <div className="text-destructive">Error: {error}</div>;
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
   }
 
   return (
     <div className="p-4 bg-secondary rounded-lg space-y-4">
       <audio
         ref={audioRef}
-        src={publicUrl}
-        preload="auto"
+        preload="metadata"
       />
       <div className="flex items-center gap-4">
         <Button
