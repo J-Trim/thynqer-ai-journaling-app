@@ -81,17 +81,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
-            if (audio.duration && isFinite(audio.duration)) {
-              setDuration(audio.duration);
-            }
             audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
-          };
-
-          const handleLoadedMetadata = () => {
-            if (audio.duration && isFinite(audio.duration)) {
-              setDuration(audio.duration);
-            }
           };
 
           const handleError = (e: Event) => {
@@ -99,7 +90,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
             reject(new Error('Failed to load audio'));
           };
 
-          audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
           audio.load();
@@ -141,12 +131,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (!audio) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration;
+      const newDuration = audio.duration || 0;
       
-      if (isFinite(newDuration) && newDuration > 0) {
+      if (newDuration > 0 && isFinite(newCurrentTime) && isFinite(newDuration)) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
-        setProgress(newProgress);
+        setProgress(isFinite(newProgress) ? newProgress : 0);
         setDuration(newDuration);
       }
 
@@ -157,7 +147,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handlePlay = () => {
       setIsPlaying(true);
-      updateProgress();
+      animationFrameRef.current = requestAnimationFrame(updateProgress);
     };
 
     const handlePause = () => {
@@ -168,12 +158,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
-      if (isFinite(audio.duration)) {
+      if (isFinite(audio.duration) && isFinite(audio.currentTime)) {
         setDuration(audio.duration);
         setCurrentTime(audio.currentTime);
         setProgress((audio.currentTime / audio.duration) * 100);
+        updateProgress();
       }
-      updateProgress();
     };
 
     const handleEnded = () => {
@@ -188,11 +178,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
-      const newDuration = audio.duration;
-      if (isFinite(newDuration) && newDuration > 0) {
+      const newDuration = audio.duration || 0;
+      if (newDuration > 0 && isFinite(newTime) && isFinite(newDuration)) {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
-        setProgress(newProgress);
+        setProgress(isFinite(newProgress) ? newProgress : 0);
       }
     };
 
