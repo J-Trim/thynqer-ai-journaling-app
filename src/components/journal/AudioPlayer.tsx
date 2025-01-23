@@ -133,10 +133,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const newCurrentTime = audio.currentTime;
       const newDuration = audio.duration || 0;
       
-      if (newDuration > 0 && isFinite(newCurrentTime) && isFinite(newDuration)) {
+      if (newDuration > 0) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
-        setProgress(isFinite(newProgress) ? newProgress : 0);
+        setProgress(newProgress);
         setDuration(newDuration);
       }
 
@@ -147,7 +147,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handlePlay = () => {
       setIsPlaying(true);
-      animationFrameRef.current = requestAnimationFrame(updateProgress);
+      updateProgress();
     };
 
     const handlePause = () => {
@@ -158,12 +158,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
-      if (isFinite(audio.duration) && isFinite(audio.currentTime)) {
-        setDuration(audio.duration);
-        setCurrentTime(audio.currentTime);
-        setProgress((audio.currentTime / audio.duration) * 100);
-        updateProgress();
-      }
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+      setProgress((audio.currentTime / audio.duration) * 100);
+      updateProgress();
     };
 
     const handleEnded = () => {
@@ -179,10 +177,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
       const newDuration = audio.duration || 0;
-      if (newDuration > 0 && isFinite(newTime) && isFinite(newDuration)) {
+      if (newDuration > 0) {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
-        setProgress(isFinite(newProgress) ? newProgress : 0);
+        setProgress(newProgress);
       }
     };
 
@@ -192,6 +190,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     
+    // Initial progress update if metadata is already loaded
     if (audio.readyState >= 1) {
       handleLoadedMetadata();
     }
