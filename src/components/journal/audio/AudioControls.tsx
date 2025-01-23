@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Volume2, VolumeX, Repeat } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -8,24 +8,26 @@ interface AudioControlsProps {
   isPlaying: boolean;
   isMuted: boolean;
   volume: number;
+  hasEnded: boolean;
+  showVolumeSlider: boolean;
   onPlayPause: () => void;
   onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
-  hasEnded?: boolean;
+  setShowVolumeSlider: (show: boolean) => void;
 }
 
-const AudioControls = ({ 
-  isPlaying, 
-  isMuted, 
+const AudioControls = ({
+  isPlaying,
+  isMuted,
   volume,
-  onPlayPause, 
+  hasEnded,
+  showVolumeSlider,
+  onPlayPause,
   onMuteToggle,
   onVolumeChange,
-  hasEnded = false
+  setShowVolumeSlider
 }: AudioControlsProps) => {
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [lastInteraction, setLastInteraction] = useState<number>(Date.now());
   const hideTimeoutRef = useRef<NodeJS.Timeout>();
 
   const clearHideTimeout = () => {
@@ -46,19 +48,10 @@ const AudioControls = ({
   const handleVolumeChange = (values: number[]) => {
     const newVolume = values[0] / 100;
     onVolumeChange(newVolume);
-    setLastInteraction(Date.now());
-    clearHideTimeout(); // Ensure the slider stays visible during volume changes
+    clearHideTimeout();
     
-    // Only start the hide timer if we're not currently dragging
     if (!isDragging) {
       handleHideSlider();
-    }
-    
-    // Handle mute state without affecting slider visibility
-    if (newVolume === 0 && !isMuted) {
-      onMuteToggle();
-    } else if (newVolume > 0 && isMuted) {
-      onMuteToggle();
     }
   };
 
@@ -84,7 +77,6 @@ const AudioControls = ({
           size="icon"
           onClick={() => {
             setShowVolumeSlider(prev => !prev);
-            setLastInteraction(Date.now());
             if (!showVolumeSlider) {
               handleHideSlider();
             }
@@ -104,10 +96,7 @@ const AudioControls = ({
               ? "opacity-100 translate-y-0" 
               : "opacity-0 translate-y-2 pointer-events-none"
           )}
-          onMouseEnter={() => {
-            clearHideTimeout();
-            setShowVolumeSlider(true);
-          }}
+          onMouseEnter={clearHideTimeout}
           onMouseLeave={() => {
             if (!isDragging) {
               handleHideSlider();

@@ -1,28 +1,47 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef, useEffect } from 'react';
+import { useAudioProgress } from '@/hooks/useAudioProgress';
+import { useAudioVolume } from '@/hooks/useAudioVolume';
+import { useAudioPlayback } from '@/hooks/useAudioPlayback';
+import AudioControls from './audio/AudioControls';
+import AudioProgress from './audio/AudioProgress';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
-import AudioControls from "./audio/AudioControls";
-import AudioProgress from "./audio/AudioProgress";
-import { getMimeType } from "@/utils/audio";
 
 interface AudioPlayerProps {
   audioUrl: string;
 }
 
 const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(1);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [totalDuration, setTotalDuration] = useState<number | null>(null);
-  const [hasEnded, setHasEnded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
-  const animationFrameRef = useRef<number>();
+
+  const { isPlaying, hasEnded, togglePlay } = useAudioPlayback({
+    audioRef,
+    onPlaybackEnd: () => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+      }
+    }
+  });
+
+  const {
+    volume,
+    isMuted,
+    showVolumeSlider,
+    setShowVolumeSlider,
+    handleVolumeChange,
+    toggleMute
+  } = useAudioVolume({ audioRef });
+
+  const {
+    progress,
+    currentTime,
+    duration,
+    setDuration,
+    handleProgressChange
+  } = useAudioProgress({ audioRef, isPlaying, totalDuration });
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -89,20 +108,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.muted = isMuted;
 
-        // Add event listener for loadedmetadata before loading
         const handleLoadedMetadata = () => {
           console.log('Audio metadata loaded. Duration:', audio.duration);
           if (isFinite(audio.duration)) {
             setDuration(audio.duration);
-            setCurrentTime(0);
-            setProgress(0);
           }
         };
 
         audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        
-        // Load the audio
-        console.log('Loading audio...');
         audio.load();
         
         await new Promise((resolve, reject) => {
@@ -135,9 +148,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     initializeAudio();
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -148,104 +158,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
   }, [audioUrl, isMuted]);
-
-  useEffect(() => {
-    if (!audioRef.current) return;
-
-    const audio = audioRef.current;
-    const totalDur = totalDuration || duration;
-
-    const updateProgress = () => {
-      if (!audio || !isFinite(totalDur)) return;
-      
-      const newCurrentTime = audio.currentTime;
-      const newProgress = (newCurrentTime / totalDur) * 100;
-      
-      setCurrentTime(newCurrentTime);
-      setProgress(newProgress);
-
-      if (isPlaying) {
-        animationFrameRef.current = requestAnimationFrame(updateProgress);
-      }
-    };
-
-    if (isPlaying) {
-      updateProgress();
-    }
-
-    const handleTimeUpdate = () => {
-      const newTime = audio.currentTime;
-      if (isFinite(totalDur) && totalDur > 0) {
-        const newProgress = (newTime / totalDur) * 100;
-        setCurrentTime(newTime);
-        setProgress(newProgress);
-      }
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setProgress(0);
-      setCurrentTime(0);
-      setHasEnded(true);
-      audio.currentTime = 0;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-    
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-    };
-  }, [isPlaying, duration, totalDuration]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-    }
-  }, [volume]);
-
-  const togglePlay = async () => {
-    if (!audioRef.current) {
-      console.error('No audio element available');
-      setError('Audio not ready');
-      return;
-    }
-
-    try {
-      if (isPlaying) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        console.log('Attempting to play audio. Current duration:', audioRef.current.duration);
-        setHasEnded(false);
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-          setIsPlaying(true);
-        }
-      }
-    } catch (error) {
-      console.error('Error toggling play state:', error);
-      setError(`Error playing audio: ${error.message}`);
-      setIsPlaying(false);
-    }
-  };
-
-  const handleVolumeChange = (newVolume: number) => {
-    setVolume(newVolume);
-    if (newVolume === 0) {
-      setIsMuted(true);
-    } else if (isMuted) {
-      setIsMuted(false);
-    }
-  };
 
   if (isLoading) {
     return <div className="text-muted-foreground">Loading audio...</div>;
@@ -267,23 +179,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           isMuted={isMuted}
           volume={volume}
           onPlayPause={togglePlay}
-          onMuteToggle={() => setIsMuted(!isMuted)}
+          onMuteToggle={toggleMute}
           onVolumeChange={handleVolumeChange}
           hasEnded={hasEnded}
+          showVolumeSlider={showVolumeSlider}
+          setShowVolumeSlider={setShowVolumeSlider}
         />
         <AudioProgress
           progress={progress}
           duration={totalDuration || duration}
           currentTime={currentTime}
-          onProgressChange={(newProgress) => {
-            if (audioRef.current && (duration || totalDuration)) {
-              const totalDur = totalDuration || duration;
-              const newTime = (newProgress[0] / 100) * totalDur;
-              audioRef.current.currentTime = newTime;
-              setProgress(newProgress[0]);
-              setCurrentTime(newTime);
-            }
-          }}
+          onProgressChange={handleProgressChange}
         />
       </div>
     </div>
