@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
@@ -22,6 +22,19 @@ const AudioControls = ({
   onVolumeChange 
 }: AudioControlsProps) => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const handleHideSlider = () => {
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowVolumeSlider(false);
+    }, 2000);
+  };
+
+  const clearHideTimeout = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+  };
 
   return (
     <div className="relative flex items-center gap-2">
@@ -44,11 +57,7 @@ const AudioControls = ({
           onClick={() => {
             setShowVolumeSlider(prev => !prev);
           }}
-          onMouseLeave={() => {
-            setTimeout(() => {
-              setShowVolumeSlider(false);
-            }, 2000);
-          }}
+          onMouseLeave={handleHideSlider}
           className="hover:bg-primary/20"
         >
           <div onClick={(e) => {
@@ -70,11 +79,11 @@ const AudioControls = ({
               : "opacity-0 translate-y-2 pointer-events-none"
           )}
           onMouseEnter={() => {
-            clearTimeout();
+            clearHideTimeout();
             setShowVolumeSlider(true);
           }}
           onMouseLeave={() => {
-            setTimeout(() => {
+            hideTimeoutRef.current = setTimeout(() => {
               setShowVolumeSlider(false);
             }, 1000);
           }}
