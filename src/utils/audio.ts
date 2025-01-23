@@ -6,6 +6,8 @@ export const formatTime = (seconds: number): string => {
 
 export const getMimeType = (filename: string): string => {
   const extension = filename.split('.').pop()?.toLowerCase();
+  console.log('Detecting MIME type for extension:', extension);
+  
   switch (extension) {
     case 'mp3':
       return 'audio/mpeg';

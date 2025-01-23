@@ -41,7 +41,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        console.log('Downloading audio file:', filename);
+        console.log('Starting audio download for:', filename);
         
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
@@ -67,6 +67,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         const audioBlob = new Blob([audioData], { type: mimeType });
         console.log('Created audio blob, size:', audioBlob.size);
         
+        // Test if the blob is valid
+        const testReader = new FileReader();
+        testReader.onload = () => {
+          console.log('Blob content test successful, data size:', testReader.result?.toString().length);
+        };
+        testReader.onerror = () => {
+          console.error('Error reading blob:', testReader.error);
+          setError('Error validating audio data');
+        };
+        testReader.readAsArrayBuffer(audioBlob);
+        
         const newBlobUrl = URL.createObjectURL(audioBlob);
         console.log('Created blob URL:', newBlobUrl);
         
@@ -79,6 +90,21 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           audioRef.current.src = newBlobUrl;
           audioRef.current.load();
           console.log('Audio element loaded with new source');
+          
+          // Test audio playback capability
+          const playTest = audioRef.current.play();
+          if (playTest) {
+            playTest
+              .then(() => {
+                console.log('Audio playback test successful');
+                audioRef.current?.pause();
+                audioRef.current!.currentTime = 0;
+              })
+              .catch((e) => {
+                console.error('Audio playback test failed:', e);
+                setError(`Playback error: ${e.message}`);
+              });
+          }
         }
 
       } catch (error) {
@@ -99,6 +125,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
+        audioRef.current.load();
       }
     };
   }, [audioUrl]);
@@ -111,11 +138,20 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const handleCanPlay = () => {
       console.log('Audio can play event triggered');
       setError(null);
-      if (audio.duration) setDuration(audio.duration);
+      if (audio.duration) {
+        console.log('Audio duration:', audio.duration);
+        setDuration(audio.duration);
+      }
     };
 
     const handleLoadedMetadata = () => {
-      console.log('Audio metadata loaded, duration:', audio.duration);
+      console.log('Audio metadata loaded:', {
+        duration: audio.duration,
+        readyState: audio.readyState,
+        networkState: audio.networkState,
+        paused: audio.paused,
+        currentSrc: audio.currentSrc
+      });
       setDuration(audio.duration);
       setError(null);
     };
@@ -123,7 +159,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const handleError = () => {
       const errorMessage = audio.error?.message || 'Unknown error';
       const errorCode = audio.error?.code || 'No error code';
-      console.error('Audio error:', errorMessage, 'Code:', errorCode);
+      console.error('Audio error:', {
+        message: errorMessage,
+        code: errorCode,
+        networkState: audio.networkState,
+        readyState: audio.readyState,
+        currentSrc: audio.currentSrc
+      });
       setError(`Playback error: ${errorMessage} (Code: ${errorCode})`);
       setIsPlaying(false);
     };
