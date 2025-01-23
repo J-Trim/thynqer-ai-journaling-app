@@ -18,6 +18,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     const fetchAndSetupAudio = async () => {
@@ -33,7 +34,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         console.log('Setting up audio for URL:', audioUrl);
         
-        // Get the audio file directly from storage
+        // Get the audio file directly from storage using download
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
           .download(audioUrl);
@@ -50,16 +51,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Create a blob URL from the audio data
+        // Create a blob URL from the audio data with explicit MIME type
         const audioBlob = new Blob([audioData], { type: 'audio/webm' });
-        const blobUrl = URL.createObjectURL(audioBlob);
+        const newBlobUrl = URL.createObjectURL(audioBlob);
+        blobUrlRef.current = newBlobUrl;
 
         if (audioRef.current) {
-          audioRef.current.src = blobUrl;
+          audioRef.current.src = newBlobUrl;
           audioRef.current.load();
         }
 
-        console.log('Audio blob URL created:', blobUrl);
+        console.log('Audio blob URL created:', newBlobUrl);
       } catch (error) {
         console.error('Error setting up audio:', error);
         setError('Error setting up audio player');
@@ -72,8 +74,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     // Cleanup function
     return () => {
-      if (audioRef.current?.src) {
-        URL.revokeObjectURL(audioRef.current.src);
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
       }
     };
   }, [audioUrl]);
@@ -114,20 +121,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setProgress(0);
     };
 
-    // Add event listeners
     audio.addEventListener('canplay', handleCanPlay);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('error', handleError);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
 
-    // Set initial audio properties
     audio.volume = volume;
     audio.muted = isMuted;
     
     return () => {
-      // Cleanup
-      audio.pause();
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('error', handleError);
