@@ -12,6 +12,7 @@ interface AudioPlayerProps {
 const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -203,6 +204,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
   }, [isPlaying, duration, totalDuration]);
 
+  // Effect to handle volume changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
+  }, [volume, isMuted]);
+
   const togglePlay = async () => {
     if (!audioRef.current) {
       console.error('No audio element available');
@@ -229,6 +237,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     }
   };
 
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (isMuted && newVolume > 0) {
+      setIsMuted(false);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-muted-foreground">Loading audio...</div>;
   }
@@ -247,13 +262,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         <AudioControls
           isPlaying={isPlaying}
           isMuted={isMuted}
+          volume={volume}
           onPlayPause={togglePlay}
-          onMuteToggle={() => {
-            if (audioRef.current) {
-              audioRef.current.muted = !isMuted;
-              setIsMuted(!isMuted);
-            }
-          }}
+          onMuteToggle={() => setIsMuted(!isMuted)}
+          onVolumeChange={handleVolumeChange}
         />
         <AudioProgress
           progress={progress}
