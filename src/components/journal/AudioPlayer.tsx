@@ -44,7 +44,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         console.log('Starting audio download for:', filename);
         
-        // Download the audio file using arrayBuffer to ensure complete file loading
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
           .download(filename);
@@ -62,10 +61,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         }
 
         const mimeType = getMimeType(filename);
-        console.log('Using MIME type:', mimeType);
-        
         const audioBlob = new Blob([audioData], { type: mimeType });
-        console.log('Created audio blob, size:', audioBlob.size, 'bytes');
+        console.log('Created audio blob with type:', mimeType);
 
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
@@ -75,13 +72,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         blobUrlRef.current = newBlobUrl;
         console.log('Created blob URL:', newBlobUrl);
 
-        // Create new audio element
-        const audio = new Audio();
-        audioRef.current = audio;
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
+        }
 
-        // Set up event listeners before setting the source
+        const audio = audioRef.current;
+        audio.src = newBlobUrl;
+        audio.volume = volume;
+        audio.muted = isMuted;
+
+        // Add event listener for loadedmetadata before loading
         const handleLoadedMetadata = () => {
-          console.log('Metadata loaded - Duration:', audio.duration);
+          console.log('Audio metadata loaded. Duration:', audio.duration);
           if (isFinite(audio.duration)) {
             setDuration(audio.duration);
             setCurrentTime(0);
@@ -89,30 +91,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           }
         };
 
-        const handleDurationChange = () => {
-          console.log('Duration changed - New duration:', audio.duration);
-          if (isFinite(audio.duration)) {
-            setDuration(audio.duration);
-          }
-        };
-
         audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.addEventListener('durationchange', handleDurationChange);
-
-        // Configure audio properties
-        audio.preload = 'metadata';
-        audio.volume = volume;
-        audio.muted = isMuted;
-
-        // Set the source and load the audio
-        audio.src = newBlobUrl;
-        console.log('Loading audio file...');
-        await audio.load();
-
-        // Wait for the audio to be ready
+        
+        // Load the audio
+        console.log('Loading audio...');
+        audio.load();
+        
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
-            console.log('Audio can play - Final duration:', audio.duration);
+            console.log('Audio can play. Duration:', audio.duration);
             audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
           };
@@ -165,7 +152,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const newCurrentTime = audio.currentTime;
       const newDuration = audio.duration || 0;
       
-      if (isFinite(newDuration) && newDuration > 0) {
+      if (newDuration > 0) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
@@ -189,6 +176,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+      setProgress((audio.currentTime / audio.duration) * 100);
+      updateProgress();
+    };
+
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -199,9 +193,26 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
+    const handleTimeUpdate = () => {
+      const newTime = audio.currentTime;
+      const newDuration = audio.duration || 0;
+      if (newDuration > 0) {
+        const newProgress = (newTime / newDuration) * 100;
+        setCurrentTime(newTime);
+        setProgress(newProgress);
+      }
+    };
+
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    
+    // Initial progress update if metadata is already loaded
+    if (audio.readyState >= 1) {
+      handleLoadedMetadata();
+    }
     
     return () => {
       if (animationFrameRef.current) {
@@ -209,7 +220,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [isPlaying]);
 
