@@ -17,6 +17,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [totalDuration, setTotalDuration] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
@@ -61,6 +62,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         const mimeType = getMimeType(filename);
         const audioBlob = new Blob([audioData], { type: mimeType });
         console.log('Created audio blob with type:', mimeType);
+
+        // Calculate duration using Web Audio API
+        const audioContext = new AudioContext();
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const calculatedDuration = audioBuffer.duration;
+        setTotalDuration(calculatedDuration);
+        console.log('Calculated audio duration:', calculatedDuration);
 
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
@@ -277,7 +286,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         />
         <AudioProgress
           progress={progress}
-          duration={duration}
+          duration={totalDuration || duration}
           currentTime={currentTime}
           onProgressChange={(newProgress) => {
             if (audioRef.current && duration) {
