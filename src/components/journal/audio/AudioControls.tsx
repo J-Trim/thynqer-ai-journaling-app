@@ -23,6 +23,7 @@ const AudioControls = ({
 }: AudioControlsProps) => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [lastInteraction, setLastInteraction] = useState<number>(Date.now());
   const hideTimeoutRef = useRef<NodeJS.Timeout>();
 
   const clearHideTimeout = () => {
@@ -33,15 +34,24 @@ const AudioControls = ({
 
   const handleHideSlider = () => {
     if (!isDragging) {
-      hideTimeoutRef.current = setTimeout(() => {
+      const currentTime = Date.now();
+      const timeSinceLastInteraction = currentTime - lastInteraction;
+      
+      if (timeSinceLastInteraction >= 2000) {
         setShowVolumeSlider(false);
-      }, 2000);
+      } else {
+        clearHideTimeout();
+        hideTimeoutRef.current = setTimeout(() => {
+          handleHideSlider();
+        }, 2000 - timeSinceLastInteraction);
+      }
     }
   };
 
   const handleVolumeChange = (values: number[]) => {
     const newVolume = values[0] / 100;
     onVolumeChange(newVolume);
+    setLastInteraction(Date.now());
     
     // Automatically handle mute state based on volume
     if (newVolume === 0 && !isMuted) {
@@ -71,8 +81,13 @@ const AudioControls = ({
           size="icon"
           onClick={() => {
             setShowVolumeSlider(prev => !prev);
+            setLastInteraction(Date.now());
           }}
-          onMouseLeave={handleHideSlider}
+          onMouseEnter={() => {
+            clearHideTimeout();
+            setShowVolumeSlider(true);
+            setLastInteraction(Date.now());
+          }}
           className="hover:bg-primary/20"
         >
           {isMuted ? (
@@ -91,6 +106,7 @@ const AudioControls = ({
           onMouseEnter={() => {
             clearHideTimeout();
             setShowVolumeSlider(true);
+            setLastInteraction(Date.now());
           }}
           onMouseLeave={() => {
             if (!isDragging) {
@@ -107,6 +123,7 @@ const AudioControls = ({
             onPointerDown={() => {
               clearHideTimeout();
               setIsDragging(true);
+              setLastInteraction(Date.now());
             }}
             onPointerUp={() => {
               setIsDragging(false);
