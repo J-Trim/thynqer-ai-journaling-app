@@ -147,46 +147,38 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
   }, [audioUrl, isMuted]);
 
+  // Separate effect for handling progress updates
   useEffect(() => {
     if (!audioRef.current) return;
 
     const audio = audioRef.current;
+    const totalDur = totalDuration || duration;
 
     const updateProgress = () => {
-      if (!audio) return;
+      if (!audio || !isFinite(totalDur)) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
+      const newProgress = (newCurrentTime / totalDur) * 100;
       
-      if (newDuration > 0) {
-        const newProgress = (newCurrentTime / newDuration) * 100;
-        setCurrentTime(newCurrentTime);
-        setProgress(newProgress);
-        setDuration(newDuration);
-      }
+      setCurrentTime(newCurrentTime);
+      setProgress(newProgress);
 
       if (isPlaying) {
         animationFrameRef.current = requestAnimationFrame(updateProgress);
       }
     };
 
-    const handlePlay = () => {
-      setIsPlaying(true);
+    if (isPlaying) {
       updateProgress();
-    };
+    }
 
-    const handlePause = () => {
-      setIsPlaying(false);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+    const handleTimeUpdate = () => {
+      const newTime = audio.currentTime;
+      if (isFinite(totalDur) && totalDur > 0) {
+        const newProgress = (newTime / totalDur) * 100;
+        setCurrentTime(newTime);
+        setProgress(newProgress);
       }
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
-      updateProgress();
     };
 
     const handleEnded = () => {
@@ -199,38 +191,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleTimeUpdate = () => {
-      const newTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
-      if (newDuration > 0) {
-        const newProgress = (newTime / newDuration) * 100;
-        setCurrentTime(newTime);
-        setProgress(newProgress);
-      }
-    };
-
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    
-    // Initial progress update if metadata is already loaded
-    if (audio.readyState >= 1) {
-      handleLoadedMetadata();
-    }
+    audio.addEventListener('ended', handleEnded);
     
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
     };
-  }, [isPlaying]);
+  }, [isPlaying, duration, totalDuration]);
 
   const togglePlay = async () => {
     if (!audioRef.current) {
