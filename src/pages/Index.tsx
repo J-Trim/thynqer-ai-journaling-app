@@ -54,7 +54,7 @@ const Index = () => {
         throw error;
       }
 
-      console.log('Fetched entries:', data);
+      console.log('Retrieved entries:', data);
       return data;
     },
     retry: 1,
