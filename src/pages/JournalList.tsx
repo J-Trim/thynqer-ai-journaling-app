@@ -32,31 +32,47 @@ const JournalList = () => {
   const { data: entries, isLoading } = useQuery({
     queryKey: ['journal-entries', selectedTags],
     queryFn: async () => {
-      console.log('Fetching journal entries...');
-      let query = supabase
-        .from('journal_entries')
-        .select('*, entry_tags!inner(tag_id)')
-        .order('created_at', { ascending: false });
+      try {
+        console.log('Starting journal entries fetch in JournalList...');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.log('No session found during fetch in JournalList');
+          throw new Error('Not authenticated');
+        }
 
-      if (selectedTags.length > 0) {
-        query = query.in('entry_tags.tag_id', selectedTags);
-      }
+        console.log('Fetching entries for user:', session.user.id);
+        let query = supabase
+          .from('journal_entries')
+          .select('*, entry_tags!inner(tag_id)')
+          .eq('user_id', session.user.id)
+          .order('created_at', { ascending: false });
 
-      const { data: entries, error } = await query;
+        if (selectedTags.length > 0) {
+          query = query.in('entry_tags.tag_id', selectedTags);
+        }
 
-      if (error) {
-        console.error('Error fetching entries:', error);
+        const { data: entries, error } = await query;
+
+        if (error) {
+          console.error('Error fetching entries:', error);
+          throw error;
+        }
+
+        // Remove any potential duplicates by using Set with unique IDs
+        const uniqueEntries = Array.from(
+          new Map(entries?.map(entry => [entry.id, entry])).values()
+        );
+
+        console.log('Fetched unique entries:', uniqueEntries);
+        return uniqueEntries;
+      } catch (error) {
+        console.error('Error in journal entries query:', error);
         throw error;
       }
-
-      // Remove any potential duplicates by using Set with unique IDs
-      const uniqueEntries = Array.from(
-        new Map(entries?.map(entry => [entry.id, entry])).values()
-      );
-
-      console.log('Fetched unique entries:', uniqueEntries);
-      return uniqueEntries;
-    }
+    },
+    retry: 1,
+    refetchOnWindowFocus: false
   });
 
   useEffect(() => {
