@@ -14,6 +14,7 @@ import TagSelector from "./journal/TagSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
@@ -39,6 +40,7 @@ const JournalEntryForm = () => {
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const [audioPublicUrl, setAudioPublicUrl] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
 
   // Fetch existing tags for this entry
   const { data: entryTags } = useQuery({
@@ -201,7 +203,16 @@ const JournalEntryForm = () => {
             selectedTags={selectedTags}
             onTagToggle={handleTagToggle}
           />
-          {audioPublicUrl && (
+          {audioUrl && !showAudioPlayer && (
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAudioPlayer(true)}
+              className="w-full"
+            >
+              Load Audio Player
+            </Button>
+          )}
+          {audioPublicUrl && showAudioPlayer && (
             <AudioPlayer audioUrl={audioPublicUrl} />
           )}
           {canRecord && (
