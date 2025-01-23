@@ -20,7 +20,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
-  const progressIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -116,9 +115,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     initializeAudio();
 
     return () => {
-      if (progressIntervalRef.current) {
-        window.clearInterval(progressIntervalRef.current);
-      }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -148,7 +144,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleTimeUpdate = () => {
-      updateProgress();
+      requestAnimationFrame(updateProgress);
     };
 
     const handlePlay = () => {
@@ -177,7 +173,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.currentTime = 0;
     };
 
-    // Set up event listeners
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
@@ -185,7 +180,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('ended', handleEnded);
     
     return () => {
-      // Clean up event listeners
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
