@@ -57,91 +57,116 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     fetchPublicUrl();
   }, [audioUrl]);
 
+  // Initialize audio element and attach event listeners
   useEffect(() => {
-    if (audioRef.current && publicUrl) {
-      const audio = audioRef.current;
+    if (!audioRef.current || !publicUrl) return;
 
-      // Initialize audio element
-      audio.volume = volume;
-      audio.muted = isMuted;
-      
-      // Set source and load audio
-      audio.src = publicUrl;
-      audio.load();
-      
-      const handlePlay = () => {
-        console.log('Audio play event triggered');
-        setIsPlaying(true);
-      };
-      
-      const handlePause = () => {
-        console.log('Audio pause event triggered');
-        setIsPlaying(false);
-      };
-      
-      const handleEnded = () => {
-        console.log('Audio playback ended');
-        setIsPlaying(false);
-        setProgress(0);
-      };
-      
-      const handleError = (event: Event) => {
-        const audioError = (event.target as HTMLAudioElement).error;
-        console.error('Audio playback error:', audioError?.message || 'Unknown error');
-        setError(`Error playing audio: ${audioError?.message || 'Format not supported'}`);
-        setIsPlaying(false);
-      };
+    const audio = audioRef.current;
+    let isAudioAttached = false;
 
-      const handleTimeUpdate = () => {
-        if (audio.duration) {
-          setProgress((audio.currentTime / audio.duration) * 100);
-        }
-      };
+    const initializeAudio = () => {
+      if (!isAudioAttached) {
+        audio.volume = volume;
+        audio.muted = isMuted;
+        audio.preload = "metadata";
+        
+        console.log('Initializing audio with URL:', publicUrl);
+        audio.src = publicUrl;
+        audio.load();
+        isAudioAttached = true;
+      }
+    };
 
-      const handleLoadedMetadata = () => {
-        console.log('Audio metadata loaded, duration:', audio.duration);
-        setDuration(audio.duration);
-        setError(null);
-      };
+    const handleCanPlay = () => {
+      console.log('Audio can play event');
+      setError(null);
+    };
 
-      // Add event listeners
-      audio.addEventListener('play', handlePlay);
-      audio.addEventListener('pause', handlePause);
-      audio.addEventListener('ended', handleEnded);
-      audio.addEventListener('error', handleError);
-      audio.addEventListener('timeupdate', handleTimeUpdate);
-      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    const handlePlay = () => {
+      console.log('Audio play event triggered');
+      setIsPlaying(true);
+    };
+    
+    const handlePause = () => {
+      console.log('Audio pause event triggered');
+      setIsPlaying(false);
+    };
+    
+    const handleEnded = () => {
+      console.log('Audio playback ended');
+      setIsPlaying(false);
+      setProgress(0);
+    };
+    
+    const handleError = (event: Event) => {
+      const audioError = (event.target as HTMLAudioElement).error;
+      console.error('Audio playback error:', audioError?.message || 'Unknown error');
+      setError(`Error playing audio: ${audioError?.message || 'Format not supported'}`);
+      setIsPlaying(false);
+    };
 
-      return () => {
-        // Cleanup
+    const handleTimeUpdate = () => {
+      if (audio.duration) {
+        setProgress((audio.currentTime / audio.duration) * 100);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      console.log('Audio metadata loaded, duration:', audio.duration);
+      setDuration(audio.duration);
+      setError(null);
+    };
+
+    // Add event listeners
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+
+    // Initialize audio
+    initializeAudio();
+
+    return () => {
+      // Cleanup
+      if (audio) {
         audio.pause();
-        audio.src = '';
+        audio.removeAttribute('src');
+        audio.load();
         
         // Remove event listeners
+        audio.removeEventListener('canplay', handleCanPlay);
         audio.removeEventListener('play', handlePlay);
         audio.removeEventListener('pause', handlePause);
         audio.removeEventListener('ended', handleEnded);
         audio.removeEventListener('error', handleError);
         audio.removeEventListener('timeupdate', handleTimeUpdate);
         audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      };
-    }
+      }
+    };
   }, [publicUrl, volume, isMuted]);
 
   const togglePlay = async () => {
-    if (audioRef.current) {
-      try {
-        if (isPlaying) {
-          console.log('Pausing audio...');
-          audioRef.current.pause();
-        } else {
-          console.log('Playing audio...');
-          await audioRef.current.play();
+    if (!audioRef.current) return;
+
+    try {
+      if (isPlaying) {
+        console.log('Pausing audio...');
+        audioRef.current.pause();
+      } else {
+        console.log('Playing audio...');
+        // Reset src if needed
+        if (!audioRef.current.src && publicUrl) {
+          audioRef.current.src = publicUrl;
+          audioRef.current.load();
         }
-      } catch (error) {
-        console.error('Error toggling play state:', error);
-        setError('Error playing audio: Format may not be supported');
+        await audioRef.current.play();
       }
+    } catch (error) {
+      console.error('Error toggling play state:', error);
+      setError('Error playing audio: Format may not be supported');
     }
   };
 
