@@ -80,9 +80,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
-        
+
         // Create a promise to wait for metadata to load
-        const metadataLoaded = new Promise((resolve, reject) => {
+        await new Promise<void>((resolve, reject) => {
           const handleLoadedMetadata = () => {
             console.log('Audio metadata loaded. Duration:', audio.duration);
             if (isFinite(audio.duration)) {
@@ -90,26 +90,24 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               setCurrentTime(0);
               setProgress(0);
               audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-              resolve(audio.duration);
+              audio.removeEventListener('error', handleError);
+              resolve();
             }
           };
 
           const handleError = (e: Event) => {
             console.error('Error loading audio metadata:', e);
+            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
             audio.removeEventListener('error', handleError);
             reject(new Error('Failed to load audio metadata'));
           };
 
           audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('error', handleError);
+          audio.load();
         });
 
-        // Load the audio and wait for metadata
-        console.log('Loading audio and waiting for metadata...');
-        audio.load();
-        await metadataLoaded;
-        console.log('Metadata loaded successfully. Duration:', audio.duration);
-
+        console.log('Audio initialized successfully');
         setError(null);
         setIsLoading(false);
         
@@ -234,16 +232,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-muted-foreground">Loading audio...</div>;
-  }
-
   if (error) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
+  }
+
+  if (isLoading) {
+    return <div className="text-muted-foreground">Loading audio...</div>;
   }
 
   return (
