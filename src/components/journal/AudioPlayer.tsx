@@ -149,7 +149,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
   }, [audioUrl, isMuted]);
 
-  // Separate effect for handling progress updates
   useEffect(() => {
     if (!audioRef.current) return;
 
@@ -206,12 +205,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
   }, [isPlaying, duration, totalDuration]);
 
-  // Effect to handle volume changes
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
+      audioRef.current.volume = volume;
     }
-  }, [volume, isMuted]);
+  }, [volume]);
 
   const togglePlay = async () => {
     if (!audioRef.current) {
@@ -242,7 +240,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
-    if (isMuted && newVolume > 0) {
+    if (newVolume === 0) {
+      setIsMuted(true);
+    } else if (isMuted) {
       setIsMuted(false);
     }
   };
