@@ -20,7 +20,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Fetch public URL when audioUrl changes
   useEffect(() => {
     const fetchPublicUrl = async () => {
       try {
@@ -34,18 +33,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         }
 
         console.log('Fetching public URL for:', audioUrl);
-        const { data } = supabase.storage
+        const { data: publicUrlData } = supabase.storage
           .from('audio_files')
           .getPublicUrl(audioUrl);
-        
-        if (!data?.publicUrl) {
+
+        if (!publicUrlData?.publicUrl) {
           console.error('Failed to get public URL');
           setError('Failed to get public URL');
           return;
         }
 
-        console.log('Public URL:', data.publicUrl);
-        setPublicUrl(data.publicUrl);
+        console.log('Public URL:', publicUrlData.publicUrl);
+        setPublicUrl(publicUrlData.publicUrl);
       } catch (error) {
         console.error('Error fetching audio URL:', error);
         setError('Error fetching audio URL');
@@ -57,51 +56,27 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     fetchPublicUrl();
   }, [audioUrl]);
 
-  // Initialize audio element and attach event listeners
   useEffect(() => {
     if (!audioRef.current || !publicUrl) return;
 
     const audio = audioRef.current;
-    let isAudioAttached = false;
-
-    const initializeAudio = () => {
-      if (!isAudioAttached) {
-        audio.volume = volume;
-        audio.muted = isMuted;
-        audio.preload = "metadata";
-        
-        console.log('Initializing audio with URL:', publicUrl);
-        audio.src = publicUrl;
-        audio.load();
-        isAudioAttached = true;
-      }
-    };
 
     const handleCanPlay = () => {
-      console.log('Audio can play event');
+      console.log('Audio can play');
+      setError(null);
+      if (audio.duration) setDuration(audio.duration);
+    };
+
+    const handleLoadedMetadata = () => {
+      console.log('Audio metadata loaded, duration:', audio.duration);
+      setDuration(audio.duration);
       setError(null);
     };
 
-    const handlePlay = () => {
-      console.log('Audio play event triggered');
-      setIsPlaying(true);
-    };
-    
-    const handlePause = () => {
-      console.log('Audio pause event triggered');
-      setIsPlaying(false);
-    };
-    
-    const handleEnded = () => {
-      console.log('Audio playback ended');
-      setIsPlaying(false);
-      setProgress(0);
-    };
-    
-    const handleError = (event: Event) => {
-      const audioError = (event.target as HTMLAudioElement).error;
-      console.error('Audio playback error:', audioError?.message || 'Unknown error');
-      setError(`Error playing audio: ${audioError?.message || 'Format not supported'}`);
+    const handleError = () => {
+      const errorMessage = audio.error?.message || 'Unknown error';
+      console.error('Audio error:', errorMessage);
+      setError(`Error playing audio: ${errorMessage}`);
       setIsPlaying(false);
     };
 
@@ -111,40 +86,37 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleLoadedMetadata = () => {
-      console.log('Audio metadata loaded, duration:', audio.duration);
-      setDuration(audio.duration);
-      setError(null);
+    const handleEnded = () => {
+      console.log('Audio playback ended');
+      setIsPlaying(false);
+      setProgress(0);
     };
 
     // Add event listeners
     audio.addEventListener('canplay', handleCanPlay);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('error', handleError);
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
 
-    // Initialize audio
-    initializeAudio();
+    // Set initial audio properties
+    audio.volume = volume;
+    audio.muted = isMuted;
+    audio.preload = "metadata";
+    
+    // Set source after event listeners are attached
+    audio.src = publicUrl;
+    audio.load();
 
     return () => {
       // Cleanup
-      if (audio) {
-        audio.pause();
-        audio.removeAttribute('src');
-        audio.load();
-        
-        // Remove event listeners
-        audio.removeEventListener('canplay', handleCanPlay);
-        audio.removeEventListener('play', handlePlay);
-        audio.removeEventListener('pause', handlePause);
-        audio.removeEventListener('ended', handleEnded);
-        audio.removeEventListener('error', handleError);
-        audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      }
+      audio.pause();
+      audio.src = '';
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('error', handleError);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
     };
   }, [publicUrl, volume, isMuted]);
 
@@ -153,11 +125,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     try {
       if (isPlaying) {
-        console.log('Pausing audio...');
         audioRef.current.pause();
       } else {
-        console.log('Playing audio...');
-        // Reset src if needed
         if (!audioRef.current.src && publicUrl) {
           audioRef.current.src = publicUrl;
           audioRef.current.load();
