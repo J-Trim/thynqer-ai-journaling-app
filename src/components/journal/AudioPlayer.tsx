@@ -62,6 +62,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         const mimeType = getMimeType(filename);
         const audioBlob = new Blob([audioData], { type: mimeType });
+        console.log('Created audio blob with type:', mimeType);
 
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
@@ -69,6 +70,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         const newBlobUrl = URL.createObjectURL(audioBlob);
         blobUrlRef.current = newBlobUrl;
+        console.log('Created blob URL:', newBlobUrl);
 
         if (!audioRef.current) {
           audioRef.current = new Audio();
@@ -78,21 +80,38 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
+
+        // Add event listener for loadedmetadata before loading
+        const handleLoadedMetadata = () => {
+          console.log('Audio metadata loaded. Duration:', audio.duration);
+          if (isFinite(audio.duration)) {
+            setDuration(audio.duration);
+            setCurrentTime(0);
+            setProgress(0);
+          }
+        };
+
+        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+        
+        // Load the audio
+        console.log('Loading audio...');
+        audio.load();
         
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
+            console.log('Audio can play. Duration:', audio.duration);
             audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
           };
 
           const handleError = (e: Event) => {
+            console.error('Error loading audio:', e);
             audio.removeEventListener('error', handleError);
             reject(new Error('Failed to load audio'));
           };
 
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
-          audio.load();
         });
 
         setError(null);
@@ -219,6 +238,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
+        console.log('Attempting to play audio. Current duration:', audioRef.current.duration);
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
