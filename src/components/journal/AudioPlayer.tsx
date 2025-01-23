@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,14 +13,27 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const togglePlay = () => {
+  useEffect(() => {
     if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+      // Reset audio element when URL changes
+      audioRef.current.pause();
+      setIsPlaying(false);
+      audioRef.current.load();
+    }
+  }, [audioUrl]);
+
+  const togglePlay = async () => {
+    if (audioRef.current) {
+      try {
+        if (isPlaying) {
+          await audioRef.current.pause();
+        } else {
+          await audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+      } catch (error) {
+        console.error('Error playing audio:', error);
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -48,13 +61,18 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     setIsPlaying(false);
   };
 
+  const handleError = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+    console.error('Audio playback error:', e);
+    setIsPlaying(false);
+  };
+
   return (
     <div className="p-4 bg-secondary rounded-lg space-y-4">
       <audio
         ref={audioRef}
         src={audioUrl}
         onEnded={handleEnded}
-        key={audioUrl}
+        onError={handleError}
       />
       <div className="flex items-center gap-4">
         <Button
