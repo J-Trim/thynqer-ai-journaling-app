@@ -19,6 +19,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [totalDuration, setTotalDuration] = useState<number | null>(null);
+  const [hasEnded, setHasEnded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
@@ -186,6 +187,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
       setProgress(0);
       setCurrentTime(0);
+      setHasEnded(true);
       audio.currentTime = 0;
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -224,6 +226,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setIsPlaying(false);
       } else {
         console.log('Attempting to play audio. Current duration:', audioRef.current.duration);
+        setHasEnded(false);
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
@@ -266,6 +269,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           onPlayPause={togglePlay}
           onMuteToggle={() => setIsMuted(!isMuted)}
           onVolumeChange={handleVolumeChange}
+          hasEnded={hasEnded}
         />
         <AudioProgress
           progress={progress}

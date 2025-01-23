@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Repeat } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ interface AudioControlsProps {
   onPlayPause: () => void;
   onMuteToggle: () => void;
   onVolumeChange: (value: number) => void;
+  hasEnded?: boolean;
 }
 
 const AudioControls = ({ 
@@ -19,7 +20,8 @@ const AudioControls = ({
   volume,
   onPlayPause, 
   onMuteToggle,
-  onVolumeChange 
+  onVolumeChange,
+  hasEnded = false
 }: AudioControlsProps) => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -68,7 +70,9 @@ const AudioControls = ({
         onClick={onPlayPause}
         className="hover:bg-primary/20"
       >
-        {isPlaying ? (
+        {hasEnded ? (
+          <Repeat className="h-6 w-6" />
+        ) : isPlaying ? (
           <Pause className="h-6 w-6" />
         ) : (
           <Play className="h-6 w-6" />
