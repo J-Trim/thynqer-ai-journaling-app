@@ -38,16 +38,19 @@ const AudioControls = ({
       if (!isDragging) {
         setShowVolumeSlider(false);
       }
-    }, 3000); // Changed to 3 seconds
+    }, 3000);
   };
 
   const handleVolumeChange = (values: number[]) => {
     const newVolume = values[0] / 100;
     onVolumeChange(newVolume);
     setLastInteraction(Date.now());
+    clearHideTimeout(); // Ensure the slider stays visible during volume changes
     
-    // Reset the hide timer when volume changes
-    handleHideSlider();
+    // Only start the hide timer if we're not currently dragging
+    if (!isDragging) {
+      handleHideSlider();
+    }
     
     // Automatically handle mute state based on volume
     if (newVolume === 0 && !isMuted) {
