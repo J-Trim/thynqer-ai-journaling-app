@@ -10,6 +10,9 @@ interface AudioProgressProps {
 }
 
 const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: AudioProgressProps) => {
+  // Only show time if we have valid duration
+  const showTime = !isNaN(duration) && isFinite(duration) && duration > 0;
+  
   return (
     <div className="flex-1">
       <div className="mb-2">
@@ -23,7 +26,10 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
         />
       </div>
       <div className="text-xs text-muted-foreground">
-        {`${formatTime(currentTime)} / ${formatTime(duration)}`}
+        {showTime 
+          ? `${formatTime(currentTime)} / ${formatTime(duration)}`
+          : "Loading..."
+        }
       </div>
     </div>
   );
