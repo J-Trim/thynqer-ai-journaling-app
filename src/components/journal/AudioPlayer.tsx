@@ -11,21 +11,23 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (audioRef.current) {
+      const audio = audioRef.current;
+
       // Initialize audio element
-      audioRef.current.volume = volume;
-      audioRef.current.muted = isMuted;
+      audio.volume = volume;
+      audio.muted = isMuted;
       
       // Reset when URL changes
-      audioRef.current.pause();
+      audio.pause();
       setIsPlaying(false);
-      audioRef.current.load();
+      audio.load();
       
-      // Add event listeners
-      const audio = audioRef.current;
       const handlePlay = () => {
         console.log('Audio play event triggered');
         setIsPlaying(true);
@@ -39,6 +41,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const handleEnded = () => {
         console.log('Audio playback ended');
         setIsPlaying(false);
+        setProgress(0);
       };
       
       const handleError = (event: Event) => {
@@ -46,10 +49,23 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setIsPlaying(false);
       };
 
+      const handleTimeUpdate = () => {
+        if (audio.duration) {
+          setProgress((audio.currentTime / audio.duration) * 100);
+        }
+      };
+
+      const handleLoadedMetadata = () => {
+        setDuration(audio.duration);
+      };
+
+      // Add event listeners
       audio.addEventListener('play', handlePlay);
       audio.addEventListener('pause', handlePause);
       audio.addEventListener('ended', handleEnded);
       audio.addEventListener('error', handleError);
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
 
       return () => {
         // Cleanup event listeners
@@ -57,6 +73,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.removeEventListener('pause', handlePause);
         audio.removeEventListener('ended', handleEnded);
         audio.removeEventListener('error', handleError);
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       };
     }
   }, [audioUrl, volume, isMuted]);
@@ -67,7 +85,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         console.log('Attempting to toggle play state...');
         if (isPlaying) {
           console.log('Pausing audio...');
-          await audioRef.current.pause();
+          audioRef.current.pause();
         } else {
           console.log('Playing audio...');
           await audioRef.current.play();
@@ -96,6 +114,21 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         setIsMuted(false);
       }
     }
+  };
+
+  const handleProgressChange = (newProgress: number[]) => {
+    const progressValue = newProgress[0];
+    if (audioRef.current && duration) {
+      const newTime = (progressValue / 100) * duration;
+      audioRef.current.currentTime = newTime;
+      setProgress(progressValue);
+    }
+  };
+
+  const formatTime = (timeInSeconds: number) => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -130,7 +163,24 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
             <Volume2 className="h-6 w-6" />
           )}
         </Button>
-        <div className="flex-1 px-4">
+        <div className="flex-1">
+          <div className="mb-2">
+            <Slider
+              value={[progress]}
+              min={0}
+              max={100}
+              step={0.1}
+              onValueChange={handleProgressChange}
+              className="cursor-pointer"
+            />
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {audioRef.current && (
+              `${formatTime(audioRef.current.currentTime)} / ${formatTime(duration)}`
+            )}
+          </div>
+        </div>
+        <div className="w-24">
           <Slider
             value={[isMuted ? 0 : volume]}
             min={0}
