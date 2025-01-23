@@ -81,32 +81,34 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.volume = volume;
         audio.muted = isMuted;
 
-        // Create a promise that resolves when either canplay or loadedmetadata fires
-        await new Promise((resolve, reject) => {
-          let metadataLoaded = false;
-          let canPlay = false;
+        let loadTimeout: number;
 
-          const checkComplete = () => {
-            if (metadataLoaded && canPlay) {
+        // Create a promise that resolves when metadata is properly loaded
+        await new Promise((resolve, reject) => {
+          const maxWaitTime = 10000; // 10 seconds timeout
+
+          const cleanup = () => {
+            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            audio.removeEventListener('canplaythrough', handleCanPlayThrough);
+            audio.removeEventListener('error', handleError);
+            window.clearTimeout(loadTimeout);
+          };
+
+          const handleLoadedMetadata = () => {
+            console.log('Metadata loaded, duration:', audio.duration);
+            if (audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+              setDuration(audio.duration);
+              setCurrentTime(0);
+              setProgress(0);
               cleanup();
               resolve(true);
             }
           };
 
-          const handleCanPlay = () => {
-            console.log('Audio can play');
-            canPlay = true;
-            checkComplete();
-          };
-
-          const handleLoadedMetadata = () => {
-            console.log('Audio metadata loaded, duration:', audio.duration);
-            if (audio.duration && isFinite(audio.duration)) {
-              metadataLoaded = true;
-              setDuration(audio.duration);
-              setCurrentTime(0);
-              setProgress(0);
-              checkComplete();
+          const handleCanPlayThrough = () => {
+            console.log('Audio can play through');
+            if (audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+              handleLoadedMetadata();
             }
           };
 
@@ -115,23 +117,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
             reject(new Error('Failed to load audio'));
           };
 
-          const cleanup = () => {
-            audio.removeEventListener('canplay', handleCanPlay);
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.removeEventListener('error', handleError);
-          };
-
-          audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+          audio.addEventListener('canplaythrough', handleCanPlayThrough);
           audio.addEventListener('error', handleError);
 
-          // Check if the audio is already loaded
-          if (audio.readyState >= 3) {
-            handleCanPlay();
-          }
-          if (audio.readyState >= 2 && audio.duration && isFinite(audio.duration)) {
-            handleLoadedMetadata();
-          }
+          // Set a timeout to prevent infinite loading
+          loadTimeout = window.setTimeout(() => {
+            cleanup();
+            reject(new Error('Audio loading timeout'));
+          }, maxWaitTime);
 
           // Start loading
           audio.load();
@@ -262,16 +256,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     }
   };
 
-  if (isLoading) {
-    return <div className="text-muted-foreground">Loading audio...</div>;
-  }
-
   if (error) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
+  }
+
+  if (isLoading || !isMetadataLoaded) {
+    return <div className="text-muted-foreground">Loading audio...</div>;
   }
 
   return (
