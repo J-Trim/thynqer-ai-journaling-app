@@ -32,12 +32,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        console.log('Setting up audio for URL:', audioUrl);
+        // Remove any leading slashes or 'audio_files/' prefix from the URL
+        const cleanPath = audioUrl.replace(/^\/|^audio_files\//, '');
+        console.log('Attempting to download audio with cleaned path:', cleanPath);
         
-        // Get the audio file directly from storage using download
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
-          .download(audioUrl);
+          .download(cleanPath);
 
         if (downloadError) {
           console.error('Error downloading audio:', downloadError);
@@ -54,6 +55,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         // Create a blob URL from the audio data with explicit MIME type
         const audioBlob = new Blob([audioData], { type: 'audio/webm' });
         const newBlobUrl = URL.createObjectURL(audioBlob);
+        
+        // Store the blob URL for cleanup
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
         blobUrlRef.current = newBlobUrl;
 
         if (audioRef.current) {
@@ -61,7 +67,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           audioRef.current.load();
         }
 
-        console.log('Audio blob URL created:', newBlobUrl);
+        console.log('Audio blob URL created successfully');
       } catch (error) {
         console.error('Error setting up audio:', error);
         setError('Error setting up audio player');
