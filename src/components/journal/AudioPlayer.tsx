@@ -191,7 +191,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           progress={progress}
           duration={totalDuration || duration}
           currentTime={currentTime}
-          onProgressChange={handleProgressChange}
+          onProgressChange={(values: number[]) => handleProgressChange(values[0])}
         />
       </div>
     </div>
