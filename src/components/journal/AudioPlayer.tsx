@@ -59,10 +59,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Create a blob URL from the audio data
-        const audioBlob = new Blob([audioData], { type: 'audio/webm' });
+        // Create a blob URL from the audio data with explicit MIME type detection
+        const mimeType = filename.toLowerCase().endsWith('.webm') ? 'audio/webm' : 'audio/mpeg';
+        const audioBlob = new Blob([audioData], { type: mimeType });
         const newBlobUrl = URL.createObjectURL(audioBlob);
-        console.log('Audio blob URL created:', newBlobUrl);
+        console.log('Audio blob URL created:', newBlobUrl, 'MIME type:', mimeType);
         
         // Clean up old blob URL if it exists
         if (blobUrlRef.current) {
@@ -70,11 +71,26 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         }
         blobUrlRef.current = newBlobUrl;
 
-        // Set up audio element
+        // Set up audio element with explicit error handling
         if (audioRef.current) {
           audioRef.current.src = newBlobUrl;
           audioRef.current.load();
           console.log('Audio element source set and loaded');
+          
+          // Test audio playback capability
+          const playTestPromise = audioRef.current.play();
+          if (playTestPromise !== undefined) {
+            playTestPromise
+              .then(() => {
+                console.log('Audio playback test successful');
+                audioRef.current?.pause(); // Pause after successful test
+                setIsPlaying(false);
+              })
+              .catch(e => {
+                console.error('Audio playback test failed:', e);
+                setError(`Playback error: ${e.message}`);
+              });
+          }
         }
 
       } catch (error) {
@@ -119,7 +135,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleError = () => {
       const errorMessage = audio.error?.message || 'Unknown error';
-      console.error('Audio error:', errorMessage);
+      console.error('Audio error:', errorMessage, 'Error code:', audio.error?.code);
       setError(`Error playing audio: ${errorMessage}`);
       setIsPlaying(false);
     };
@@ -170,7 +186,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     } catch (error) {
       console.error('Error toggling play state:', error);
-      setError('Error playing audio');
+      setError(`Error playing audio: ${error.message}`);
       setIsPlaying(false);
     }
   };
