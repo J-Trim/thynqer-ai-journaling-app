@@ -36,6 +36,18 @@ const AudioControls = ({
     }
   };
 
+  const handleVolumeChange = (values: number[]) => {
+    const newVolume = values[0] / 100;
+    onVolumeChange(newVolume);
+    
+    // Automatically handle mute state based on volume
+    if (newVolume === 0 && !isMuted) {
+      onMuteToggle();
+    } else if (newVolume > 0 && isMuted) {
+      onMuteToggle();
+    }
+  };
+
   return (
     <div className="relative flex items-center gap-2">
       <Button
@@ -60,16 +72,11 @@ const AudioControls = ({
           onMouseLeave={handleHideSlider}
           className="hover:bg-primary/20"
         >
-          <div onClick={(e) => {
-            e.stopPropagation();
-            onMuteToggle();
-          }}>
-            {isMuted ? (
-              <VolumeX className="h-6 w-6" />
-            ) : (
-              <Volume2 className="h-6 w-6" />
-            )}
-          </div>
+          {isMuted ? (
+            <VolumeX className="h-6 w-6" />
+          ) : (
+            <Volume2 className="h-6 w-6" />
+          )}
         </Button>
         <div 
           className={cn(
@@ -92,9 +99,7 @@ const AudioControls = ({
             defaultValue={[volume * 100]}
             max={100}
             step={1}
-            onValueChange={(values) => {
-              onVolumeChange(values[0] / 100);
-            }}
+            onValueChange={handleVolumeChange}
             className="w-full"
           />
         </div>
