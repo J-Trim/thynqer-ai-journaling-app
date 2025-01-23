@@ -52,7 +52,7 @@ const AudioControls = ({
       handleHideSlider();
     }
     
-    // Automatically handle mute state based on volume
+    // Handle mute state without affecting slider visibility
     if (newVolume === 0 && !isMuted) {
       onMuteToggle();
     } else if (newVolume > 0 && isMuted) {
@@ -87,7 +87,7 @@ const AudioControls = ({
           }}
           className="hover:bg-primary/20"
         >
-          {isMuted ? (
+          {isMuted || volume === 0 ? (
             <VolumeX className="h-6 w-6" />
           ) : (
             <Volume2 className="h-6 w-6" />
