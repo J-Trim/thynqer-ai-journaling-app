@@ -3,7 +3,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import AudioControls from "./audio/AudioControls";
 import AudioProgress from "./audio/AudioProgress";
-import VolumeControl from "./audio/VolumeControl";
 import { getMimeType } from "@/utils/audio";
 
 interface AudioPlayerProps {
@@ -12,7 +11,6 @@ interface AudioPlayerProps {
 
 const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -78,7 +76,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         const audio = audioRef.current;
         audio.src = newBlobUrl;
-        audio.volume = volume;
         audio.muted = isMuted;
 
         // Add event listener for loadedmetadata before loading
@@ -139,7 +136,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audioRef.current = null;
       }
     };
-  }, [audioUrl, volume, isMuted]);
+  }, [audioUrl, isMuted]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -288,22 +285,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               audioRef.current.currentTime = newTime;
               setProgress(newProgress[0]);
               setCurrentTime(newTime);
-            }
-          }}
-        />
-        <VolumeControl
-          volume={volume}
-          isMuted={isMuted}
-          onVolumeChange={(newVolume) => {
-            const volumeValue = newVolume[0];
-            if (audioRef.current) {
-              audioRef.current.volume = volumeValue;
-              setVolume(volumeValue);
-              if (volumeValue === 0) {
-                setIsMuted(true);
-              } else if (isMuted) {
-                setIsMuted(false);
-              }
             }
           }}
         />
