@@ -20,6 +20,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -115,6 +116,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     initializeAudio();
 
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -132,29 +136,36 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const audio = audioRef.current;
 
     const updateProgress = () => {
+      if (!audio) return;
+      
       if (audio.duration) {
         const currentProgress = (audio.currentTime / audio.duration) * 100;
         setProgress(currentProgress);
+        setDuration(audio.duration);
         console.log('Progress update:', { 
           currentTime: audio.currentTime,
           duration: audio.duration,
           progress: currentProgress 
         });
       }
-    };
 
-    const handleTimeUpdate = () => {
-      requestAnimationFrame(updateProgress);
+      if (isPlaying) {
+        animationFrameRef.current = requestAnimationFrame(updateProgress);
+      }
     };
 
     const handlePlay = () => {
       console.log('Audio started playing');
       setIsPlaying(true);
+      updateProgress();
     };
 
     const handlePause = () => {
       console.log('Audio paused');
       setIsPlaying(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -171,22 +182,26 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
       setProgress(0);
       audio.currentTime = 0;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [isPlaying]);
 
   const togglePlay = async () => {
     if (!audioRef.current) {
