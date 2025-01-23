@@ -22,17 +22,20 @@ const AudioControls = ({
   onVolumeChange 
 }: AudioControlsProps) => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const hideTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const handleHideSlider = () => {
-    hideTimeoutRef.current = setTimeout(() => {
-      setShowVolumeSlider(false);
-    }, 2000);
-  };
 
   const clearHideTimeout = () => {
     if (hideTimeoutRef.current) {
       clearTimeout(hideTimeoutRef.current);
+    }
+  };
+
+  const handleHideSlider = () => {
+    if (!isDragging) {
+      hideTimeoutRef.current = setTimeout(() => {
+        setShowVolumeSlider(false);
+      }, 2000);
     }
   };
 
@@ -90,16 +93,25 @@ const AudioControls = ({
             setShowVolumeSlider(true);
           }}
           onMouseLeave={() => {
-            hideTimeoutRef.current = setTimeout(() => {
-              setShowVolumeSlider(false);
-            }, 1000);
+            if (!isDragging) {
+              handleHideSlider();
+            }
           }}
         >
           <Slider
             defaultValue={[volume * 100]}
             max={100}
             step={1}
+            value={[volume * 100]}
             onValueChange={handleVolumeChange}
+            onPointerDown={() => {
+              clearHideTimeout();
+              setIsDragging(true);
+            }}
+            onPointerUp={() => {
+              setIsDragging(false);
+              handleHideSlider();
+            }}
             className="w-full"
           />
         </div>
