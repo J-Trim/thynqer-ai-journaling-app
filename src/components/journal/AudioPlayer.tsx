@@ -20,7 +20,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
-  const progressUpdateInterval = useRef<number | null>(null);
+  const progressIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -118,8 +118,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     initializeAudio();
 
     return () => {
-      if (progressUpdateInterval.current) {
-        window.clearInterval(progressUpdateInterval.current);
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
       }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
@@ -137,38 +137,42 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const audio = audioRef.current;
 
-    const startProgressUpdate = () => {
-      if (progressUpdateInterval.current) {
-        window.clearInterval(progressUpdateInterval.current);
+    const updateProgress = () => {
+      if (audio.duration) {
+        const currentProgress = (audio.currentTime / audio.duration) * 100;
+        setProgress(currentProgress);
+        console.log('Progress update:', { 
+          currentTime: audio.currentTime,
+          duration: audio.duration,
+          progress: currentProgress 
+        });
       }
-      progressUpdateInterval.current = window.setInterval(() => {
-        if (audio.duration) {
-          const currentProgress = (audio.currentTime / audio.duration) * 100;
-          setProgress(currentProgress);
-          console.log('Progress update:', { 
-            currentTime: audio.currentTime,
-            duration: audio.duration,
-            progress: currentProgress 
-          });
-        }
-      }, 50); // Update every 50ms for smooth animation
     };
 
-    const stopProgressUpdate = () => {
-      if (progressUpdateInterval.current) {
-        window.clearInterval(progressUpdateInterval.current);
-        progressUpdateInterval.current = null;
+    const startProgressInterval = () => {
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+      }
+      progressIntervalRef.current = window.setInterval(updateProgress, 50);
+    };
+
+    const stopProgressInterval = () => {
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
       }
     };
 
     const handlePlay = () => {
       console.log('Audio started playing');
-      startProgressUpdate();
+      setIsPlaying(true);
+      startProgressInterval();
     };
 
     const handlePause = () => {
       console.log('Audio paused');
-      stopProgressUpdate();
+      setIsPlaying(false);
+      stopProgressInterval();
     };
 
     const handleLoadedMetadata = () => {
@@ -184,7 +188,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
       setProgress(0);
       audio.currentTime = 0;
-      stopProgressUpdate();
+      stopProgressInterval();
     };
 
     audio.addEventListener('play', handlePlay);
@@ -192,8 +196,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     
+    // Initial progress update
+    updateProgress();
+    
     return () => {
-      stopProgressUpdate();
+      stopProgressInterval();
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
@@ -212,12 +219,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (isPlaying) {
         console.log('Pausing audio');
         audioRef.current.pause();
-        setIsPlaying(false);
       } else {
         console.log('Starting audio playback');
         await audioRef.current.play();
         console.log('Playback started successfully');
-        setIsPlaying(true);
       }
     } catch (error) {
       console.error('Error toggling play state:', error);
