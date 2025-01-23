@@ -51,7 +51,6 @@ const Index = () => {
       console.log('Fetched entries:', data);
       return data;
     },
-    retry: false,
   });
 
   if (error) {
@@ -85,6 +84,11 @@ const Index = () => {
                     date={format(new Date(entry.created_at), 'MMMM d, yyyy')}
                     preview={entry.text || "No content"}
                     hasBeenEdited={entry.has_been_edited}
+                    onClick={() => navigate(`/journal/edit/${entry.id}`)}
+                    onDelete={() => {
+                      // Refetch entries after deletion
+                      window.location.reload();
+                    }}
                   />
                 ))}
                 {entries && entries.length === 0 && (
