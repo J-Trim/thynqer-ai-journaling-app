@@ -10,8 +10,6 @@ interface AudioProgressProps {
 }
 
 const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: AudioProgressProps) => {
-  // Format duration with proper checks
-  const formattedDuration = isFinite(duration) ? formatTime(duration) : '0:00';
   const formattedCurrentTime = isFinite(currentTime) ? formatTime(currentTime) : '0:00';
 
   return (
@@ -24,9 +22,8 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
         className="w-full cursor-pointer transform-gpu"
         onValueChange={onProgressChange}
       />
-      <div className="flex justify-between text-xs text-muted-foreground">
+      <div className="flex justify-start text-xs text-muted-foreground">
         <span>{formattedCurrentTime}</span>
-        <span>{formattedDuration}</span>
       </div>
     </div>
   );
