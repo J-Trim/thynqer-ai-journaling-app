@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -13,7 +14,29 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [publicUrl, setPublicUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Fetch public URL when audioUrl changes
+  useEffect(() => {
+    const fetchPublicUrl = async () => {
+      try {
+        console.log('Fetching public URL for:', audioUrl);
+        const { data } = supabase.storage
+          .from('audio_files')
+          .getPublicUrl(audioUrl);
+        
+        console.log('Public URL:', data.publicUrl);
+        setPublicUrl(data.publicUrl);
+      } catch (error) {
+        console.error('Error fetching audio URL:', error);
+      }
+    };
+
+    if (audioUrl) {
+      fetchPublicUrl();
+    }
+  }, [audioUrl]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -26,7 +49,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       // Reset when URL changes
       audio.pause();
       setIsPlaying(false);
-      audio.load();
+      if (publicUrl) {
+        audio.src = publicUrl;
+        audio.load();
+      }
       
       const handlePlay = () => {
         console.log('Audio play event triggered');
@@ -56,6 +82,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       };
 
       const handleLoadedMetadata = () => {
+        console.log('Audio metadata loaded, duration:', audio.duration);
         setDuration(audio.duration);
       };
 
@@ -77,7 +104,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       };
     }
-  }, [audioUrl, volume, isMuted]);
+  }, [publicUrl, volume, isMuted]);
 
   const togglePlay = async () => {
     if (audioRef.current) {
@@ -88,10 +115,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           audioRef.current.pause();
         } else {
           console.log('Playing audio...');
-          await audioRef.current.play();
+          const playPromise = audioRef.current.play();
+          if (playPromise !== undefined) {
+            await playPromise;
+          }
         }
       } catch (error) {
-        console.error('Error toggling audio playback:', error);
+        console.error('Error toggling play state:', error);
       }
     }
   };
@@ -131,11 +161,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  if (!publicUrl) {
+    return <div>Loading audio...</div>;
+  }
+
   return (
     <div className="p-4 bg-secondary rounded-lg space-y-4">
       <audio
         ref={audioRef}
-        src={audioUrl}
+        src={publicUrl}
         preload="auto"
       />
       <div className="flex items-center gap-4">
