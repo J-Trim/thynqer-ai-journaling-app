@@ -80,34 +80,43 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
-        
+
         // Wait for metadata to load
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
             audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
             setIsMetadataLoaded(true);
             resolve(true);
           };
 
+          const handleLoadedMetadata = () => {
+            if (audio.duration && isFinite(audio.duration)) {
+              setDuration(audio.duration);
+              setCurrentTime(0);
+              setProgress(0);
+              handleCanPlay();
+            }
+          };
+
           const handleError = (e: Event) => {
             audio.removeEventListener('error', handleError);
+            audio.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
             reject(new Error('Failed to load audio'));
           };
 
           audio.addEventListener('canplay', handleCanPlay);
+          audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('error', handleError);
           
-          // If metadata is already loaded, resolve immediately
-          if (audio.readyState >= 2) {
-            handleCanPlay();
+          if (audio.readyState >= 2 && audio.duration && isFinite(audio.duration)) {
+            handleLoadedMetadata();
           } else {
             audio.load();
           }
         });
 
-        setDuration(audio.duration);
-        setCurrentTime(0);
-        setProgress(0);
         setError(null);
         setIsLoading(false);
         
@@ -146,7 +155,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const newCurrentTime = audio.currentTime;
       const newDuration = audio.duration;
       
-      if (newDuration > 0) {
+      if (newDuration > 0 && isFinite(newDuration)) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
@@ -171,10 +180,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
-      updateProgress();
+      if (audio.duration && isFinite(audio.duration)) {
+        setDuration(audio.duration);
+        setCurrentTime(audio.currentTime);
+        setProgress((audio.currentTime / audio.duration) * 100);
+        updateProgress();
+      }
     };
 
     const handleEnded = () => {
@@ -187,24 +198,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleTimeUpdate = () => {
-      const newTime = audio.currentTime;
-      const newDuration = audio.duration;
-      if (newDuration > 0) {
-        const newProgress = (newTime / newDuration) * 100;
-        setCurrentTime(newTime);
-        setProgress(newProgress);
-      }
-    };
-
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
     
-    // Initial progress update if metadata is already loaded
-    if (audio.readyState >= 2) {
+    if (audio.readyState >= 2 && audio.duration && isFinite(audio.duration)) {
       handleLoadedMetadata();
     }
     
@@ -216,7 +215,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [isPlaying, isMetadataLoaded]);
 
