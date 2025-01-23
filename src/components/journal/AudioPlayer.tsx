@@ -32,13 +32,19 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Remove any leading slashes or 'audio_files/' prefix from the URL
-        const cleanPath = audioUrl.replace(/^\/|^audio_files\//, '');
-        console.log('Attempting to download audio with cleaned path:', cleanPath);
+        // Extract just the filename from the full URL or path
+        const filename = audioUrl.split('/').pop();
+        if (!filename) {
+          console.error('Invalid audio URL format');
+          setError('Invalid audio URL format');
+          return;
+        }
+
+        console.log('Attempting to download audio file:', filename);
         
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
-          .download(cleanPath);
+          .download(filename);
 
         if (downloadError) {
           console.error('Error downloading audio:', downloadError);
