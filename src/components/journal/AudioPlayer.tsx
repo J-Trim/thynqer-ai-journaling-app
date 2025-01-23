@@ -232,6 +232,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }, [isPlaying]);
 
   const togglePlay = async () => {
+    console.log('Toggle play called, current state:', { isPlaying, audioRef: !!audioRef.current });
+    
     if (!audioRef.current) {
       console.error('No audio element available');
       setError('Audio not ready');
@@ -240,12 +242,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     try {
       if (isPlaying) {
-        console.log('Pausing audio');
+        console.log('Attempting to pause audio');
         audioRef.current.pause();
+        console.log('Audio paused successfully');
       } else {
-        console.log('Starting audio playback');
-        await audioRef.current.play();
-        console.log('Playback started successfully');
+        console.log('Attempting to play audio');
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          console.log('Playback started successfully');
+        }
       }
     } catch (error) {
       console.error('Error toggling play state:', error);
