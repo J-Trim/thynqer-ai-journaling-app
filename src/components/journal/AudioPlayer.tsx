@@ -18,11 +18,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const fetchAndSetupAudio = async () => {
+    const initializeAudio = async () => {
       try {
         setIsLoading(true);
         setError(null);
@@ -76,38 +76,38 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         console.log('Created blob URL:', newBlobUrl);
         blobUrlRef.current = newBlobUrl;
 
+        // Create new audio element if it doesn't exist
         if (!audioRef.current) {
-          console.error('No audio element reference');
-          setError('Audio element not initialized');
-          return;
+          audioRef.current = new Audio();
         }
 
         // Reset and prepare audio element
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.src = newBlobUrl;
+        const audio = audioRef.current;
+        audio.pause();
+        audio.currentTime = 0;
+        audio.src = newBlobUrl;
+        audio.volume = volume;
+        audio.muted = isMuted;
         
         // Wait for audio to be loaded
         await new Promise((resolve, reject) => {
-          if (!audioRef.current) return reject('No audio element');
-          
           const handleCanPlay = () => {
             console.log('Audio can play event triggered');
-            audioRef.current?.removeEventListener('canplay', handleCanPlay);
+            audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
           };
 
           const handleError = (e: Event) => {
             console.error('Audio loading error:', e);
-            audioRef.current?.removeEventListener('error', handleError);
+            audio.removeEventListener('error', handleError);
             reject(new Error('Failed to load audio'));
           };
 
-          audioRef.current.addEventListener('canplay', handleCanPlay);
-          audioRef.current.addEventListener('error', handleError);
+          audio.addEventListener('canplay', handleCanPlay);
+          audio.addEventListener('error', handleError);
           
           // Force load
-          audioRef.current.load();
+          audio.load();
         });
 
         console.log('Audio loaded successfully');
@@ -121,15 +121,19 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    fetchAndSetupAudio();
+    initializeAudio();
 
     return () => {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
       }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
-  }, [audioUrl]);
+  }, [audioUrl, volume, isMuted]);
 
   useEffect(() => {
     if (!audioRef.current) return;
@@ -160,19 +164,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     
-    audio.volume = volume;
-    audio.muted = isMuted;
-    
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [volume, isMuted]);
+  }, []);
 
   const togglePlay = async () => {
     if (!audioRef.current) {
       console.error('No audio element available');
+      setError('Audio not ready');
       return;
     }
 
@@ -208,7 +210,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
   return (
     <div className="p-4 bg-secondary rounded-lg space-y-4">
-      <audio ref={audioRef} preload="metadata" />
       <div className="flex items-center gap-4">
         <AudioControls
           isPlaying={isPlaying}
