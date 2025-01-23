@@ -80,8 +80,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         }
 
         const audio = audioRef.current;
-        audio.pause();
-        audio.currentTime = 0;
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
@@ -149,30 +147,27 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const startProgressInterval = () => {
-      if (progressIntervalRef.current) {
-        window.clearInterval(progressIntervalRef.current);
-      }
-      progressIntervalRef.current = window.setInterval(updateProgress, 50);
-    };
-
-    const stopProgressInterval = () => {
-      if (progressIntervalRef.current) {
-        window.clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
+    const handleTimeUpdate = () => {
+      updateProgress();
     };
 
     const handlePlay = () => {
       console.log('Audio started playing');
       setIsPlaying(true);
-      startProgressInterval();
+      // Start frequent progress updates
+      if (!progressIntervalRef.current) {
+        progressIntervalRef.current = window.setInterval(updateProgress, 50);
+      }
     };
 
     const handlePause = () => {
       console.log('Audio paused');
       setIsPlaying(false);
-      stopProgressInterval();
+      // Stop progress updates
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
     };
 
     const handleLoadedMetadata = () => {
@@ -181,6 +176,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         readyState: audio.readyState
       });
       setDuration(audio.duration);
+      updateProgress(); // Initial progress update
     };
 
     const handleEnded = () => {
@@ -188,19 +184,24 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
       setProgress(0);
       audio.currentTime = 0;
-      stopProgressInterval();
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
     };
 
+    audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     
-    // Initial progress update
-    updateProgress();
-    
     return () => {
-      stopProgressInterval();
+      if (progressIntervalRef.current) {
+        window.clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
