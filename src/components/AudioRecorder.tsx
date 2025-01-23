@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Mic, Square, FileAudio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { formatTime, sanitizeFileName } from "@/utils/audio";
 
 interface AudioRecorderProps {
   onAudioSaved?: (url: string) => void;
@@ -30,18 +31,12 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
-
   const uploadAudio = async (audioBlob: Blob) => {
     try {
       const fileName = `${crypto.randomUUID()}.webm`;
       const { data, error } = await supabase.storage
         .from('audio_files')
-        .upload(fileName, audioBlob, {
+        .upload(sanitizeFileName(fileName), audioBlob, {
           contentType: 'audio/webm',
           upsert: false
         });
@@ -154,14 +149,12 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
       setIsRecording(false);
       setIsPaused(false);
       stopTimer();
-      // Only set canTranscribe if we actually have audio data
       setCanTranscribe(audioChunks.current.length > 0 && audioChunks.current.some(chunk => chunk.size > 0));
       console.log("Recording stopped, chunks:", audioChunks.current.length);
     }
   };
 
   const handleTranscribe = async () => {
-    // Validate that we have actual audio data
     if (!audioChunks.current.length || !audioChunks.current.some(chunk => chunk.size > 0)) {
       toast({
         title: "Error",
@@ -173,7 +166,6 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
 
     try {
       const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
-      // Additional validation for the blob size
       if (audioBlob.size === 0) {
         toast({
           title: "Error",

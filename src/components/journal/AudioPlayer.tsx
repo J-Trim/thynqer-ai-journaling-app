@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Slider } from "@/components/ui/slider";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import AudioControls from "./audio/AudioControls";
+import AudioProgress from "./audio/AudioProgress";
+import VolumeControl from "./audio/VolumeControl";
+import { getMimeType } from "@/utils/audio";
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -32,7 +33,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Extract just the filename, handling both full URLs and relative paths
         const filename = audioUrl.split('/').pop()?.split('?')[0];
         if (!filename) {
           console.error('Invalid audio URL format');
@@ -42,7 +42,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
         console.log('Attempting to download audio file:', filename);
         
-        // First try to download directly
         const { data: audioData, error: downloadError } = await supabase.storage
           .from('audio_files')
           .download(filename);
@@ -59,31 +58,25 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           return;
         }
 
-        // Create a blob URL from the audio data with explicit MIME type detection
-        const mimeType = filename.toLowerCase().endsWith('.webm') ? 'audio/webm' : 'audio/mpeg';
+        const mimeType = getMimeType(filename);
         const audioBlob = new Blob([audioData], { type: mimeType });
         const newBlobUrl = URL.createObjectURL(audioBlob);
-        console.log('Audio blob URL created:', newBlobUrl, 'MIME type:', mimeType);
         
-        // Clean up old blob URL if it exists
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
         }
         blobUrlRef.current = newBlobUrl;
 
-        // Set up audio element with explicit error handling
         if (audioRef.current) {
           audioRef.current.src = newBlobUrl;
           audioRef.current.load();
-          console.log('Audio element source set and loaded');
           
-          // Test audio playback capability
           const playTestPromise = audioRef.current.play();
           if (playTestPromise !== undefined) {
             playTestPromise
               .then(() => {
                 console.log('Audio playback test successful');
-                audioRef.current?.pause(); // Pause after successful test
+                audioRef.current?.pause();
                 setIsPlaying(false);
               })
               .catch(e => {
@@ -103,7 +96,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     fetchAndSetupAudio();
 
-    // Cleanup function
     return () => {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
@@ -191,12 +183,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     }
   };
 
-  const formatTime = (timeInSeconds: number) => {
-    const minutes = Math.floor(timeInSeconds / 60);
-    const seconds = Math.floor(timeInSeconds % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
   if (isLoading) {
     return <div className="text-muted-foreground">Loading audio...</div>;
   }
@@ -211,85 +197,43 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
   return (
     <div className="p-4 bg-secondary rounded-lg space-y-4">
-      <audio
-        ref={audioRef}
-        preload="metadata"
-      />
+      <audio ref={audioRef} preload="metadata" />
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={togglePlay}
-          className="hover:bg-primary/20"
-        >
-          {isPlaying ? (
-            <Pause className="h-6 w-6" />
-          ) : (
-            <Play className="h-6 w-6" />
-          )}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            if (audioRef.current) {
-              const newMutedState = !isMuted;
-              audioRef.current.muted = newMutedState;
-              setIsMuted(newMutedState);
+        <AudioControls
+          isPlaying={isPlaying}
+          isMuted={isMuted}
+          onPlayPause={togglePlay}
+          onMuteToggle={() => setIsMuted(!isMuted)}
+        />
+        <AudioProgress
+          progress={progress}
+          duration={duration}
+          currentTime={audioRef.current?.currentTime || 0}
+          onProgressChange={(newProgress) => {
+            const progressValue = newProgress[0];
+            if (audioRef.current && duration) {
+              const newTime = (progressValue / 100) * duration;
+              audioRef.current.currentTime = newTime;
+              setProgress(progressValue);
             }
           }}
-          className="hover:bg-primary/20"
-        >
-          {isMuted ? (
-            <VolumeX className="h-6 w-6" />
-          ) : (
-            <Volume2 className="h-6 w-6" />
-          )}
-        </Button>
-        <div className="flex-1">
-          <div className="mb-2">
-            <Slider
-              value={[progress]}
-              min={0}
-              max={100}
-              step={0.1}
-              onValueChange={(newProgress) => {
-                const progressValue = newProgress[0];
-                if (audioRef.current && duration) {
-                  const newTime = (progressValue / 100) * duration;
-                  audioRef.current.currentTime = newTime;
-                  setProgress(progressValue);
-                }
-              }}
-              className="cursor-pointer"
-            />
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {audioRef.current && (
-              `${formatTime(audioRef.current.currentTime)} / ${formatTime(duration)}`
-            )}
-          </div>
-        </div>
-        <div className="w-24">
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            min={0}
-            max={1}
-            step={0.01}
-            onValueChange={(newVolume) => {
-              const volumeValue = newVolume[0];
-              if (audioRef.current) {
-                audioRef.current.volume = volumeValue;
-                setVolume(volumeValue);
-                if (volumeValue === 0) {
-                  setIsMuted(true);
-                } else if (isMuted) {
-                  setIsMuted(false);
-                }
+        />
+        <VolumeControl
+          volume={volume}
+          isMuted={isMuted}
+          onVolumeChange={(newVolume) => {
+            const volumeValue = newVolume[0];
+            if (audioRef.current) {
+              audioRef.current.volume = volumeValue;
+              setVolume(volumeValue);
+              if (volumeValue === 0) {
+                setIsMuted(true);
+              } else if (isMuted) {
+                setIsMuted(false);
               }
-            }}
-          />
-        </div>
+            }
+          }}
+        />
       </div>
     </div>
   );
