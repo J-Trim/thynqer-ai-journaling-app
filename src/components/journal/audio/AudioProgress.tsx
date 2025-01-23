@@ -1,5 +1,4 @@
 import React from 'react';
-import { Slider } from "@/components/ui/slider";
 import { formatTime } from '@/utils/audio';
 
 interface AudioProgressProps {
@@ -14,14 +13,6 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
 
   return (
     <div className="flex-1 space-y-2">
-      <Slider
-        value={[progress]}
-        min={0}
-        max={100}
-        step={0.1}
-        className="w-full cursor-pointer transform-gpu"
-        onValueChange={onProgressChange}
-      />
       <div className="flex justify-start text-xs text-muted-foreground">
         <span>{formattedCurrentTime}</span>
       </div>
