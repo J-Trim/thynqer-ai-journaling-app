@@ -18,7 +18,7 @@ const AudioProgress = ({ progress, duration, currentTime, onProgressChange }: Au
           min={0}
           max={100}
           step={0.1}
-          className="w-full cursor-pointer"
+          className="w-full cursor-pointer transform-gpu"
           onValueChange={onProgressChange}
         />
       </div>
