@@ -154,20 +154,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const handlePlay = () => {
       console.log('Audio started playing');
       setIsPlaying(true);
-      // Start frequent progress updates
-      if (!progressIntervalRef.current) {
-        progressIntervalRef.current = window.setInterval(updateProgress, 50);
-      }
     };
 
     const handlePause = () => {
       console.log('Audio paused');
       setIsPlaying(false);
-      // Stop progress updates
-      if (progressIntervalRef.current) {
-        window.clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
     };
 
     const handleLoadedMetadata = () => {
@@ -176,7 +167,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         readyState: audio.readyState
       });
       setDuration(audio.duration);
-      updateProgress(); // Initial progress update
+      updateProgress();
     };
 
     const handleEnded = () => {
@@ -184,12 +175,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
       setProgress(0);
       audio.currentTime = 0;
-      if (progressIntervalRef.current) {
-        window.clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
     };
 
+    // Set up event listeners
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
@@ -197,10 +185,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('ended', handleEnded);
     
     return () => {
-      if (progressIntervalRef.current) {
-        window.clearInterval(progressIntervalRef.current);
-        progressIntervalRef.current = null;
-      }
+      // Clean up event listeners
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
