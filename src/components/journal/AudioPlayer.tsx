@@ -289,8 +289,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           duration={totalDuration || duration}
           currentTime={currentTime}
           onProgressChange={(newProgress) => {
-            if (audioRef.current && duration) {
-              const newTime = (newProgress[0] / 100) * duration;
+            if (audioRef.current && (duration || totalDuration)) {
+              const totalDur = totalDuration || duration;
+              const newTime = (newProgress[0] / 100) * totalDur;
               audioRef.current.currentTime = newTime;
               setProgress(newProgress[0]);
               setCurrentTime(newTime);
