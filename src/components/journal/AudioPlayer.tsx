@@ -22,8 +22,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
-  const initializationAttempts = useRef(0);
-  const MAX_INIT_ATTEMPTS = 3;
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -82,70 +80,47 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
-        audio.preload = "metadata";
 
-        // Wait for metadata to load before proceeding
-        await new Promise<void>((resolve, reject) => {
-          let metadataTimeout: NodeJS.Timeout;
+        // Add event listener for loadedmetadata before loading
+        const handleLoadedMetadata = () => {
+          console.log('Audio metadata loaded. Duration:', audio.duration);
+          if (isFinite(audio.duration)) {
+            setDuration(audio.duration);
+            setCurrentTime(0);
+            setProgress(0);
+          }
+        };
 
-          const handleLoadedMetadata = () => {
-            clearTimeout(metadataTimeout);
-            const audioDuration = audio.duration;
-            console.log('Raw audio duration:', audioDuration);
-            
-            if (isFinite(audioDuration) && audioDuration > 0) {
-              console.log('Setting valid duration:', audioDuration);
-              setDuration(audioDuration);
-              setCurrentTime(0);
-              setProgress(0);
-              cleanup();
-              resolve();
-            } else {
-              console.error('Invalid duration received:', audioDuration);
-              cleanup();
-              reject(new Error('Invalid audio duration'));
-            }
+        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+        
+        // Load the audio
+        console.log('Loading audio...');
+        audio.load();
+        
+        await new Promise((resolve, reject) => {
+          const handleCanPlay = () => {
+            console.log('Audio can play. Duration:', audio.duration);
+            audio.removeEventListener('canplay', handleCanPlay);
+            resolve(true);
           };
 
           const handleError = (e: Event) => {
-            clearTimeout(metadataTimeout);
-            console.error('Error loading audio metadata:', e);
-            cleanup();
-            reject(new Error('Failed to load audio metadata'));
-          };
-
-          const cleanup = () => {
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            console.error('Error loading audio:', e);
             audio.removeEventListener('error', handleError);
+            reject(new Error('Failed to load audio'));
           };
 
-          // Set a timeout for metadata loading
-          metadataTimeout = setTimeout(() => {
-            cleanup();
-            reject(new Error('Metadata loading timeout'));
-          }, 5000); // 5 second timeout
-
-          audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+          audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
-          audio.load();
         });
 
-        console.log('Audio initialized successfully with duration:', audioRef.current.duration);
         setError(null);
         setIsLoading(false);
-        initializationAttempts.current = 0;
         
       } catch (error) {
         console.error('Error in audio setup:', error);
-        initializationAttempts.current += 1;
-        
-        if (initializationAttempts.current < MAX_INIT_ATTEMPTS) {
-          console.log(`Retrying initialization (attempt ${initializationAttempts.current + 1}/${MAX_INIT_ATTEMPTS})`);
-          await initializeAudio();
-        } else {
-          setError(`Error setting up audio: ${error.message}`);
-          setIsLoading(false);
-        }
+        setError(`Error setting up audio: ${error.message}`);
+        setIsLoading(false);
       }
     };
 
@@ -175,9 +150,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (!audio) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration;
+      const newDuration = audio.duration || 0;
       
-      if (isFinite(newDuration) && newDuration > 0) {
+      if (newDuration > 0) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
@@ -201,6 +176,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+      setProgress((audio.currentTime / audio.duration) * 100);
+      updateProgress();
+    };
+
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -213,8 +195,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
-      const newDuration = audio.duration;
-      if (isFinite(newDuration) && newDuration > 0) {
+      const newDuration = audio.duration || 0;
+      if (newDuration > 0) {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
         setProgress(newProgress);
@@ -223,8 +205,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
+    
+    // Initial progress update if metadata is already loaded
+    if (audio.readyState >= 1) {
+      handleLoadedMetadata();
+    }
     
     return () => {
       if (animationFrameRef.current) {
@@ -232,6 +220,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
@@ -263,16 +252,16 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     }
   };
 
+  if (isLoading) {
+    return <div className="text-muted-foreground">Loading audio...</div>;
+  }
+
   if (error) {
     return (
       <Alert variant="destructive" className="mb-4">
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
-  }
-
-  if (isLoading) {
-    return <div className="text-muted-foreground">Loading audio...</div>;
   }
 
   return (
