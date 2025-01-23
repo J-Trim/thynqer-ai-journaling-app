@@ -81,25 +81,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.volume = volume;
         audio.muted = isMuted;
 
-        // Add event listener for loadedmetadata before loading
-        const handleLoadedMetadata = () => {
-          console.log('Audio metadata loaded. Duration:', audio.duration);
-          if (isFinite(audio.duration)) {
-            setDuration(audio.duration);
-            setCurrentTime(0);
-            setProgress(0);
-          }
-        };
-
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        
-        // Load the audio
-        console.log('Loading audio...');
-        audio.load();
-        
+        // Wait for the audio to be loaded
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
             console.log('Audio can play. Duration:', audio.duration);
+            if (isFinite(audio.duration)) {
+              setDuration(audio.duration);
+              setCurrentTime(0);
+              setProgress(0);
+            }
             audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
           };
@@ -112,6 +102,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
+          audio.load();
         });
 
         setError(null);
@@ -149,14 +140,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const updateProgress = () => {
       if (!audio) return;
       
-      const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
-      
-      if (newDuration > 0) {
-        const newProgress = (newCurrentTime / newDuration) * 100;
-        setCurrentTime(newCurrentTime);
+      if (isFinite(audio.duration) && isFinite(audio.currentTime)) {
+        const newProgress = (audio.currentTime / audio.duration) * 100;
+        setCurrentTime(audio.currentTime);
         setProgress(newProgress);
-        setDuration(newDuration);
+        setDuration(audio.duration);
       }
 
       if (isPlaying) {
@@ -176,13 +164,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
-      updateProgress();
-    };
-
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -193,26 +174,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleTimeUpdate = () => {
-      const newTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
-      if (newDuration > 0) {
-        const newProgress = (newTime / newDuration) * 100;
-        setCurrentTime(newTime);
-        setProgress(newProgress);
-      }
-    };
-
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    
-    // Initial progress update if metadata is already loaded
-    if (audio.readyState >= 1) {
-      handleLoadedMetadata();
-    }
     
     return () => {
       if (animationFrameRef.current) {
@@ -220,9 +184,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [isPlaying]);
 
@@ -238,7 +200,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        console.log('Attempting to play audio. Current duration:', audioRef.current.duration);
         const playPromise = audioRef.current.play();
         if (playPromise !== undefined) {
           await playPromise;
