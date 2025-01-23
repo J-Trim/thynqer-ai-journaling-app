@@ -21,12 +21,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
   const isDraggingRef = useRef(false);
+  const isReadyRef = useRef(false);
 
   useEffect(() => {
     const initializeAudio = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        isReadyRef.current = false;
         
         if (!audioUrl) {
           console.error('No audio URL provided');
@@ -79,25 +81,15 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.muted = isMuted;
 
-        // Add event listener for loadedmetadata before loading
-        const handleLoadedMetadata = () => {
-          console.log('Audio metadata loaded. Duration:', audio.duration);
-          if (isFinite(audio.duration)) {
-            setDuration(audio.duration);
-            setCurrentTime(0);
-            setProgress(0);
-          }
-        };
-
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        
-        // Load the audio
-        console.log('Loading audio...');
-        audio.load();
-        
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
             console.log('Audio can play. Duration:', audio.duration);
+            if (isFinite(audio.duration)) {
+              setDuration(audio.duration);
+              setCurrentTime(0);
+              setProgress(0);
+              isReadyRef.current = true;
+            }
             audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
           };
@@ -145,12 +137,12 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const audio = audioRef.current;
 
     const updateProgress = () => {
-      if (!audio || isDraggingRef.current) return;
+      if (!audio || isDraggingRef.current || !isReadyRef.current) return;
       
       const newCurrentTime = audio.currentTime;
       const newDuration = audio.duration || 0;
       
-      if (newDuration > 0) {
+      if (isFinite(newDuration) && newDuration > 0 && isFinite(newCurrentTime)) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
@@ -175,10 +167,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
-      updateProgress();
+      if (isFinite(audio.duration)) {
+        setDuration(audio.duration);
+        setCurrentTime(audio.currentTime);
+        setProgress((audio.currentTime / audio.duration) * 100);
+        isReadyRef.current = true;
+        updateProgress();
+      }
     };
 
     const handleEnded = () => {
@@ -196,7 +191,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
     
-    // Initial progress update if metadata is already loaded
     if (audio.readyState >= 1) {
       handleLoadedMetadata();
     }
@@ -213,17 +207,26 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   }, [isPlaying]);
 
   const handleProgressChange = (newProgress: number[]) => {
-    if (!audioRef.current || !duration) return;
+    if (!audioRef.current || !duration || !isReadyRef.current) return;
     
+    isDraggingRef.current = true;
     const newTime = (newProgress[0] / 100) * duration;
-    audioRef.current.currentTime = newTime;
-    setProgress(newProgress[0]);
-    setCurrentTime(newTime);
+    
+    if (isFinite(newTime)) {
+      audioRef.current.currentTime = newTime;
+      setProgress(newProgress[0]);
+      setCurrentTime(newTime);
+    }
+    
+    // Reset isDragging after a short delay to allow the change to take effect
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
   };
 
   const togglePlay = async () => {
-    if (!audioRef.current) {
-      console.error('No audio element available');
+    if (!audioRef.current || !isReadyRef.current) {
+      console.error('Audio not ready');
       setError('Audio not ready');
       return;
     }
