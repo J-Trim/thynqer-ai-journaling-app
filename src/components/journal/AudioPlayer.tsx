@@ -81,8 +81,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         
         await new Promise((resolve, reject) => {
           const handleCanPlay = () => {
+            if (audio.duration && isFinite(audio.duration)) {
+              setDuration(audio.duration);
+            }
             audio.removeEventListener('canplay', handleCanPlay);
             resolve(true);
+          };
+
+          const handleLoadedMetadata = () => {
+            if (audio.duration && isFinite(audio.duration)) {
+              setDuration(audio.duration);
+            }
           };
 
           const handleError = (e: Event) => {
@@ -90,6 +99,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
             reject(new Error('Failed to load audio'));
           };
 
+          audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('canplay', handleCanPlay);
           audio.addEventListener('error', handleError);
           audio.load();
@@ -131,9 +141,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       if (!audio) return;
       
       const newCurrentTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
+      const newDuration = audio.duration;
       
-      if (newDuration > 0) {
+      if (isFinite(newDuration) && newDuration > 0) {
         const newProgress = (newCurrentTime / newDuration) * 100;
         setCurrentTime(newCurrentTime);
         setProgress(newProgress);
@@ -158,9 +168,11 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     };
 
     const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setCurrentTime(audio.currentTime);
-      setProgress((audio.currentTime / audio.duration) * 100);
+      if (isFinite(audio.duration)) {
+        setDuration(audio.duration);
+        setCurrentTime(audio.currentTime);
+        setProgress((audio.currentTime / audio.duration) * 100);
+      }
       updateProgress();
     };
 
@@ -176,8 +188,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
 
     const handleTimeUpdate = () => {
       const newTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
-      if (newDuration > 0) {
+      const newDuration = audio.duration;
+      if (isFinite(newDuration) && newDuration > 0) {
         const newProgress = (newTime / newDuration) * 100;
         setCurrentTime(newTime);
         setProgress(newProgress);
@@ -190,7 +202,6 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     
-    // Initial progress update if metadata is already loaded
     if (audio.readyState >= 1) {
       handleLoadedMetadata();
     }
