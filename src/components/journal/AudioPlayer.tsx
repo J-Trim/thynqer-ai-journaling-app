@@ -66,44 +66,62 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         
         const audioBlob = new Blob([audioData], { type: mimeType });
         console.log('Created audio blob, size:', audioBlob.size);
-        
-        // Test if the blob is valid
-        const testReader = new FileReader();
-        testReader.onload = () => {
-          console.log('Blob content test successful, data size:', testReader.result?.toString().length);
+
+        // Validate blob content
+        const validateBlob = async () => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              console.log('Blob validation successful, size:', reader.result?.byteLength);
+              resolve(true);
+            };
+            reader.onerror = () => {
+              console.error('Blob validation failed:', reader.error);
+              reject(reader.error);
+            };
+            reader.readAsArrayBuffer(audioBlob);
+          });
         };
-        testReader.onerror = () => {
-          console.error('Error reading blob:', testReader.error);
-          setError('Error validating audio data');
-        };
-        testReader.readAsArrayBuffer(audioBlob);
-        
-        const newBlobUrl = URL.createObjectURL(audioBlob);
-        console.log('Created blob URL:', newBlobUrl);
+
+        await validateBlob();
         
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
         }
+
+        const newBlobUrl = URL.createObjectURL(audioBlob);
+        console.log('Created blob URL:', newBlobUrl);
         blobUrlRef.current = newBlobUrl;
 
         if (audioRef.current) {
           audioRef.current.src = newBlobUrl;
+          
+          // Force browser to load new audio source
           audioRef.current.load();
           console.log('Audio element loaded with new source');
-          
-          // Test audio playback capability
-          const playTest = audioRef.current.play();
-          if (playTest) {
-            playTest
-              .then(() => {
-                console.log('Audio playback test successful');
-                audioRef.current?.pause();
-                audioRef.current!.currentTime = 0;
-              })
-              .catch((e) => {
-                console.error('Audio playback test failed:', e);
-                setError(`Playback error: ${e.message}`);
-              });
+
+          // Wait for audio to be loaded before attempting playback test
+          await new Promise((resolve) => {
+            if (!audioRef.current) return;
+            
+            const handleCanPlayThrough = () => {
+              console.log('Audio can play through');
+              audioRef.current?.removeEventListener('canplaythrough', handleCanPlayThrough);
+              resolve(true);
+            };
+            
+            audioRef.current.addEventListener('canplaythrough', handleCanPlayThrough);
+          });
+
+          // Test playback
+          try {
+            await audioRef.current.play();
+            console.log('Playback test successful');
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          } catch (e) {
+            console.error('Playback test failed:', e);
+            setError(`Playback test failed: ${e.message}`);
           }
         }
 
@@ -150,7 +168,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         readyState: audio.readyState,
         networkState: audio.networkState,
         paused: audio.paused,
-        currentSrc: audio.currentSrc
+        currentSrc: audio.currentSrc,
+        error: audio.error
       });
       setDuration(audio.duration);
       setError(null);
