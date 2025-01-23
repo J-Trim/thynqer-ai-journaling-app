@@ -44,7 +44,12 @@ const JournalList = () => {
         console.log('Fetching entries for user:', session.user.id);
         let query = supabase
           .from('journal_entries')
-          .select('*, entry_tags!inner(tag_id)')
+          .select(`
+            *,
+            entry_tags (
+              tag_id
+            )
+          `)
           .eq('user_id', session.user.id)
           .order('created_at', { ascending: false });
 
@@ -58,6 +63,8 @@ const JournalList = () => {
           console.error('Error fetching entries:', error);
           throw error;
         }
+
+        console.log('Raw entries from database:', entries);
 
         // Remove any potential duplicates by using Set with unique IDs
         const uniqueEntries = Array.from(
@@ -178,8 +185,8 @@ const JournalList = () => {
                   date={format(new Date(entry.created_at), 'PPP')}
                   preview={entry.text || "No content"}
                   hasBeenEdited={entry.has_been_edited}
-                  onClick={() => handleEntryClick(entry.id)}
-                  onDelete={handleEntryDelete}
+                  onClick={() => navigate(`/journal/edit/${entry.id}`)}
+                  onDelete={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
                 />
               ))
             ) : (
