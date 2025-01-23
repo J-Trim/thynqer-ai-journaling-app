@@ -20,6 +20,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
+  const isDraggingRef = useRef(false);
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -144,7 +145,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     const audio = audioRef.current;
 
     const updateProgress = () => {
-      if (!audio) return;
+      if (!audio || isDraggingRef.current) return;
       
       const newCurrentTime = audio.currentTime;
       const newDuration = audio.duration || 0;
@@ -190,21 +191,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       }
     };
 
-    const handleTimeUpdate = () => {
-      const newTime = audio.currentTime;
-      const newDuration = audio.duration || 0;
-      if (newDuration > 0) {
-        const newProgress = (newTime / newDuration) * 100;
-        setCurrentTime(newTime);
-        setProgress(newProgress);
-      }
-    };
-
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
     
     // Initial progress update if metadata is already loaded
     if (audio.readyState >= 1) {
@@ -219,9 +209,17 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
     };
   }, [isPlaying]);
+
+  const handleProgressChange = (newProgress: number[]) => {
+    if (!audioRef.current || !duration) return;
+    
+    const newTime = (newProgress[0] / 100) * duration;
+    audioRef.current.currentTime = newTime;
+    setProgress(newProgress[0]);
+    setCurrentTime(newTime);
+  };
 
   const togglePlay = async () => {
     if (!audioRef.current) {
@@ -279,14 +277,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           progress={progress}
           duration={duration}
           currentTime={currentTime}
-          onProgressChange={(newProgress) => {
-            if (audioRef.current && duration) {
-              const newTime = (newProgress[0] / 100) * duration;
-              audioRef.current.currentTime = newTime;
-              setProgress(newProgress[0]);
-              setCurrentTime(newTime);
-            }
-          }}
+          onProgressChange={handleProgressChange}
         />
       </div>
     </div>
