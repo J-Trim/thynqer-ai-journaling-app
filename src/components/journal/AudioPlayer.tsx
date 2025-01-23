@@ -22,6 +22,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const animationFrameRef = useRef<number>();
+  const initializationAttempts = useRef(0);
+  const MAX_INIT_ATTEMPTS = 3;
 
   useEffect(() => {
     const initializeAudio = async () => {
@@ -80,10 +82,14 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.src = newBlobUrl;
         audio.volume = volume;
         audio.muted = isMuted;
+        audio.preload = "metadata";
 
         // Wait for metadata to load before proceeding
         await new Promise<void>((resolve, reject) => {
+          let metadataTimeout: NodeJS.Timeout;
+
           const handleLoadedMetadata = () => {
+            clearTimeout(metadataTimeout);
             const audioDuration = audio.duration;
             console.log('Raw audio duration:', audioDuration);
             
@@ -92,21 +98,32 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
               setDuration(audioDuration);
               setCurrentTime(0);
               setProgress(0);
-              audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-              audio.removeEventListener('error', handleError);
+              cleanup();
               resolve();
             } else {
               console.error('Invalid duration received:', audioDuration);
+              cleanup();
               reject(new Error('Invalid audio duration'));
             }
           };
 
           const handleError = (e: Event) => {
+            clearTimeout(metadataTimeout);
             console.error('Error loading audio metadata:', e);
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.removeEventListener('error', handleError);
+            cleanup();
             reject(new Error('Failed to load audio metadata'));
           };
+
+          const cleanup = () => {
+            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            audio.removeEventListener('error', handleError);
+          };
+
+          // Set a timeout for metadata loading
+          metadataTimeout = setTimeout(() => {
+            cleanup();
+            reject(new Error('Metadata loading timeout'));
+          }, 5000); // 5 second timeout
 
           audio.addEventListener('loadedmetadata', handleLoadedMetadata);
           audio.addEventListener('error', handleError);
@@ -116,11 +133,19 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         console.log('Audio initialized successfully with duration:', audioRef.current.duration);
         setError(null);
         setIsLoading(false);
+        initializationAttempts.current = 0;
         
       } catch (error) {
         console.error('Error in audio setup:', error);
-        setError(`Error setting up audio: ${error.message}`);
-        setIsLoading(false);
+        initializationAttempts.current += 1;
+        
+        if (initializationAttempts.current < MAX_INIT_ATTEMPTS) {
+          console.log(`Retrying initialization (attempt ${initializationAttempts.current + 1}/${MAX_INIT_ATTEMPTS})`);
+          await initializeAudio();
+        } else {
+          setError(`Error setting up audio: ${error.message}`);
+          setIsLoading(false);
+        }
       }
     };
 
