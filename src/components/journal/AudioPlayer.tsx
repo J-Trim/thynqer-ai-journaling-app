@@ -81,17 +81,23 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audio.volume = volume;
         audio.muted = isMuted;
 
-        // Create a promise to wait for metadata to load
+        // Wait for metadata to load before proceeding
         await new Promise<void>((resolve, reject) => {
           const handleLoadedMetadata = () => {
-            console.log('Audio metadata loaded. Duration:', audio.duration);
-            if (isFinite(audio.duration)) {
-              setDuration(audio.duration);
+            const audioDuration = audio.duration;
+            console.log('Raw audio duration:', audioDuration);
+            
+            if (isFinite(audioDuration) && audioDuration > 0) {
+              console.log('Setting valid duration:', audioDuration);
+              setDuration(audioDuration);
               setCurrentTime(0);
               setProgress(0);
               audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
               audio.removeEventListener('error', handleError);
               resolve();
+            } else {
+              console.error('Invalid duration received:', audioDuration);
+              reject(new Error('Invalid audio duration'));
             }
           };
 
@@ -107,7 +113,7 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
           audio.load();
         });
 
-        console.log('Audio initialized successfully');
+        console.log('Audio initialized successfully with duration:', audioRef.current.duration);
         setError(null);
         setIsLoading(false);
         
