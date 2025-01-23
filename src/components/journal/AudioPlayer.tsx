@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 import AudioControls from "./audio/AudioControls";
 import AudioProgress from "./audio/AudioProgress";
 import VolumeControl from "./audio/VolumeControl";
-import AudioInitializer from "./audio/AudioInitializer";
-import AudioStateManager from "./audio/AudioStateManager";
-import AudioLoader from "./audio/AudioLoader";
+import { getMimeType } from "@/utils/audio";
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -19,14 +18,99 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [hasInitiatedLoad, setHasInitiatedLoad] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        if (!audioUrl) {
+          console.error('No audio URL provided');
+          setError('No audio URL provided');
+          return;
+        }
+
+        const filename = audioUrl.split('/').pop()?.split('?')[0];
+        if (!filename) {
+          console.error('Invalid audio URL format:', audioUrl);
+          setError('Invalid audio URL format');
+          return;
+        }
+
+        console.log('Starting audio download for:', filename);
+        
+        const { data: audioData, error: downloadError } = await supabase.storage
+          .from('audio_files')
+          .download(filename);
+
+        if (downloadError) {
+          console.error('Error downloading audio:', downloadError);
+          setError(`Error downloading audio: ${downloadError.message}`);
+          return;
+        }
+
+        if (!audioData) {
+          console.error('No audio data received from storage');
+          setError('No audio data received');
+          return;
+        }
+
+        const mimeType = getMimeType(filename);
+        const audioBlob = new Blob([audioData], { type: mimeType });
+
+        if (blobUrlRef.current) {
+          URL.revokeObjectURL(blobUrlRef.current);
+        }
+
+        const newBlobUrl = URL.createObjectURL(audioBlob);
+        blobUrlRef.current = newBlobUrl;
+
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
+        }
+
+        const audio = audioRef.current;
+        audio.src = newBlobUrl;
+        audio.volume = volume;
+        audio.muted = isMuted;
+        
+        await new Promise((resolve, reject) => {
+          const handleCanPlay = () => {
+            audio.removeEventListener('canplay', handleCanPlay);
+            resolve(true);
+          };
+
+          const handleError = (e: Event) => {
+            audio.removeEventListener('error', handleError);
+            reject(new Error('Failed to load audio'));
+          };
+
+          audio.addEventListener('canplay', handleCanPlay);
+          audio.addEventListener('error', handleError);
+          audio.load();
+        });
+
+        setError(null);
+        setIsLoading(false);
+        
+      } catch (error) {
+        console.error('Error in audio setup:', error);
+        setError(`Error setting up audio: ${error.message}`);
+        setIsLoading(false);
+      }
+    };
+
+    initializeAudio();
+
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
@@ -36,104 +120,96 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
         audioRef.current = null;
       }
     };
-  }, []);
+  }, [audioUrl, volume, isMuted]);
 
-  const handleAudioLoaded = (blobUrl: string) => {
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-    }
-    blobUrlRef.current = blobUrl;
-
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-    }
-
-    const audio = audioRef.current;
-    audio.src = blobUrl;
-    audio.volume = volume;
-    audio.muted = isMuted;
-    audio.preload = "auto";
-
-    audio.addEventListener('loadedmetadata', () => {
-      console.log('Metadata loaded, duration:', audio.duration);
-      if (audio.duration && isFinite(audio.duration) && audio.duration > 0) {
-        setDuration(audio.duration);
-        setCurrentTime(0);
-        setProgress(0);
-        setIsInitialized(true);
-        setIsLoading(false);
-        setError(null);
-      }
-    });
-
-    audio.load();
-  };
-
-  const handleTimeUpdate = () => {
+  useEffect(() => {
     if (!audioRef.current) return;
-    
+
     const audio = audioRef.current;
-    const newCurrentTime = audio.currentTime;
-    const newDuration = audio.duration;
+
+    const updateProgress = () => {
+      if (!audio) return;
+      
+      const newCurrentTime = audio.currentTime;
+      const newDuration = audio.duration || 0;
+      
+      if (newDuration > 0) {
+        const newProgress = (newCurrentTime / newDuration) * 100;
+        setCurrentTime(newCurrentTime);
+        setProgress(newProgress);
+        setDuration(newDuration);
+      }
+
+      if (isPlaying) {
+        animationFrameRef.current = requestAnimationFrame(updateProgress);
+      }
+    };
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+      updateProgress();
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+      setProgress((audio.currentTime / audio.duration) * 100);
+      updateProgress();
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      setCurrentTime(0);
+      audio.currentTime = 0;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      const newTime = audio.currentTime;
+      const newDuration = audio.duration || 0;
+      if (newDuration > 0) {
+        const newProgress = (newTime / newDuration) * 100;
+        setCurrentTime(newTime);
+        setProgress(newProgress);
+      }
+    };
+
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
     
-    if (newDuration > 0 && isFinite(newDuration)) {
-      const newProgress = (newCurrentTime / newDuration) * 100;
-      setCurrentTime(newCurrentTime);
-      setProgress(newProgress);
-      setDuration(newDuration);
+    // Initial progress update if metadata is already loaded
+    if (audio.readyState >= 1) {
+      handleLoadedMetadata();
     }
-  };
-
-  const handleEnded = () => {
-    setIsPlaying(false);
-    setProgress(0);
-    setCurrentTime(0);
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-    }
-  };
-
-  const initializeAudio = async () => {
-    setIsLoading(true);
-    setHasInitiatedLoad(true);
     
-    const filename = audioUrl.includes('/')
-      ? audioUrl.split('/').pop()?.split('?')[0]
-      : audioUrl;
-
-    if (!filename) {
-      throw new Error('Invalid audio URL format');
-    }
-
-    return new Promise<void>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error('Audio loading timeout - please try again'));
-      }, 10000);
-
-      const handleError = (error: Error) => {
-        clearTimeout(timeoutId);
-        setIsLoading(false);
-        setError(error.message);
-        reject(error);
-      };
-
-      const handleSuccess = (blobUrl: string) => {
-        clearTimeout(timeoutId);
-        handleAudioLoaded(blobUrl);
-        resolve();
-      };
-
-      // Start loading the audio
-      const loader = <AudioLoader
-        filename={filename}
-        onAudioLoaded={handleSuccess}
-        onError={handleError}
-      />;
-    });
-  };
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+    };
+  }, [isPlaying]);
 
   const togglePlay = async () => {
-    if (!audioRef.current || !isInitialized) {
+    if (!audioRef.current) {
+      console.error('No audio element available');
       setError('Audio not ready');
       return;
     }
@@ -141,8 +217,13 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     try {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
-        await audioRef.current.play();
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          setIsPlaying(true);
+        }
       }
     } catch (error) {
       console.error('Error toggling play state:', error);
@@ -150,6 +231,10 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       setIsPlaying(false);
     }
   };
+
+  if (isLoading) {
+    return <div className="text-muted-foreground">Loading audio...</div>;
+  }
 
   if (error) {
     return (
@@ -159,33 +244,8 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     );
   }
 
-  if (!hasInitiatedLoad) {
-    return (
-      <AudioInitializer
-        onInitialize={initializeAudio}
-        isLoading={isLoading}
-      />
-    );
-  }
-
-  if (isLoading || !isInitialized) {
-    return (
-      <div className="flex items-center justify-center p-4 space-x-2 bg-secondary rounded-lg">
-        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <span className="text-muted-foreground">Loading audio...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 bg-secondary rounded-lg space-y-4">
-      <AudioStateManager
-        audioRef={audioRef}
-        isPlaying={isPlaying}
-        setIsPlaying={setIsPlaying}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleEnded}
-      />
       <div className="flex items-center gap-4">
         <AudioControls
           isPlaying={isPlaying}
