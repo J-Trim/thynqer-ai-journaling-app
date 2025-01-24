@@ -16,11 +16,13 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const {
     title,
     setTitle,
@@ -44,24 +46,27 @@ const JournalEntryForm = () => {
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showTags, setShowTags] = useState(false);
   const [transformationEnabled, setTransformationEnabled] = useState(false);
+  const [lastSavedId, setLastSavedId] = useState<string | null>(id || null);
 
   const { data: entryTags } = useQuery({
-    queryKey: ['entry-tags', id],
+    queryKey: ['entry-tags', lastSavedId],
     queryFn: async () => {
-      if (!id) return [];
+      if (!lastSavedId) return [];
+      console.log('Fetching tags for entry:', lastSavedId);
       const { data, error } = await supabase
         .from('entry_tags')
         .select('tag_id')
-        .eq('entry_id', id);
+        .eq('entry_id', lastSavedId);
 
       if (error) throw error;
       return data.map(et => et.tag_id);
     },
-    enabled: !!id
+    enabled: !!lastSavedId
   });
 
   const updateEntryTagsMutation = useMutation({
     mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
+      console.log('Updating tags for entry:', entryId, 'with tags:', tagIds);
       const { error: deleteError } = await supabase
         .from('entry_tags')
         .delete()
@@ -106,38 +111,66 @@ const JournalEntryForm = () => {
     }
 
     try {
+      console.log('Starting save operation. Entry ID:', lastSavedId);
       const savedEntry = await saveEntry(isAutoSave);
-      if (savedEntry && selectedTags.length > 0) {
-        await updateEntryTagsMutation.mutateAsync({
-          entryId: savedEntry.id,
-          tagIds: selectedTags
-        });
-      }
+      
+      if (savedEntry) {
+        console.log('Entry saved successfully:', savedEntry.id);
+        setLastSavedId(savedEntry.id);
+        
+        if (selectedTags.length > 0) {
+          await updateEntryTagsMutation.mutateAsync({
+            entryId: savedEntry.id,
+            tagIds: selectedTags
+          });
+        }
 
-      if (!isAutoSave) {
-        setTransformationEnabled(true);
+        if (!isAutoSave) {
+          setTransformationEnabled(true);
+          toast({
+            title: "Success",
+            description: "Journal entry saved successfully",
+          });
+        }
       }
 
       return savedEntry;
     } catch (error) {
       console.error('Error saving entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save journal entry",
+        variant: "destructive",
+      });
       return null;
     }
   };
 
-  // New function for forced saves (used by transformation)
+  // Function for forced saves (used by transformation)
   const handleForceSave = async () => {
     try {
+      console.log('Starting forced save operation. Current entry ID:', lastSavedId);
       const savedEntry = await saveEntry(false, true);
-      if (savedEntry && selectedTags.length > 0) {
-        await updateEntryTagsMutation.mutateAsync({
-          entryId: savedEntry.id,
-          tagIds: selectedTags
-        });
+      
+      if (savedEntry) {
+        console.log('Entry force-saved successfully:', savedEntry.id);
+        setLastSavedId(savedEntry.id);
+        
+        if (selectedTags.length > 0) {
+          await updateEntryTagsMutation.mutateAsync({
+            entryId: savedEntry.id,
+            tagIds: selectedTags
+          });
+        }
       }
       return savedEntry;
     } catch (error) {
       console.error('Error in forced save:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save journal entry",
+        variant: "destructive",
+      });
       return null;
     }
   };
@@ -198,15 +231,15 @@ const JournalEntryForm = () => {
                 </Button>
               ) : (
                 <TransformationSelector 
-                  entryId={id || ''} 
+                  entryId={lastSavedId || ''} 
                   entryText={content || transcribedAudio || ''} 
-                  onSaveEntry={!id ? handleForceSave : undefined}
+                  onSaveEntry={!lastSavedId ? handleForceSave : undefined}
                 />
               )}
             </div>
           )}
 
-          {id && <TransformationsList entryId={id} />}
+          {lastSavedId && <TransformationsList entryId={lastSavedId} />}
 
           {audioUrl && !showAudioPlayer && (
             <Button 

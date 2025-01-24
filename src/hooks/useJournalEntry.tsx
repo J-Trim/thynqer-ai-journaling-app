@@ -94,7 +94,6 @@ export const useJournalEntry = (id?: string) => {
   }, [id, toast]);
 
   const saveEntry = async (isAutoSave = false, force = false) => {
-    // Allow forced saves to bypass the usual checks
     if (!force && (isInitializing || isSaveInProgress || (!isAutoSave && saveAttempted))) {
       console.log('Save prevented - initialization or save in progress');
       return null;
