@@ -68,6 +68,7 @@ export const TransformationSelector = ({
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -78,6 +79,7 @@ export const TransformationSelector = ({
     }
 
     setIsTransforming(true);
+    setIsSaving(true);
     setError(null);
 
     try {
@@ -93,6 +95,8 @@ export const TransformationSelector = ({
         finalEntryId = savedEntry.id;
         console.log('Entry saved successfully with ID:', finalEntryId);
       }
+
+      setIsSaving(false);
 
       if (!finalEntryId) {
         throw new Error('No entry ID available');
@@ -149,6 +153,7 @@ export const TransformationSelector = ({
       setError(err instanceof Error ? err.message : 'Failed to transform text');
     } finally {
       setIsTransforming(false);
+      setIsSaving(false);
     }
   };
 
@@ -184,13 +189,13 @@ export const TransformationSelector = ({
 
       <Button 
         onClick={handleTransform} 
-        disabled={isTransforming || !selectedType}
+        disabled={isTransforming || !selectedType || isSaving}
         className="w-full"
       >
-        {isTransforming ? (
+        {isTransforming || isSaving ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Transforming...
+            {isSaving ? 'Saving...' : 'Transforming...'}
           </>
         ) : (
           <>
