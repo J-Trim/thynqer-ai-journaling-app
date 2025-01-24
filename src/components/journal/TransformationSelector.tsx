@@ -155,6 +155,9 @@ export const TransformationSelector = ({
     }
   };
 
+  // Remove the trim() check from the disabled condition since we already check it in handleTransform
+  const isButtonDisabled = isTransforming || !selectedType;
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -180,7 +183,7 @@ export const TransformationSelector = ({
       </div>
       <Button 
         onClick={handleTransform} 
-        disabled={isTransforming || !selectedType || !entryText.trim()}
+        disabled={isButtonDisabled}
         className="w-full"
       >
         {isTransforming ? (
