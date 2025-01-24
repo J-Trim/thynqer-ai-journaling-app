@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { FloppyDisk } from "lucide-react";
+import { Save } from "lucide-react";
 
 interface JournalEntry {
   id: string;
@@ -45,7 +45,7 @@ const AutoSave = ({
             title: "",
             description: (
               <div className="flex items-center gap-2">
-                <FloppyDisk className="h-4 w-4 animate-fade-in" />
+                <Save className="h-4 w-4 animate-fade-in" />
                 <span className="text-sm">Saved</span>
               </div>
             ),
