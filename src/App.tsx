@@ -18,43 +18,45 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <UnsavedChangesProvider>
           <Router>
-            <Routes>
-              <Route path="/" element={<Navigate to="/journal" replace />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route
-                path="/journal"
-                element={
-                  <ProtectedRoute>
-                    <JournalList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/journal/new"
-                element={
-                  <ProtectedRoute>
-                    <JournalEntryForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/journal/edit/:id"
-                element={
-                  <ProtectedRoute>
-                    <JournalEntryForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/tags"
-                element={
-                  <ProtectedRoute>
-                    <TagsManagement />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-            <Toaster />
+            <div className="min-h-screen bg-background">
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route
+                  path="/journal"
+                  element={
+                    <ProtectedRoute>
+                      <JournalList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/journal/new"
+                  element={
+                    <ProtectedRoute>
+                      <JournalEntryForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/journal/edit/:id"
+                  element={
+                    <ProtectedRoute>
+                      <JournalEntryForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/tags"
+                  element={
+                    <ProtectedRoute>
+                      <TagsManagement />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+              <Toaster />
+            </div>
           </Router>
         </UnsavedChangesProvider>
       </QueryClientProvider>
