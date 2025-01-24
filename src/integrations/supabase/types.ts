@@ -99,26 +99,26 @@ export type Database = {
       summaries: {
         Row: {
           created_at: string | null
-          depth_level: string
           entry_id: string
           id: string
-          summary_text: string
+          transformation_type: string
+          transformed_text: string
           user_id: string
         }
         Insert: {
           created_at?: string | null
-          depth_level: string
           entry_id: string
           id?: string
-          summary_text: string
+          transformation_type: string
+          transformed_text: string
           user_id: string
         }
         Update: {
           created_at?: string | null
-          depth_level?: string
           entry_id?: string
           id?: string
-          summary_text?: string
+          transformation_type?: string
+          transformed_text?: string
           user_id?: string
         }
         Relationships: [

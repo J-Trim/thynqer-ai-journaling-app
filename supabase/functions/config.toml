@@ -1,0 +1,4 @@
+project_id = "zacanxuybdaejwjagwwe"
+
+[transform-text]
+verify_jwt = true
