@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,7 +8,6 @@ interface AudioHandlerProps {
 }
 
 const AudioHandler = ({ onAudioSaved, onTranscriptionComplete }: AudioHandlerProps) => {
-  const { toast } = useToast();
   const [isTranscribing, setIsTranscribing] = useState(false);
 
   const handleAudioSaved = async (audioFileName: string) => {
@@ -33,21 +31,12 @@ const AudioHandler = ({ onAudioSaved, onTranscriptionComplete }: AudioHandlerPro
       if (data?.text) {
         console.log('Transcription completed successfully');
         onTranscriptionComplete(data.text);
-        toast({
-          title: "Success",
-          description: "Audio transcribed successfully",
-        });
       } else {
         console.error('No transcription text received');
         throw new Error('No transcription text received');
       }
     } catch (error) {
       console.error('Transcription error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to transcribe audio. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsTranscribing(false);
     }
@@ -57,8 +46,9 @@ const AudioHandler = ({ onAudioSaved, onTranscriptionComplete }: AudioHandlerPro
     <div>
       <AudioRecorder onAudioSaved={handleAudioSaved} />
       {isTranscribing && (
-        <div className="mt-2 text-sm text-muted-foreground animate-pulse">
-          Transcribing audio...
+        <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <span>Transcribing audio...</span>
         </div>
       )}
     </div>

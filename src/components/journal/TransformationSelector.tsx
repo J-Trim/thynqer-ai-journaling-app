@@ -5,12 +5,10 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, FileText } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
@@ -70,21 +68,10 @@ export const TransformationSelector = ({
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const handleTransform = async () => {
-    if (!selectedType) {
-      toast({
-        description: "Please select a transformation type.",
-      });
-      return;
-    }
-
-    if (!entryText?.trim()) {
-      toast({
-        description: "Please ensure there is text to transform.",
-      });
+    if (!selectedType || !entryText?.trim()) {
       return;
     }
 
@@ -153,16 +140,8 @@ export const TransformationSelector = ({
 
       // Invalidate the transformations query to trigger a refresh
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
-
-      toast({
-        description: "Text transformed successfully.",
-      });
     } catch (error) {
       console.error('Error in transformation:', error);
-      toast({
-        description: error instanceof Error ? error.message : "Failed to transform text.",
-        variant: "destructive",
-      });
     } finally {
       setIsTransforming(false);
       setSelectedType(""); // Reset selection after transform
