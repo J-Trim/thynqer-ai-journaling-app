@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import JournalEntry from "@/components/JournalEntry";
-import Header from "@/components/Header";
 import JournalEntryForm from "@/components/JournalEntryForm";
 import LoadingState from "@/components/journal/LoadingState";
 import { format } from "date-fns";
@@ -67,7 +66,6 @@ const Index = () => {
     console.error('Error in journal entries query:', error);
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <main className="container mx-auto p-4 md:p-8">
           <div className="text-center text-destructive">
             Error loading journal entries. Please try refreshing the page.
@@ -79,14 +77,8 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background animate-fade-in">
-      <Header />
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-2xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="text-4xl font-bold">Journal Entry</h2>
-            <p className="text-muted-foreground">Capture your thoughts with text and voice</p>
-          </div>
-
           <JournalEntryForm />
 
           {!isNewEntryPage && (
