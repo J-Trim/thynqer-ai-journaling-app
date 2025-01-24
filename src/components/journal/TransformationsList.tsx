@@ -70,12 +70,12 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     },
   });
 
-  // Initialize all transformations as open when they are loaded
+  // Initialize all transformations as closed when they are loaded
   useEffect(() => {
     if (transformations) {
       const initialStates = transformations.reduce((acc, transform) => ({
         ...acc,
-        [transform.id]: true
+        [transform.id]: false
       }), {});
       setOpenStates(initialStates);
     }
