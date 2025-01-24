@@ -6,9 +6,9 @@ interface AudioRecorderTimerProps {
 
 const AudioRecorderTimer = ({ recordingTime }: AudioRecorderTimerProps) => {
   return (
-    <div className="text-2xl font-semibold text-text mb-4">
+    <span className="font-mono">
       {formatTime(recordingTime)}
-    </div>
+    </span>
   );
 };
 

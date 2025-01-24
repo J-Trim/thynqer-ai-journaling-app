@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAudioRecording } from "@/hooks/useAudioRecording";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
@@ -40,6 +41,19 @@ const JournalEntryForm = () => {
     handleNavigateAway
   } = useJournalEntry(id);
 
+  const {
+    isRecording,
+    isPaused,
+    recordingTime,
+    isProcessing,
+    toggleRecording,
+    stopRecording
+  } = useAudioRecording((url) => {
+    setAudioUrl(url);
+    setIsTranscriptionPending(true);
+    handleAudioTranscription(url);
+  });
+
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const [audioPublicUrl, setAudioPublicUrl] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -47,6 +61,39 @@ const JournalEntryForm = () => {
   const [showTags, setShowTags] = useState(false);
   const [transformationEnabled, setTransformationEnabled] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(id || null);
+
+  const handleAudioTranscription = async (audioFileName: string) => {
+    try {
+      console.log('Starting audio transcription process for:', audioFileName);
+      
+      console.log('Invoking transcribe-audio function...');
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audioUrl: audioFileName }
+      });
+
+      if (error) {
+        console.error('Transcription error:', error);
+        throw error;
+      }
+
+      if (data?.text) {
+        console.log('Transcription completed successfully');
+        setTranscribedAudio(data.text);
+      } else {
+        console.error('No transcription text received');
+        throw new Error('No transcription text received');
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to transcribe audio",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTranscriptionPending(false);
+    }
+  };
 
   const { data: entryTags } = useQuery({
     queryKey: ['entry-tags', lastSavedId],
@@ -202,6 +249,12 @@ const JournalEntryForm = () => {
           <JournalFormHeader 
             title={title}
             onTitleChange={setTitle}
+            isRecording={isRecording}
+            isPaused={isPaused}
+            isProcessing={isProcessing}
+            recordingTime={recordingTime}
+            onToggleRecording={toggleRecording}
+            onStopRecording={stopRecording}
           />
           
           <JournalFormContent
@@ -254,14 +307,6 @@ const JournalEntryForm = () => {
           {audioPublicUrl && showAudioPlayer && (
             <AudioPlayer audioUrl={audioPublicUrl} />
           )}
-
-          <AudioHandler
-            onAudioSaved={(url) => {
-              setAudioUrl(url);
-              setIsTranscriptionPending(true);
-            }}
-            onTranscriptionComplete={handleTranscriptionComplete}
-          />
 
           <JournalFormActions
             onCancel={handleNavigateAway}
