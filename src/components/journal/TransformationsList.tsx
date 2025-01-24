@@ -1,11 +1,20 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 
 interface TransformationsListProps {
@@ -15,6 +24,8 @@ interface TransformationsListProps {
 export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   const { toast } = useToast();
   const [openStates, setOpenStates] = useState<{ [key: string]: boolean }>({});
+  const [transformationToDelete, setTransformationToDelete] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   const { data: transformations, isLoading } = useQuery({
     queryKey: ['transformations', entryId],
@@ -31,6 +42,32 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
       return data;
     },
     enabled: !!entryId,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (transformationId: string) => {
+      const { error } = await supabase
+        .from('summaries')
+        .delete()
+        .eq('id', transformationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transformations', entryId] });
+      toast({
+        title: "Transformation deleted",
+        description: "The transformation has been deleted successfully.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting transformation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the transformation.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Initialize all transformations as open when they are loaded
@@ -68,6 +105,17 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     }));
   };
 
+  const handleDelete = (transformationId: string) => {
+    setTransformationToDelete(transformationId);
+  };
+
+  const confirmDelete = async () => {
+    if (transformationToDelete) {
+      await deleteMutation.mutateAsync(transformationToDelete);
+      setTransformationToDelete(null);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-center py-4">Loading transformations...</div>;
   }
@@ -93,7 +141,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center justify-between w-full hover:bg-transparent"
+                    className="flex items-center justify-between hover:bg-transparent"
                   >
                     <CardTitle className="text-sm font-medium">
                       {transform.transformation_type}
@@ -105,13 +153,22 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
                     )}
                   </Button>
                 </CollapsibleTrigger>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(transform.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CollapsibleContent>
@@ -124,6 +181,23 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
           </Card>
         </Collapsible>
       ))}
+
+      <AlertDialog open={!!transformationToDelete} onOpenChange={() => setTransformationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this transformation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this transformation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
