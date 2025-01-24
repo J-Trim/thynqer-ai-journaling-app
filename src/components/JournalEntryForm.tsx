@@ -11,6 +11,8 @@ import AudioHandler from "./journal/AudioHandler";
 import AudioPlayer from "./journal/AudioPlayer";
 import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
+import { TransformationSelector } from "./journal/TransformationSelector";
+import { TransformationsList } from "./journal/TransformationsList";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -203,6 +205,15 @@ const JournalEntryForm = () => {
             selectedTags={selectedTags}
             onTagToggle={handleTagToggle}
           />
+          {id && (
+            <>
+              <TransformationSelector 
+                entryId={id} 
+                entryText={content || ''} 
+              />
+              <TransformationsList entryId={id} />
+            </>
+          )}
           {audioUrl && !showAudioPlayer && (
             <Button 
               variant="outline" 
