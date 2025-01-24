@@ -2,20 +2,25 @@ import { useState } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+
+type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
 export const useTransformations = (entryId: string) => {
-  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<ValidTransformation>("Quick Summary");
   const [isTransforming, setIsTransforming] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const transformMutation = useMutation({
-    mutationFn: async ({ text, type }: { text: string; type: string }) => {
+    mutationFn: async ({ text, type }: { text: string; type: ValidTransformation }) => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         throw new Error('Authentication required');
       }
+
+      console.log('Starting transformation with type:', type);
 
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
@@ -29,6 +34,8 @@ export const useTransformations = (entryId: string) => {
       if (!transformResponse?.transformedText) {
         throw new Error('No transformed text received');
       }
+
+      console.log('Received transformed text, saving to database...');
 
       const { error: saveError } = await supabase
         .from('summaries')
@@ -48,7 +55,7 @@ export const useTransformations = (entryId: string) => {
       toast({
         description: "Text transformed successfully.",
       });
-      setSelectedType("");
+      setSelectedType("Quick Summary");
     },
     onError: (error) => {
       console.error('Error in transformation:', error);
