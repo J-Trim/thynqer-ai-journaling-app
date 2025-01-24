@@ -48,27 +48,34 @@ const Index = () => {
         .from('journal_entries')
         .select('*')
         .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100); // Add a limit to prevent excessive data fetching
 
       if (error) {
         console.error('Error fetching entries:', error);
         throw error;
       }
 
-      console.log('Raw entries before deduplication:', data);
-
-      // Enhanced deduplication using a Map to ensure uniqueness by ID
+      console.log('Raw entries from database:', data);
+      
+      // Create a Map to store unique entries by ID
       const uniqueEntriesMap = new Map();
+      
+      // Process each entry and only keep the most recent version
       data.forEach(entry => {
-        if (!uniqueEntriesMap.has(entry.id)) {
+        const existingEntry = uniqueEntriesMap.get(entry.id);
+        if (!existingEntry || new Date(entry.created_at) > new Date(existingEntry.created_at)) {
           uniqueEntriesMap.set(entry.id, entry);
+          console.log(`Processing entry ID ${entry.id}, title: ${entry.title}`);
         } else {
-          console.log(`Duplicate entry found and skipped for ID: ${entry.id}`);
+          console.log(`Skipping duplicate entry ID ${entry.id}, older timestamp`);
         }
       });
 
       const uniqueEntries = Array.from(uniqueEntriesMap.values());
-      console.log('Final unique entries after deduplication:', uniqueEntries);
+      console.log(`Found ${data.length} total entries, reduced to ${uniqueEntries.length} unique entries`);
+      console.log('Final unique entries:', uniqueEntries);
+      
       return uniqueEntries;
     },
     retry: 1,
