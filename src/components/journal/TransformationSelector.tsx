@@ -65,13 +65,29 @@ export const TransformationSelector = ({
         throw new Error('Authentication required');
       }
 
-      console.log('Calling transform-text function...');
+      console.log('Calling transform-text function with:', {
+        text: entryText,
+        transformationType: selectedType
+      });
+
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
-          body: { text: entryText, transformationType: selectedType }
+          body: { 
+            text: entryText, 
+            transformationType: selectedType 
+          }
         });
 
-      if (transformError) throw transformError;
+      if (transformError) {
+        console.error('Transform function error:', transformError);
+        throw transformError;
+      }
+
+      console.log('Transform response:', transformResponse);
+
+      if (!transformResponse?.transformedText) {
+        throw new Error('No transformed text received from the function');
+      }
 
       console.log('Saving transformation to database...');
       const { error: saveError } = await supabase
@@ -83,7 +99,10 @@ export const TransformationSelector = ({
           transformation_type: selectedType,
         });
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('Save error:', saveError);
+        throw saveError;
+      }
 
       toast({
         title: "Transformation complete",
@@ -97,7 +116,7 @@ export const TransformationSelector = ({
       console.error('Error in transformation:', error);
       toast({
         title: "Transformation failed",
-        description: "There was an error transforming your text. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error transforming your text. Please try again.",
         variant: "destructive",
       });
     } finally {
