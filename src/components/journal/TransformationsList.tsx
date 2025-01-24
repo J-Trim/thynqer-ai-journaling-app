@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check } from "lucide-react";
+import { Copy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface TransformationsListProps {
@@ -24,8 +24,10 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Retrieved transformations:', data);
       return data;
     },
+    enabled: !!entryId,
   });
 
   const copyToClipboard = async (text: string, type: string) => {
@@ -58,7 +60,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
       <h3 className="text-lg font-semibold">Transformations</h3>
       <div className="space-y-4">
         {transformations.map((transform) => (
-          <Card key={transform.id}>
+          <Card key={transform.id} className="animate-fade-in">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">

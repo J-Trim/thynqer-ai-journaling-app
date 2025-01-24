@@ -12,11 +12,11 @@ import {
 import { Loader2, FileText } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface TransformationSelectorProps {
   entryId: string;
   entryText: string;
-  onTransformationComplete?: () => void;
 }
 
 const TRANSFORMATION_TYPES = {
@@ -62,11 +62,11 @@ const TRANSFORMATION_TYPES = {
 export const TransformationSelector = ({ 
   entryId, 
   entryText,
-  onTransformationComplete 
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<string>("");
   const [isTransforming, setIsTransforming] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleTransform = async () => {
     if (!selectedType) {
@@ -134,14 +134,13 @@ export const TransformationSelector = ({
         throw saveError;
       }
 
+      // Invalidate the transformations query to trigger a refresh
+      queryClient.invalidateQueries({ queryKey: ['transformations', entryId] });
+
       toast({
         title: "Transformation complete",
         description: "Your text has been transformed successfully.",
       });
-
-      if (onTransformationComplete) {
-        onTransformationComplete();
-      }
     } catch (error) {
       console.error('Error in transformation:', error);
       toast({
@@ -155,7 +154,6 @@ export const TransformationSelector = ({
     }
   };
 
-  // Remove the trim() check from the disabled condition since we already check it in handleTransform
   const isButtonDisabled = isTransforming || !selectedType;
 
   return (
