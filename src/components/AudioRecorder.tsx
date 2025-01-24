@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, FileAudio, Pause, Save } from "lucide-react";
+import { Mic, Pause, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatTime, sanitizeFileName } from "@/utils/audio";
@@ -233,14 +233,6 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
           >
             <Save className="w-6 h-6 mr-2" />
             Save & Transcribe
-          </Button>
-        )}
-        {canTranscribe && !isRecording && (
-          <Button
-            onClick={handleTranscribe}
-            className="bg-accent hover:bg-accent-hover text-text"
-          >
-            <FileAudio className="w-6 h-6" />
           </Button>
         )}
       </div>
