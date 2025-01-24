@@ -79,7 +79,6 @@ export const TransformationSelector = ({
     }
 
     setIsTransforming(true);
-    setIsSaving(true);
     setError(null);
 
     try {
@@ -87,30 +86,36 @@ export const TransformationSelector = ({
       
       // If we don't have an entryId and onSaveEntry is provided, save first
       if (!entryId && onSaveEntry) {
-        console.log('Saving entry before transformation...');
+        console.log('No entry ID found, attempting to save entry first...');
+        setIsSaving(true);
         const savedEntry = await onSaveEntry();
+        
         if (!savedEntry?.id) {
+          console.error('Failed to save entry:', savedEntry);
           throw new Error('Failed to save entry');
         }
+        
         finalEntryId = savedEntry.id;
         console.log('Entry saved successfully with ID:', finalEntryId);
+        setIsSaving(false);
       }
 
-      setIsSaving(false);
-
       if (!finalEntryId) {
+        console.error('No entry ID available after save attempt');
         throw new Error('No entry ID available');
       }
 
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       
       if (authError || !session) {
+        console.error('Authentication error:', authError);
         throw new Error('Authentication required');
       }
 
-      console.log('Calling transform-text function with:', {
+      console.log('Starting transformation with:', {
         text: entryText,
-        transformationType: selectedType
+        transformationType: selectedType,
+        entryId: finalEntryId
       });
 
       const { data: transformResponse, error: transformError } = await supabase.functions
@@ -127,6 +132,7 @@ export const TransformationSelector = ({
       }
 
       if (!transformResponse?.transformedText) {
+        console.error('No transformed text received from function');
         throw new Error('No transformed text received');
       }
 
@@ -141,15 +147,15 @@ export const TransformationSelector = ({
         });
 
       if (saveError) {
-        console.error('Save error:', saveError);
+        console.error('Error saving transformation:', saveError);
         throw saveError;
       }
 
       console.log('Transformation saved successfully');
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
-      setSelectedType(""); // Reset selection after successful transform
+      setSelectedType("");
     } catch (err) {
-      console.error('Error in transformation:', err);
+      console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
     } finally {
       setIsTransforming(false);
@@ -195,7 +201,7 @@ export const TransformationSelector = ({
         {isTransforming || isSaving ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            {isSaving ? 'Saving...' : 'Transforming...'}
+            {isSaving ? 'Saving entry...' : 'Transforming...'}
           </>
         ) : (
           <>
