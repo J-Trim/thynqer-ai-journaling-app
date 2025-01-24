@@ -1,10 +1,9 @@
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Copy, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   AlertDialog,
@@ -22,12 +21,11 @@ interface TransformationsListProps {
 }
 
 export const TransformationsList = ({ entryId }: TransformationsListProps) => {
-  const { toast } = useToast();
   const [openStates, setOpenStates] = useState<{ [key: string]: boolean }>({});
   const [transformationToDelete, setTransformationToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
   
-  const { data: transformations, isLoading } = useQuery({
+  const { data: transformations, isLoading, error } = useQuery({
     queryKey: ['transformations', entryId],
     queryFn: async () => {
       console.log('Fetching transformations for entry:', entryId);
@@ -37,7 +35,11 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
         .eq('entry_id', entryId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching transformations:', error);
+        throw error;
+      }
+      
       console.log('Retrieved transformations:', data);
       return data;
     },
@@ -46,6 +48,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
 
   const deleteMutation = useMutation({
     mutationFn: async (transformationId: string) => {
+      console.log('Deleting transformation:', transformationId);
       const { error } = await supabase
         .from('summaries')
         .delete()
@@ -55,18 +58,10 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transformations', entryId] });
-      toast({
-        title: "Transformation deleted",
-        description: "The transformation has been deleted successfully.",
-      });
+      console.log('Transformation deleted successfully');
     },
     onError: (error) => {
       console.error('Error deleting transformation:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete the transformation.",
-        variant: "destructive",
-      });
     },
   });
 
@@ -84,17 +79,9 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   const copyToClipboard = async (text: string, type: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied to clipboard",
-        description: `${type} has been copied to your clipboard.`,
-      });
+      console.log(`${type} copied to clipboard`);
     } catch (error) {
       console.error('Error copying to clipboard:', error);
-      toast({
-        title: "Copy failed",
-        description: "Failed to copy text to clipboard.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -117,7 +104,16 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   };
 
   if (isLoading) {
-    return <div className="text-center py-4">Loading transformations...</div>;
+    return (
+      <div className="flex items-center justify-center py-4">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error('Error in transformations query:', error);
+    return null;
   }
 
   if (!transformations?.length) {
@@ -143,9 +139,9 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
                     size="sm"
                     className="flex items-center justify-between hover:bg-transparent"
                   >
-                    <CardTitle className="text-sm font-medium">
+                    <div className="text-sm font-medium">
                       {transform.transformation_type}
-                    </CardTitle>
+                    </div>
                     {openStates[transform.id] ? (
                       <ChevronUp className="h-4 w-4 ml-2" />
                     ) : (
