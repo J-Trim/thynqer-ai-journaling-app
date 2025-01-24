@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { FloppyDisk } from "lucide-react";
 
 interface JournalEntry {
   id: string;
@@ -36,11 +37,19 @@ const AutoSave = ({
 
     const timeout = setTimeout(async () => {
       if (content || title || audioUrl) {
+        console.log('Auto-saving journal entry...');
         const savedEntry = await onSave(true);
         if (savedEntry) {
+          console.log('Auto-save successful');
           toast({
-            title: "Auto-saved",
-            description: "Draft saved automatically",
+            title: "",
+            description: (
+              <div className="flex items-center gap-2">
+                <FloppyDisk className="h-4 w-4 animate-fade-in" />
+                <span className="text-sm">Saved</span>
+              </div>
+            ),
+            duration: 2600, // 800ms fade in + 1000ms display + 800ms fade out
           });
         }
       }

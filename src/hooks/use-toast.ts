@@ -5,7 +5,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 800 // Match global animation duration
+const TOAST_REMOVE_DELAY = 800 // Match animation duration
 
 type ToasterToast = ToastProps & {
   id: string
