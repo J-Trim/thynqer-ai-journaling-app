@@ -55,17 +55,20 @@ const Index = () => {
         throw error;
       }
 
-      // Remove duplicates based on id
-      const uniqueEntries = data.reduce((acc: any[], current: any) => {
-        const x = acc.find(item => item.id === current.id);
-        if (!x) {
-          return acc.concat([current]);
-        } else {
-          return acc;
-        }
-      }, []);
+      console.log('Raw entries before deduplication:', data);
 
-      console.log('Retrieved unique entries:', uniqueEntries);
+      // Enhanced deduplication using a Map to ensure uniqueness by ID
+      const uniqueEntriesMap = new Map();
+      data.forEach(entry => {
+        if (!uniqueEntriesMap.has(entry.id)) {
+          uniqueEntriesMap.set(entry.id, entry);
+        } else {
+          console.log(`Duplicate entry found and skipped for ID: ${entry.id}`);
+        }
+      });
+
+      const uniqueEntries = Array.from(uniqueEntriesMap.values());
+      console.log('Final unique entries after deduplication:', uniqueEntries);
       return uniqueEntries;
     },
     retry: 1,
