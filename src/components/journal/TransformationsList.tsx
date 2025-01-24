@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Copy, ChevronDown, ChevronUp } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState } from "react";
 
 interface TransformationsListProps {
   entryId: string;
@@ -12,8 +14,9 @@ interface TransformationsListProps {
 
 export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(true);
   
-  const { data: transformations, isLoading, refetch } = useQuery({
+  const { data: transformations, isLoading } = useQuery({
     queryKey: ['transformations', entryId],
     queryFn: async () => {
       console.log('Fetching transformations for entry:', entryId);
@@ -57,32 +60,45 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold">Transformations</h3>
-      <div className="space-y-4">
-        {transformations.map((transform) => (
-          <Card key={transform.id} className="animate-fade-in">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">
-                  {transform.transformation_type}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="whitespace-pre-wrap text-sm">
-                {transform.transformed_text}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Transformations</h3>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="hover:bg-transparent">
+              {isOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent className="space-y-4 transition-all duration-300">
+          {transformations.map((transform) => (
+            <Card key={transform.id} className="animate-fade-in">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium">
+                    {transform.transformation_type}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="whitespace-pre-wrap text-sm">
+                  {transform.transformed_text}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 };
