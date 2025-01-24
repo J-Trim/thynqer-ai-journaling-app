@@ -8,10 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, FileText } from "lucide-react";
+import { Loader2, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -70,6 +71,8 @@ export const TransformationSelector = ({
   const [isTransforming, setIsTransforming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastTransformation, setLastTransformation] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const queryClient = useQueryClient();
 
   const handleTransform = async () => {
@@ -84,7 +87,6 @@ export const TransformationSelector = ({
     try {
       let finalEntryId = entryId;
       
-      // If we don't have an entryId and onSaveEntry is provided, force save first
       if (!entryId && onSaveEntry) {
         console.log('No entry ID found, forcing save before transformation...');
         setIsSaving(true);
@@ -152,6 +154,8 @@ export const TransformationSelector = ({
       }
 
       console.log('Transformation saved successfully');
+      setLastTransformation(transformResponse.transformedText);
+      setIsCollapsed(false);
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       setSelectedType("");
     } catch (err) {
@@ -210,6 +214,30 @@ export const TransformationSelector = ({
           </>
         )}
       </Button>
+
+      {lastTransformation && (
+        <Collapsible
+          open={!isCollapsed}
+          onOpenChange={setIsCollapsed}
+          className="w-full border rounded-lg p-2"
+        >
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full flex justify-between items-center">
+              <span>Last Transformation Result</span>
+              {isCollapsed ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronUp className="h-4 w-4" />
+              )}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="p-4">
+            <p className="whitespace-pre-wrap text-sm">
+              {lastTransformation}
+            </p>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 };
