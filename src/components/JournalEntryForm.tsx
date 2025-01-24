@@ -43,6 +43,7 @@ const JournalEntryForm = () => {
   const [audioPublicUrl, setAudioPublicUrl] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  const [showTags, setShowTags] = useState(false);
 
   // Fetch existing tags for this entry
   const { data: entryTags } = useQuery({
@@ -66,6 +67,17 @@ const JournalEntryForm = () => {
       setSelectedTags(entryTags);
     }
   }, [entryTags]);
+
+  // Show tags when transcribed audio arrives
+  useEffect(() => {
+    if (transcribedAudio) {
+      // Small delay to ensure content is rendered before animation
+      const timer = setTimeout(() => {
+        setShowTags(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [transcribedAudio]);
 
   const updateEntryTagsMutation = useMutation({
     mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
@@ -201,10 +213,16 @@ const JournalEntryForm = () => {
             transcribedAudio={transcribedAudio}
             onContentChange={setContent} 
           />
-          <TagSelector
-            selectedTags={selectedTags}
-            onTagToggle={handleTagToggle}
-          />
+          <div 
+            className={`transition-opacity duration-800 ${
+              showTags ? 'opacity-100' : 'opacity-0'
+            }`}
+          >
+            <TagSelector
+              selectedTags={selectedTags}
+              onTagToggle={handleTagToggle}
+            />
+          </div>
           {id && (
             <>
               <TransformationSelector 

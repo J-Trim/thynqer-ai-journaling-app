@@ -101,7 +101,7 @@ export type Database = {
           created_at: string | null
           entry_id: string
           id: string
-          transformation_type: string
+          transformation_type: Database["public"]["Enums"]["valid_transformation"]
           transformed_text: string
           user_id: string
         }
@@ -109,7 +109,7 @@ export type Database = {
           created_at?: string | null
           entry_id: string
           id?: string
-          transformation_type: string
+          transformation_type?: Database["public"]["Enums"]["valid_transformation"]
           transformed_text: string
           user_id: string
         }
@@ -117,7 +117,7 @@ export type Database = {
           created_at?: string | null
           entry_id?: string
           id?: string
-          transformation_type?: string
+          transformation_type?: Database["public"]["Enums"]["valid_transformation"]
           transformed_text?: string
           user_id?: string
         }
@@ -157,7 +157,38 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      valid_transformation:
+        | "Quick Summary"
+        | "Emotional Check-In"
+        | "Daily Affirmation"
+        | "Mindfulness Reflection"
+        | "Goal Setting"
+        | "Short Paraphrase"
+        | "Psychoanalysis"
+        | "Lesson Plan"
+        | "Meeting Agenda"
+        | "Project Proposal"
+        | "Action Plan"
+        | "Performance Review"
+        | "Team Update / Status Report"
+        | "Training Outline"
+        | "Sales Pitch"
+        | "Corporate Email / Internal Memo"
+        | "Project Retrospective"
+        | "Implementation Plan"
+        | "Executive Summary"
+        | "Brainstorm Session Outline"
+        | "Risk Assessment"
+        | "Professional White Paper"
+        | "Blog Post"
+        | "Email"
+        | "Instagram Post"
+        | "YouTube Script"
+        | "X (Twitter) Post"
+        | "Instagram Reel / TikTok Clip"
+        | "Podcast Show Notes"
+        | "LinkedIn Article"
+        | "Motivational Snippet"
     }
     CompositeTypes: {
       [_ in never]: never
