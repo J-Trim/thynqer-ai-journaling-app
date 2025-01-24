@@ -1,7 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
-import Header from "@/components/Header";
 import EntryHeader from "./journal/EntryHeader";
 import EntryContent from "./journal/EntryContent";
 import ActionButtons from "./journal/ActionButtons";
@@ -204,93 +203,85 @@ const JournalEntryForm = () => {
   const canRecord = !id || hasUnsavedChanges;
 
   if (isInitializing) {
-    return (
-      <>
-        <Header />
-        <LoadingState />
-      </>
-    );
+    return <LoadingState />;
   }
 
   return (
-    <>
-      <Header />
-      <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
-        <AutoSave
-          content={content}
-          title={title}
-          audioUrl={audioUrl}
-          isInitializing={isInitializing}
-          isSaveInProgress={isSaveInProgress}
-          hasUnsavedChanges={hasUnsavedChanges}
-          onSave={handleSave}
+    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
+      <AutoSave
+        content={content}
+        title={title}
+        audioUrl={audioUrl}
+        isInitializing={isInitializing}
+        isSaveInProgress={isSaveInProgress}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onSave={handleSave}
+      />
+      <div className="space-y-4">
+        <EntryHeader title={title} onTitleChange={setTitle} />
+        <EntryContent 
+          content={content} 
+          transcribedAudio={transcribedAudio}
+          onContentChange={setContent} 
         />
-        <div className="space-y-4">
-          <EntryHeader title={title} onTitleChange={setTitle} />
-          <EntryContent 
-            content={content} 
-            transcribedAudio={transcribedAudio}
-            onContentChange={setContent} 
-          />
-          <div 
-            className={`transition-opacity duration-800 ${
-              showTags ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
-            <TagSelector
-              selectedTags={selectedTags}
-              onTagToggle={handleTagToggle}
-            />
-          </div>
-          {(content || transcribedAudio) && (
-            <div className="mt-8">
-              {!transformationEnabled ? (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setTransformationEnabled(true)}
-                  className="w-full"
-                >
-                  Show Transformation Options
-                </Button>
-              ) : (
-                <TransformationSelector 
-                  entryId={id || ''} 
-                  entryText={content || transcribedAudio || ''} 
-                  onSaveEntry={!id ? handleSave : undefined}
-                />
-              )}
-            </div>
-          )}
-          {id && <TransformationsList entryId={id} />}
-          {audioUrl && !showAudioPlayer && (
-            <Button 
-              variant="outline" 
-              onClick={() => setShowAudioPlayer(true)}
-              className="w-full"
-            >
-              Load Audio Player
-            </Button>
-          )}
-          {audioPublicUrl && showAudioPlayer && (
-            <AudioPlayer audioUrl={audioPublicUrl} />
-          )}
-          {canRecord && (
-            <AudioHandler
-              onAudioSaved={(url) => {
-                setAudioUrl(url);
-                setIsTranscriptionPending(true);
-              }}
-              onTranscriptionComplete={handleTranscriptionComplete}
-            />
-          )}
-          <ActionButtons
-            onCancel={handleNavigateAway}
-            onSave={() => handleSave(false)}
-            isSaving={isSaving || isTranscriptionPending}
+        <div 
+          className={`transition-opacity duration-800 ${
+            showTags ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <TagSelector
+            selectedTags={selectedTags}
+            onTagToggle={handleTagToggle}
           />
         </div>
+        {(content || transcribedAudio) && (
+          <div className="mt-8">
+            {!transformationEnabled ? (
+              <Button 
+                variant="outline" 
+                onClick={() => setTransformationEnabled(true)}
+                className="w-full"
+              >
+                Show Transformation Options
+              </Button>
+            ) : (
+              <TransformationSelector 
+                entryId={id || ''} 
+                entryText={content || transcribedAudio || ''} 
+                onSaveEntry={!id ? handleSave : undefined}
+              />
+            )}
+          </div>
+        )}
+        {id && <TransformationsList entryId={id} />}
+        {audioUrl && !showAudioPlayer && (
+          <Button 
+            variant="outline" 
+            onClick={() => setShowAudioPlayer(true)}
+            className="w-full"
+          >
+            Load Audio Player
+          </Button>
+        )}
+        {audioPublicUrl && showAudioPlayer && (
+          <AudioPlayer audioUrl={audioPublicUrl} />
+        )}
+        {canRecord && (
+          <AudioHandler
+            onAudioSaved={(url) => {
+              setAudioUrl(url);
+              setIsTranscriptionPending(true);
+            }}
+            onTranscriptionComplete={handleTranscriptionComplete}
+          />
+        )}
+        <ActionButtons
+          onCancel={handleNavigateAway}
+          onSave={() => handleSave(false)}
+          isSaving={isSaving || isTranscriptionPending}
+        />
       </div>
-    </>
+    </div>
   );
 };
 
