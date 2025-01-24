@@ -209,7 +209,7 @@ const JournalEntryForm = () => {
             <>
               <TransformationSelector 
                 entryId={id} 
-                entryText={content || ''} 
+                entryText={content || transcribedAudio || ''} 
               />
               <TransformationsList entryId={id} />
             </>
