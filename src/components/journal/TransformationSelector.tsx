@@ -14,12 +14,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
+import { format } from "date-fns";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
 interface TransformationSelectorProps {
   entryId: string;
   entryText: string;
+  onSaveEntry?: () => Promise<{ id: string } | null>;
 }
 
 const TRANSFORMATION_TYPES = {
@@ -65,6 +67,7 @@ const TRANSFORMATION_TYPES = {
 export const TransformationSelector = ({ 
   entryId, 
   entryText,
+  onSaveEntry,
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
@@ -90,17 +93,24 @@ export const TransformationSelector = ({
       return;
     }
 
-    if (!entryId) {
-      toast({
-        title: "Cannot transform",
-        description: "Please save your entry first before transforming it.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsTransforming(true);
     try {
+      // If we don't have an entryId and onSaveEntry is provided, save first
+      let finalEntryId = entryId;
+      if (!entryId && onSaveEntry) {
+        console.log('Saving entry before transformation...');
+        const savedEntry = await onSaveEntry();
+        if (!savedEntry) {
+          throw new Error('Failed to save entry');
+        }
+        finalEntryId = savedEntry.id;
+        console.log('Entry saved with ID:', finalEntryId);
+      }
+
+      if (!finalEntryId) {
+        throw new Error('No entry ID available');
+      }
+
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       
       if (authError || !session) {
@@ -135,7 +145,7 @@ export const TransformationSelector = ({
       const { error: saveError } = await supabase
         .from('summaries')
         .insert({
-          entry_id: entryId,
+          entry_id: finalEntryId,
           user_id: session.user.id,
           transformed_text: transformResponse.transformedText,
           transformation_type: selectedType,
@@ -147,7 +157,7 @@ export const TransformationSelector = ({
       }
 
       // Invalidate the transformations query to trigger a refresh
-      queryClient.invalidateQueries({ queryKey: ['transformations', entryId] });
+      queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
 
       toast({
         title: "Transformation complete",

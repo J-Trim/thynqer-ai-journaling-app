@@ -181,7 +181,7 @@ const JournalEntryForm = () => {
   const handleSave = async (isAutoSave = false) => {
     if (isTranscriptionPending) {
       console.log('Waiting for transcription to complete before saving...');
-      return;
+      return null;
     }
     
     const savedEntry = await saveEntry(isAutoSave);
@@ -191,6 +191,7 @@ const JournalEntryForm = () => {
         tagIds: selectedTags
       });
     }
+    return savedEntry;
   };
 
   const hasContent = content || transcribedAudio;
@@ -229,6 +230,7 @@ const JournalEntryForm = () => {
             <TransformationSelector 
               entryId={id || ''} 
               entryText={content || transcribedAudio || ''} 
+              onSaveEntry={!id ? handleSave : undefined}
             />
           )}
           {id && <TransformationsList entryId={id} />}
