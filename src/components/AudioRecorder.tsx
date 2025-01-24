@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, Square, FileAudio } from "lucide-react";
+import { Mic, Square, FileAudio, Pause } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatTime, sanitizeFileName } from "@/utils/audio";
@@ -116,19 +116,19 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
           variant: "destructive",
         });
       }
-    } else if (!isPaused) {
-      if (mediaRecorder.current && isRecording) {
-        mediaRecorder.current.pause();
-        setIsPaused(true);
-        stopTimer();
-        console.log("Recording paused");
-      }
     } else {
       if (mediaRecorder.current && isRecording) {
-        mediaRecorder.current.resume();
-        setIsPaused(false);
-        startTimer();
-        console.log("Recording resumed");
+        if (!isPaused) {
+          mediaRecorder.current.pause();
+          setIsPaused(true);
+          stopTimer();
+          console.log("Recording paused");
+        } else {
+          mediaRecorder.current.resume();
+          setIsPaused(false);
+          startTimer();
+          console.log("Recording resumed");
+        }
       }
     }
   };
@@ -205,42 +205,37 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
         {formatTime(recordingTime)}
       </div>
       <div className="flex space-x-4">
-        {isRecording ? (
-          <>
-            <Button
-              onClick={toggleRecording}
-              className={`${
-                isPaused 
-                  ? "bg-primary hover:bg-primary-hover text-white" 
-                  : "bg-accent hover:bg-accent-hover text-text"
-              }`}
-            >
-              <Mic className="w-6 h-6" />
-            </Button>
-            <Button
-              onClick={stopRecording}
-              variant="destructive"
-            >
-              <Square className="w-6 h-6" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              onClick={toggleRecording}
-              className="bg-primary hover:bg-primary-hover text-white"
-            >
-              <Mic className="w-6 h-6" />
-            </Button>
-            {canTranscribe && (
-              <Button
-                onClick={handleTranscribe}
-                className="bg-accent hover:bg-accent-hover text-text"
-              >
-                <FileAudio className="w-6 h-6" />
-              </Button>
-            )}
-          </>
+        <Button
+          onClick={toggleRecording}
+          className={`${
+            isRecording 
+              ? isPaused
+                ? "bg-primary hover:bg-primary-hover text-white"
+                : "bg-accent hover:bg-accent-hover text-text"
+              : "bg-primary hover:bg-primary-hover text-white"
+          }`}
+        >
+          {isRecording && !isPaused ? (
+            <Pause className="w-6 h-6" />
+          ) : (
+            <Mic className="w-6 h-6" />
+          )}
+        </Button>
+        {isRecording && (
+          <Button
+            onClick={stopRecording}
+            variant="destructive"
+          >
+            <Square className="w-6 h-6" />
+          </Button>
+        )}
+        {canTranscribe && !isRecording && (
+          <Button
+            onClick={handleTranscribe}
+            className="bg-accent hover:bg-accent-hover text-text"
+          >
+            <FileAudio className="w-6 h-6" />
+          </Button>
         )}
       </div>
     </div>
