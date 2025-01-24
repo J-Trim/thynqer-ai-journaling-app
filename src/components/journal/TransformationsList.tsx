@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface TransformationsListProps {
   entryId: string;
@@ -24,6 +25,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   const [openStates, setOpenStates] = useState<{ [key: string]: boolean }>({});
   const [transformationToDelete, setTransformationToDelete] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   const { data: transformations, isLoading, error } = useQuery({
     queryKey: ['transformations', entryId],
@@ -46,6 +48,17 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     enabled: !!entryId,
   });
 
+  // Initialize all transformations as closed when they are loaded
+  useEffect(() => {
+    if (transformations) {
+      const initialStates = transformations.reduce((acc, transform) => ({
+        ...acc,
+        [transform.id]: false
+      }), {});
+      setOpenStates(initialStates);
+    }
+  }, [transformations]);
+
   const deleteMutation = useMutation({
     mutationFn: async (transformationId: string) => {
       console.log('Deleting transformation:', transformationId);
@@ -58,34 +71,37 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transformations', entryId] });
+      toast({
+        description: "Transformation deleted successfully",
+      });
       console.log('Transformation deleted successfully');
     },
     onError: (error) => {
       console.error('Error deleting transformation:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to delete transformation",
+      });
     },
   });
-
-  // Initialize all transformations as closed when they are loaded
-  useEffect(() => {
-    if (transformations) {
-      const initialStates = transformations.reduce((acc, transform) => ({
-        ...acc,
-        [transform.id]: false
-      }), {});
-      setOpenStates(initialStates);
-    }
-  }, [transformations]);
 
   const copyToClipboard = async (text: string, type: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      console.log(`${type} copied to clipboard`);
+      toast({
+        description: `${type} copied to clipboard`,
+      });
     } catch (error) {
       console.error('Error copying to clipboard:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to copy to clipboard",
+      });
     }
   };
 
   const toggleTransformation = (id: string) => {
+    console.log('Toggling transformation:', id);
     setOpenStates(prev => ({
       ...prev,
       [id]: !prev[id]
@@ -137,7 +153,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center justify-between hover:bg-transparent"
+                    className="flex items-center justify-between hover:bg-transparent w-full"
                   >
                     <div className="text-sm font-medium">
                       {transform.transformation_type}
