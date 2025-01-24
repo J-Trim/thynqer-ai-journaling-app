@@ -43,7 +43,7 @@ const AudioHandler = ({ onAudioSaved, onTranscriptionComplete }: AudioHandlerPro
   };
 
   return (
-    <div>
+    <div className="relative min-h-[4rem]">
       <AudioRecorder onAudioSaved={handleAudioSaved} />
       {isTranscribing && (
         <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
