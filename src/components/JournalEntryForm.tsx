@@ -262,7 +262,6 @@ const JournalEntryForm = () => {
               entryId={id || ''} 
               entryText={content || transcribedAudio || ''} 
               onSaveEntry={!id ? handleSave : undefined}
-              onContentChange={setContent}
             />
           )}
           {id && <TransformationsList entryId={id} />}

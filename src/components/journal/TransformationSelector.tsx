@@ -14,7 +14,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
-import { format } from "date-fns";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -22,7 +21,6 @@ interface TransformationSelectorProps {
   entryId: string;
   entryText: string;
   onSaveEntry?: () => Promise<{ id: string } | null>;
-  onContentChange?: (newContent: string) => void;
 }
 
 const TRANSFORMATION_TYPES = {
@@ -69,7 +67,6 @@ export const TransformationSelector = ({
   entryId, 
   entryText,
   onSaveEntry,
-  onContentChange,
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
@@ -152,12 +149,6 @@ export const TransformationSelector = ({
       if (saveError) {
         console.error('Save error:', saveError);
         throw saveError;
-      }
-
-      // Append transformed text to the entry content
-      if (onContentChange) {
-        const transformationHeader = `\n\n---\n${selectedType} Transformation:\n`;
-        onContentChange(entryText + transformationHeader + transformResponse.transformedText);
       }
 
       // Invalidate the transformations query to trigger a refresh
