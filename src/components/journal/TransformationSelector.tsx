@@ -22,6 +22,7 @@ interface TransformationSelectorProps {
   entryId: string;
   entryText: string;
   onSaveEntry?: () => Promise<{ id: string } | null>;
+  onContentChange?: (newContent: string) => void;
 }
 
 const TRANSFORMATION_TYPES = {
@@ -68,6 +69,7 @@ export const TransformationSelector = ({
   entryId, 
   entryText,
   onSaveEntry,
+  onContentChange,
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
@@ -77,18 +79,14 @@ export const TransformationSelector = ({
   const handleTransform = async () => {
     if (!selectedType) {
       toast({
-        title: "Cannot transform",
         description: "Please select a transformation type.",
-        variant: "destructive",
       });
       return;
     }
 
     if (!entryText?.trim()) {
       toast({
-        title: "Cannot transform",
         description: "Please ensure there is text to transform.",
-        variant: "destructive",
       });
       return;
     }
@@ -156,18 +154,22 @@ export const TransformationSelector = ({
         throw saveError;
       }
 
+      // Append transformed text to the entry content
+      if (onContentChange) {
+        const transformationHeader = `\n\n---\n${selectedType} Transformation:\n`;
+        onContentChange(entryText + transformationHeader + transformResponse.transformedText);
+      }
+
       // Invalidate the transformations query to trigger a refresh
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
 
       toast({
-        title: "Transformation complete",
-        description: "Your text has been transformed successfully.",
+        description: "Text transformed successfully.",
       });
     } catch (error) {
       console.error('Error in transformation:', error);
       toast({
-        title: "Transformation failed",
-        description: error instanceof Error ? error.message : "There was an error transforming your text. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to transform text.",
         variant: "destructive",
       });
     } finally {
