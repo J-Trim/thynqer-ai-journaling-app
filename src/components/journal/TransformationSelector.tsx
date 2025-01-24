@@ -84,9 +84,9 @@ export const TransformationSelector = ({
     try {
       let finalEntryId = entryId;
       
-      // If we don't have an entryId and onSaveEntry is provided, save first
+      // If we don't have an entryId and onSaveEntry is provided, force save first
       if (!entryId && onSaveEntry) {
-        console.log('No entry ID found, attempting to save entry first...');
+        console.log('No entry ID found, forcing save before transformation...');
         setIsSaving(true);
         const savedEntry = await onSaveEntry();
         

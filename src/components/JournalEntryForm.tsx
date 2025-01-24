@@ -125,6 +125,23 @@ const JournalEntryForm = () => {
     }
   };
 
+  // New function for forced saves (used by transformation)
+  const handleForceSave = async () => {
+    try {
+      const savedEntry = await saveEntry(false, true);
+      if (savedEntry && selectedTags.length > 0) {
+        await updateEntryTagsMutation.mutateAsync({
+          entryId: savedEntry.id,
+          tagIds: selectedTags
+        });
+      }
+      return savedEntry;
+    } catch (error) {
+      console.error('Error in forced save:', error);
+      return null;
+    }
+  };
+
   if (isInitializing) {
     return (
       <>
@@ -183,7 +200,7 @@ const JournalEntryForm = () => {
                 <TransformationSelector 
                   entryId={id || ''} 
                   entryText={content || transcribedAudio || ''} 
-                  onSaveEntry={!id ? handleSave : undefined}
+                  onSaveEntry={!id ? handleForceSave : undefined}
                 />
               )}
             </div>
