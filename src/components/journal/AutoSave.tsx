@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 
+interface JournalEntry {
+  id: string;
+  title: string;
+  text: string;
+  audio_url: string | null;
+}
+
 interface AutoSaveProps {
   content: string;
   title: string;
@@ -8,7 +15,7 @@ interface AutoSaveProps {
   isInitializing: boolean;
   isSaveInProgress: boolean;
   hasUnsavedChanges: boolean;
-  onSave: (isAutoSave: boolean) => Promise<void>;
+  onSave: (isAutoSave: boolean) => Promise<JournalEntry | null>;
   autoSaveDelay?: number;
 }
 
@@ -29,11 +36,13 @@ const AutoSave = ({
 
     const timeout = setTimeout(async () => {
       if (content || title || audioUrl) {
-        await onSave(true);
-        toast({
-          title: "Auto-saved",
-          description: "Draft saved automatically",
-        });
+        const savedEntry = await onSave(true);
+        if (savedEntry) {
+          toast({
+            title: "Auto-saved",
+            description: "Draft saved automatically",
+          });
+        }
       }
     }, autoSaveDelay);
 
