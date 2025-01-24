@@ -1,9 +1,9 @@
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
-import EntryHeader from "./journal/EntryHeader";
-import EntryContent from "./journal/EntryContent";
-import ActionButtons from "./journal/ActionButtons";
+import JournalFormHeader from "./journal/form/JournalFormHeader";
+import JournalFormContent from "./journal/form/JournalFormContent";
+import JournalFormActions from "./journal/form/JournalFormActions";
 import LoadingState from "./journal/LoadingState";
 import AudioHandler from "./journal/AudioHandler";
 import AudioPlayer from "./journal/AudioPlayer";
@@ -11,17 +11,15 @@ import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
 import { TransformationSelector } from "./journal/TransformationSelector";
 import { TransformationsList } from "./journal/TransformationsList";
-import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const {
     title,
     setTitle,
@@ -44,7 +42,6 @@ const JournalEntryForm = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showTags, setShowTags] = useState(false);
-  const [saveAttempted, setSaveAttempted] = useState(false);
   const [transformationEnabled, setTransformationEnabled] = useState(false);
 
   const { data: entryTags } = useQuery({
@@ -61,21 +58,6 @@ const JournalEntryForm = () => {
     },
     enabled: !!id
   });
-
-  useEffect(() => {
-    if (entryTags) {
-      setSelectedTags(entryTags);
-    }
-  }, [entryTags]);
-
-  useEffect(() => {
-    if (transcribedAudio) {
-      const timer = setTimeout(() => {
-        setShowTags(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [transcribedAudio]);
 
   const updateEntryTagsMutation = useMutation({
     mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
@@ -102,47 +84,6 @@ const JournalEntryForm = () => {
     }
   });
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error || !session) {
-          console.error('Auth check error:', error);
-          navigate("/auth", { replace: true });
-          return;
-        }
-      } catch (error) {
-        console.error('Unexpected error during auth check:', error);
-        navigate("/auth", { replace: true });
-      }
-    };
-
-    checkAuth();
-  }, [navigate]);
-
-  useEffect(() => {
-    const fetchAudioUrl = async () => {
-      if (!audioUrl) {
-        setAudioPublicUrl(null);
-        return;
-      }
-
-      try {
-        const { data } = supabase.storage
-          .from('audio_files')
-          .getPublicUrl(audioUrl);
-        
-        setAudioPublicUrl(data.publicUrl);
-      } catch (error) {
-        console.error('Error fetching audio URL:', error);
-        setAudioPublicUrl(null);
-      }
-    };
-
-    fetchAudioUrl();
-  }, [audioUrl]);
-
   const handleTranscriptionComplete = (transcribedText: string) => {
     setTranscribedAudio(transcribedText);
     setContent(prev => prev || '');
@@ -163,15 +104,6 @@ const JournalEntryForm = () => {
       return null;
     }
 
-    if (!isAutoSave && saveAttempted) {
-      console.log('Manual save already attempted');
-      return null;
-    }
-
-    if (!isAutoSave) {
-      setSaveAttempted(true);
-    }
-    
     try {
       const savedEntry = await saveEntry(isAutoSave);
       if (savedEntry && selectedTags.length > 0) {
@@ -188,19 +120,9 @@ const JournalEntryForm = () => {
       return savedEntry;
     } catch (error) {
       console.error('Error saving entry:', error);
-      setSaveAttempted(false);
-      if (!isAutoSave) {
-        toast({
-          title: "Error",
-          description: "Failed to save journal entry",
-          variant: "destructive",
-        });
-      }
       return null;
     }
   };
-
-  const canRecord = !id || hasUnsavedChanges;
 
   if (isInitializing) {
     return <LoadingState />;
@@ -217,23 +139,28 @@ const JournalEntryForm = () => {
         hasUnsavedChanges={hasUnsavedChanges}
         onSave={handleSave}
       />
+      
       <div className="space-y-4">
-        <EntryHeader title={title} onTitleChange={setTitle} />
-        <EntryContent 
-          content={content} 
-          transcribedAudio={transcribedAudio}
-          onContentChange={setContent} 
+        <JournalFormHeader 
+          title={title}
+          onTitleChange={setTitle}
         />
-        <div 
-          className={`transition-opacity duration-800 ${
-            showTags ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
+        
+        <JournalFormContent
+          content={content}
+          transcribedAudio={transcribedAudio}
+          onContentChange={setContent}
+        />
+
+        <div className={`transition-opacity duration-800 ${
+          showTags ? 'opacity-100' : 'opacity-0'
+        }`}>
           <TagSelector
             selectedTags={selectedTags}
             onTagToggle={handleTagToggle}
           />
         </div>
+
         {(content || transcribedAudio) && (
           <div className="mt-8">
             {!transformationEnabled ? (
@@ -253,7 +180,9 @@ const JournalEntryForm = () => {
             )}
           </div>
         )}
+
         {id && <TransformationsList entryId={id} />}
+
         {audioUrl && !showAudioPlayer && (
           <Button 
             variant="outline" 
@@ -263,22 +192,24 @@ const JournalEntryForm = () => {
             Load Audio Player
           </Button>
         )}
+
         {audioPublicUrl && showAudioPlayer && (
           <AudioPlayer audioUrl={audioPublicUrl} />
         )}
-        {canRecord && (
-          <AudioHandler
-            onAudioSaved={(url) => {
-              setAudioUrl(url);
-              setIsTranscriptionPending(true);
-            }}
-            onTranscriptionComplete={handleTranscriptionComplete}
-          />
-        )}
-        <ActionButtons
+
+        <AudioHandler
+          onAudioSaved={(url) => {
+            setAudioUrl(url);
+            setIsTranscriptionPending(true);
+          }}
+          onTranscriptionComplete={handleTranscriptionComplete}
+        />
+
+        <JournalFormActions
           onCancel={handleNavigateAway}
           onSave={() => handleSave(false)}
-          isSaving={isSaving || isTranscriptionPending}
+          isSaving={isSaving}
+          isTranscriptionPending={isTranscriptionPending}
         />
       </div>
     </div>
