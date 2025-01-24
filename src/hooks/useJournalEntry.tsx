@@ -46,42 +46,73 @@ export const useJournalEntry = (id?: string) => {
   useEffect(() => {
     const loadEntry = async () => {
       if (!id) {
+        console.log('No ID provided, initializing new entry');
         setIsInitializing(false);
         return;
       }
 
       try {
-        console.log('Loading entry:', id);
+        console.log('Loading entry with ID:', id);
+        const { data: { session }, error: authError } = await supabase.auth.getSession();
+        
+        if (authError || !session) {
+          console.error('Auth error:', authError);
+          toast({
+            title: "Authentication Error",
+            description: "Please log in again",
+            variant: "destructive",
+          });
+          navigate("/auth");
+          return;
+        }
+
         const { data: entry, error } = await supabase
           .from('journal_entries')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
 
-        if (error) throw error;
-
-        if (entry) {
-          console.log('Entry loaded:', entry);
-          const [mainContent, transcribed] = entry.text ? 
-            entry.text.split("\n\n---\nTranscribed Audio:\n") : 
-            ["", ""];
-
-          setTitle(entry.title || '');
-          setContent(mainContent || '');
-          setTranscribedAudio(transcribed || '');
-          setAudioUrl(entry.audio_url);
-          setInitialContent({
-            title: entry.title || '',
-            content: mainContent || '',
-            audioUrl: entry.audio_url,
-            transcribedAudio: transcribed || ''
+        if (error) {
+          console.error('Error loading entry:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load journal entry",
+            variant: "destructive",
           });
+          return;
         }
+
+        if (!entry) {
+          console.log('No entry found with ID:', id);
+          toast({
+            title: "Not Found",
+            description: "Journal entry not found",
+            variant: "destructive",
+          });
+          navigate("/journal");
+          return;
+        }
+
+        console.log('Entry loaded successfully:', entry);
+        const [mainContent, transcribed] = entry.text ? 
+          entry.text.split("\n\n---\nTranscribed Audio:\n") : 
+          ["", ""];
+
+        setTitle(entry.title || '');
+        setContent(mainContent || '');
+        setTranscribedAudio(transcribed || '');
+        setAudioUrl(entry.audio_url);
+        setInitialContent({
+          title: entry.title || '',
+          content: mainContent || '',
+          audioUrl: entry.audio_url,
+          transcribedAudio: transcribed || ''
+        });
       } catch (error) {
-        console.error('Error loading entry:', error);
+        console.error('Unexpected error loading entry:', error);
         toast({
           title: "Error",
-          description: "Failed to load journal entry",
+          description: "An unexpected error occurred",
           variant: "destructive",
         });
       } finally {
@@ -90,7 +121,7 @@ export const useJournalEntry = (id?: string) => {
     };
 
     loadEntry();
-  }, [id, toast]);
+  }, [id, toast, navigate]);
 
   const saveEntry = async (isAutoSave = false) => {
     if (isInitializing || isSaveInProgress) {
