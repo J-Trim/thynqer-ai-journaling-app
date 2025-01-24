@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -17,25 +19,45 @@ interface TransformationSelectorProps {
   onTransformationComplete?: () => void;
 }
 
-const TRANSFORMATION_TYPES = [
-  'Blog Post',
-  'Email',
-  'Instagram Post',
-  'YouTube Script',
-  'X (Twitter) Post',
-  'Instagram Reel / TikTok Clip',
-  'Podcast Show Notes',
-  'LinkedIn Article',
-  'Motivational Snippet',
-  'Quick Summary',
-  'Emotional Check-In',
-  'Daily Affirmation',
-  'Action Plan',
-  'Psychoanalysis',
-  'Mindfulness Reflection',
-  'Goal Setting',
-  'Short Paraphrase',
-] as const;
+const TRANSFORMATION_TYPES = {
+  "Personal Insights": [
+    'Quick Summary',
+    'Emotional Check-In',
+    'Daily Affirmation',
+    'Mindfulness Reflection',
+    'Goal Setting',
+    'Short Paraphrase',
+    'Psychoanalysis',
+  ],
+  "Professional Growth": [
+    'Lesson Plan',
+    'Meeting Agenda',
+    'Project Proposal',
+    'Action Plan',
+    'Performance Review',
+    'Team Update / Status Report',
+    'Training Outline',
+    'Sales Pitch',
+    'Corporate Email / Internal Memo',
+    'Project Retrospective',
+    'Implementation Plan',
+    'Executive Summary',
+    'Brainstorm Session Outline',
+    'Risk Assessment',
+    'Professional White Paper',
+  ],
+  "Social Media": [
+    'Blog Post',
+    'Email',
+    'Instagram Post',
+    'YouTube Script',
+    'X (Twitter) Post',
+    'Instagram Reel / TikTok Clip',
+    'Podcast Show Notes',
+    'LinkedIn Article',
+    'Motivational Snippet',
+  ],
+} as const;
 
 export const TransformationSelector = ({ 
   entryId, 
@@ -138,14 +160,19 @@ export const TransformationSelector = ({
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Select value={selectedType} onValueChange={setSelectedType}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select type" />
+          <SelectTrigger className="w-[280px]">
+            <SelectValue placeholder="Select transformation type" />
           </SelectTrigger>
           <SelectContent>
-            {TRANSFORMATION_TYPES.map((type) => (
-              <SelectItem key={type} value={type}>
-                {type}
-              </SelectItem>
+            {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
+              <SelectGroup key={group}>
+                <SelectLabel className="font-semibold">{group}</SelectLabel>
+                {types.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
