@@ -280,7 +280,7 @@ const JournalEntryForm = () => {
                   onClick={() => setTransformationEnabled(true)}
                   className="w-full"
                 >
-                  Show Transformation Options
+                  Transformation Station
                 </Button>
               ) : (
                 <TransformationSelector 
