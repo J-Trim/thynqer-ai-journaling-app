@@ -14,6 +14,39 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
+type ValidTransformation = 
+  | "Quick Summary"
+  | "Emotional Check-In"
+  | "Daily Affirmation"
+  | "Mindfulness Reflection"
+  | "Goal Setting"
+  | "Short Paraphrase"
+  | "Psychoanalysis"
+  | "Lesson Plan"
+  | "Meeting Agenda"
+  | "Project Proposal"
+  | "Action Plan"
+  | "Performance Review"
+  | "Team Update / Status Report"
+  | "Training Outline"
+  | "Sales Pitch"
+  | "Corporate Email / Internal Memo"
+  | "Project Retrospective"
+  | "Implementation Plan"
+  | "Executive Summary"
+  | "Brainstorm Session Outline"
+  | "Risk Assessment"
+  | "Professional White Paper"
+  | "Blog Post"
+  | "Email"
+  | "Instagram Post"
+  | "YouTube Script"
+  | "X (Twitter) Post"
+  | "Instagram Reel / TikTok Clip"
+  | "Podcast Show Notes"
+  | "LinkedIn Article"
+  | "Motivational Snippet";
+
 interface TransformationSelectorProps {
   entryId: string;
   entryText: string;
@@ -63,7 +96,7 @@ export const TransformationSelector = ({
   entryId, 
   entryText,
 }: TransformationSelectorProps) => {
-  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -162,7 +195,7 @@ export const TransformationSelector = ({
         {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
           <div key={group} className="space-y-2">
             <h3 className="text-sm font-medium text-text-muted mb-2">{group}</h3>
-            <Select value={selectedType} onValueChange={setSelectedType}>
+            <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
               <SelectTrigger className="w-full bg-white">
                 <SelectValue placeholder={`Choose ${group.split(' ')[1]} Type`} />
               </SelectTrigger>
