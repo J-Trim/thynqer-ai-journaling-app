@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Mic, Pause, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { formatTime, sanitizeFileName } from "@/utils/audio";
 
 interface AudioRecorderProps {
@@ -14,6 +14,7 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [canTranscribe, setCanTranscribe] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const timerRef = useRef<number | null>(null);
   const audioChunks = useRef<Blob[]>([]);
@@ -152,7 +153,6 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
       setCanTranscribe(audioChunks.current.length > 0 && audioChunks.current.some(chunk => chunk.size > 0));
       console.log("Recording stopped, chunks:", audioChunks.current.length);
       
-      // Automatically trigger transcription after stopping
       if (audioChunks.current.length > 0 && audioChunks.current.some(chunk => chunk.size > 0)) {
         await handleTranscribe();
       }
@@ -170,6 +170,7 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
     }
 
     try {
+      setIsProcessing(true);
       const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
       if (audioBlob.size === 0) {
         toast({
@@ -201,6 +202,8 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
         description: "Failed to save audio recording",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -212,6 +215,7 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
       <div className="flex space-x-4">
         <Button
           onClick={toggleRecording}
+          disabled={isProcessing}
           className={`${
             isRecording 
               ? isPaused
@@ -229,6 +233,7 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
         {isRecording && (
           <Button
             onClick={stopRecording}
+            disabled={isProcessing}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Save className="w-6 h-6 mr-2" />
@@ -236,6 +241,11 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
           </Button>
         )}
       </div>
+      {isProcessing && (
+        <div className="text-sm text-muted-foreground animate-pulse">
+          Processing audio...
+        </div>
+      )}
     </div>
   );
 };

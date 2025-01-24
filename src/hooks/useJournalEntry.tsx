@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
 
 interface JournalEntry {
@@ -20,6 +20,7 @@ export const useJournalEntry = (id?: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  const [saveAttempted, setSaveAttempted] = useState(false);
   const [initialContent, setInitialContent] = useState({ 
     title: "", 
     content: "", 
@@ -93,16 +94,18 @@ export const useJournalEntry = (id?: string) => {
   }, [id, toast]);
 
   const saveEntry = async (isAutoSave = false) => {
-    if (isInitializing || isSaveInProgress) {
+    if (isInitializing || isSaveInProgress || (!isAutoSave && saveAttempted)) {
       console.log('Save prevented - initialization or save in progress');
       return null;
     }
     
     try {
       setIsSaveInProgress(true);
-      setIsSaving(true);
+      if (!isAutoSave) {
+        setSaveAttempted(true);
+        setIsSaving(true);
+      }
       
-      // Check session before saving
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       console.log('Current session:', session ? 'Active' : 'None');
 
@@ -119,7 +122,6 @@ export const useJournalEntry = (id?: string) => {
 
       let finalContent = content;
       
-      // Combine content with transcribed audio if present
       const fullText = transcribedAudio 
         ? `${finalContent}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
         : finalContent;
@@ -165,7 +167,6 @@ export const useJournalEntry = (id?: string) => {
           title: "Success",
           description: "Journal entry saved successfully",
         });
-        navigate("/journal", { replace: true });
       }
 
       return savedEntry as JournalEntry;
@@ -178,8 +179,8 @@ export const useJournalEntry = (id?: string) => {
       });
       return null;
     } finally {
-      setIsSaving(false);
       setIsSaveInProgress(false);
+      setIsSaving(false);
     }
   };
 
