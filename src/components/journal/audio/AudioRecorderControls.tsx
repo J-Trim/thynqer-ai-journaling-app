@@ -17,13 +17,13 @@ const AudioRecorderControls = ({
   onStopRecording
 }: AudioRecorderControlsProps) => {
   return (
-    <div className="flex gap-1">
+    <div className="flex flex-col items-center gap-4">
       <Button
         size="icon"
         onClick={onToggleRecording}
         disabled={isProcessing}
         variant="ghost"
-        className={`h-8 w-8 rounded-full hover:bg-secondary/80 ${
+        className={`h-10 w-10 rounded-full hover:bg-secondary/80 ${
           isRecording 
             ? isPaused
               ? "text-primary hover:text-primary-hover"
@@ -32,9 +32,9 @@ const AudioRecorderControls = ({
         }`}
       >
         {isRecording && !isPaused ? (
-          <Pause className="h-4 w-4" />
+          <Pause className="h-5 w-5" />
         ) : (
-          <Mic className="h-4 w-4" />
+          <Mic className="h-5 w-5" />
         )}
       </Button>
       {isRecording && (
@@ -43,9 +43,9 @@ const AudioRecorderControls = ({
           onClick={onStopRecording}
           disabled={isProcessing}
           variant="ghost"
-          className="h-8 w-8 rounded-full text-green-600 hover:text-green-700 hover:bg-secondary/80"
+          className="h-10 w-10 rounded-full text-green-600 hover:text-green-700 hover:bg-secondary/80"
         >
-          <Save className="h-4 w-4" />
+          <Save className="h-5 w-5" />
         </Button>
       )}
     </div>
