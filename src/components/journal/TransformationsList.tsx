@@ -14,7 +14,7 @@ interface TransformationsListProps {
 
 export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(true);
+  const [openStates, setOpenStates] = useState<{ [key: string]: boolean }>({});
   
   const { data: transformations, isLoading } = useQuery({
     queryKey: ['transformations', entryId],
@@ -33,6 +33,17 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     enabled: !!entryId,
   });
 
+  // Initialize all transformations as open when they are loaded
+  useEffect(() => {
+    if (transformations) {
+      const initialStates = transformations.reduce((acc, transform) => ({
+        ...acc,
+        [transform.id]: true
+      }), {});
+      setOpenStates(initialStates);
+    }
+  }, [transformations]);
+
   const copyToClipboard = async (text: string, type: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -50,6 +61,13 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     }
   };
 
+  const toggleTransformation = (id: string) => {
+    setOpenStates(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
   if (isLoading) {
     return <div className="text-center py-4">Loading transformations...</div>;
   }
@@ -60,45 +78,52 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
 
   return (
     <div className="space-y-4">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Transformations</h3>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="hover:bg-transparent">
-              {isOpen ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-        </div>
-        <CollapsibleContent className="space-y-4 transition-all duration-300">
-          {transformations.map((transform) => (
-            <Card key={transform.id} className="animate-fade-in">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">
-                    {transform.transformation_type}
-                  </CardTitle>
+      <h3 className="text-lg font-semibold mb-4">Transformations</h3>
+      {transformations.map((transform) => (
+        <Collapsible
+          key={transform.id}
+          open={openStates[transform.id]}
+          onOpenChange={() => toggleTransformation(transform.id)}
+          className="animate-fade-in"
+        >
+          <Card>
+            <CardHeader className="p-4">
+              <div className="flex items-center justify-between">
+                <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
+                    className="flex items-center justify-between w-full hover:bg-transparent"
                   >
-                    <Copy className="h-4 w-4" />
+                    <CardTitle className="text-sm font-medium">
+                      {transform.transformation_type}
+                    </CardTitle>
+                    {openStates[transform.id] ? (
+                      <ChevronUp className="h-4 w-4 ml-2" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    )}
                   </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
+                </CollapsibleTrigger>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
                 <p className="whitespace-pre-wrap text-sm">
                   {transform.transformed_text}
                 </p>
               </CardContent>
-            </Card>
-          ))}
-        </CollapsibleContent>
-      </Collapsible>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      ))}
     </div>
   );
 };
