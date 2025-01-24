@@ -47,10 +47,20 @@ export const TransformationSelector = ({
   const { toast } = useToast();
 
   const handleTransform = async () => {
-    if (!selectedType || !entryText.trim()) {
+    // Validate both transformation type and entry text
+    if (!selectedType) {
       toast({
         title: "Cannot transform",
-        description: "Please select a transformation type and ensure there is text to transform.",
+        description: "Please select a transformation type.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!entryText?.trim()) {
+      toast({
+        title: "Cannot transform",
+        description: "Please ensure there is text to transform.",
         variant: "destructive",
       });
       return;
@@ -141,7 +151,7 @@ export const TransformationSelector = ({
         </Select>
         <Button 
           onClick={handleTransform} 
-          disabled={isTransforming || !selectedType}
+          disabled={isTransforming || !selectedType || !entryText.trim()}
         >
           {isTransforming ? (
             <>
