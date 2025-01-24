@@ -20,7 +20,7 @@ interface TransformationSelectorProps {
 }
 
 const TRANSFORMATION_TYPES = {
-  "Personal Insights": [
+  "✨ Personal Growth": [
     'Quick Summary',
     'Emotional Check-In',
     'Daily Affirmation',
@@ -29,7 +29,7 @@ const TRANSFORMATION_TYPES = {
     'Short Paraphrase',
     'Psychoanalysis',
   ],
-  "Professional Growth": [
+  "💼 Professional": [
     'Lesson Plan',
     'Meeting Agenda',
     'Project Proposal',
@@ -46,7 +46,7 @@ const TRANSFORMATION_TYPES = {
     'Risk Assessment',
     'Professional White Paper',
   ],
-  "Social Media": [
+  "🌐 Social Media": [
     'Blog Post',
     'Email',
     'Instagram Post',
@@ -69,7 +69,6 @@ export const TransformationSelector = ({
   const { toast } = useToast();
 
   const handleTransform = async () => {
-    // Validate both transformation type and entry text
     if (!selectedType) {
       toast({
         title: "Cannot transform",
@@ -90,7 +89,6 @@ export const TransformationSelector = ({
 
     setIsTransforming(true);
     try {
-      // Get the current user's ID
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       
       if (authError || !session) {
@@ -157,42 +155,45 @@ export const TransformationSelector = ({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <Select value={selectedType} onValueChange={setSelectedType}>
-          <SelectTrigger className="w-[280px]">
-            <SelectValue placeholder="Select transformation type" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
-              <SelectGroup key={group}>
-                <SelectLabel className="font-semibold">{group}</SelectLabel>
-                {types.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button 
-          onClick={handleTransform} 
-          disabled={isTransforming || !selectedType || !entryText.trim()}
-        >
-          {isTransforming ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Transforming...
-            </>
-          ) : (
-            <>
-              <FileText className="mr-2 h-4 w-4" />
-              Transform
-            </>
-          )}
-        </Button>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
+          <div key={group} className="space-y-2">
+            <h3 className="text-sm font-medium text-text-muted mb-2">{group}</h3>
+            <Select value={selectedType} onValueChange={setSelectedType}>
+              <SelectTrigger className="w-full bg-white">
+                <SelectValue placeholder={`Choose ${group.split(' ')[1]} Type`} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {types.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        ))}
       </div>
+      <Button 
+        onClick={handleTransform} 
+        disabled={isTransforming || !selectedType || !entryText.trim()}
+        className="w-full"
+      >
+        {isTransforming ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Transforming...
+          </>
+        ) : (
+          <>
+            <FileText className="mr-2 h-4 w-4" />
+            Transform
+          </>
+        )}
+      </Button>
     </div>
   );
 };
