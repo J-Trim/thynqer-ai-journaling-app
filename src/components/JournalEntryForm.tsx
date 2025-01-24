@@ -17,11 +17,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const {
     title,
     setTitle,
@@ -45,8 +47,8 @@ const JournalEntryForm = () => {
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showTags, setShowTags] = useState(false);
   const [isSaveComplete, setIsSaveComplete] = useState(false);
+  const [saveAttempted, setSaveAttempted] = useState(false);
 
-  // Fetch existing tags for this entry
   const { data: entryTags } = useQuery({
     queryKey: ['entry-tags', id],
     queryFn: async () => {
@@ -62,14 +64,12 @@ const JournalEntryForm = () => {
     enabled: !!id
   });
 
-  // Update selected tags when entry tags are loaded
   useEffect(() => {
     if (entryTags) {
       setSelectedTags(entryTags);
     }
   }, [entryTags]);
 
-  // Show tags when transcribed audio arrives
   useEffect(() => {
     if (transcribedAudio) {
       // Small delay to ensure content is rendered before animation
@@ -167,7 +167,55 @@ const JournalEntryForm = () => {
     );
   };
 
-  // Determine if recording should be allowed
+  const handleSave = async (isAutoSave = false) => {
+    if (isTranscriptionPending) {
+      console.log('Waiting for transcription to complete before saving...');
+      return null;
+    }
+
+    if (!isAutoSave) {
+      if (saveAttempted || isSaveComplete) {
+        console.log('Save already attempted or completed, preventing duplicate save');
+        toast({
+          title: "Save in Progress",
+          description: "Please wait while your entry is being saved...",
+        });
+        return null;
+      }
+      setSaveAttempted(true);
+    }
+    
+    try {
+      const savedEntry = await saveEntry(isAutoSave);
+      if (savedEntry && selectedTags.length > 0) {
+        await updateEntryTagsMutation.mutateAsync({
+          entryId: savedEntry.id,
+          tagIds: selectedTags
+        });
+      }
+
+      if (!isAutoSave) {
+        setIsSaveComplete(true);
+        toast({
+          title: "Success",
+          description: "Journal entry saved successfully",
+        });
+      }
+
+      return savedEntry;
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      setSaveAttempted(false);
+      setIsSaveComplete(false);
+      toast({
+        title: "Error",
+        description: "Failed to save journal entry. Please try again.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
   const canRecord = !id || hasUnsavedChanges;
 
   if (isInitializing) {
@@ -178,34 +226,6 @@ const JournalEntryForm = () => {
       </>
     );
   }
-
-  const handleSave = async (isAutoSave = false) => {
-    if (isTranscriptionPending) {
-      console.log('Waiting for transcription to complete before saving...');
-      return null;
-    }
-
-    if (isSaveComplete && !isAutoSave) {
-      console.log('Save already completed, preventing duplicate save');
-      return null;
-    }
-    
-    const savedEntry = await saveEntry(isAutoSave);
-    if (savedEntry && selectedTags.length > 0) {
-      await updateEntryTagsMutation.mutateAsync({
-        entryId: savedEntry.id,
-        tagIds: selectedTags
-      });
-    }
-
-    if (!isAutoSave) {
-      setIsSaveComplete(true);
-    }
-
-    return savedEntry;
-  };
-
-  const hasContent = content || transcribedAudio;
 
   return (
     <>
@@ -237,7 +257,7 @@ const JournalEntryForm = () => {
               onTagToggle={handleTagToggle}
             />
           </div>
-          {hasContent && (
+          {(content || transcribedAudio) && (
             <TransformationSelector 
               entryId={id || ''} 
               entryText={content || transcribedAudio || ''} 
