@@ -55,8 +55,18 @@ const Index = () => {
         throw error;
       }
 
-      console.log('Retrieved entries:', data);
-      return data;
+      // Remove duplicates based on id
+      const uniqueEntries = data.reduce((acc: any[], current: any) => {
+        const x = acc.find(item => item.id === current.id);
+        if (!x) {
+          return acc.concat([current]);
+        } else {
+          return acc;
+        }
+      }, []);
+
+      console.log('Retrieved unique entries:', uniqueEntries);
+      return uniqueEntries;
     },
     retry: 1,
     refetchOnWindowFocus: false
