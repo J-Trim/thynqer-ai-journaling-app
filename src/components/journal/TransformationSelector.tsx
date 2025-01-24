@@ -151,6 +151,7 @@ export const TransformationSelector = ({
       });
     } finally {
       setIsTransforming(false);
+      setSelectedType(""); // Reset selection after transform
     }
   };
 
