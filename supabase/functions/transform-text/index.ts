@@ -6,8 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY')
-
 interface TransformRequest {
   text: string;
   transformationType: string;
@@ -16,30 +14,30 @@ interface TransformRequest {
 
 const getSystemPrompt = (transformationType: string, customTemplate?: string) => {
   if (customTemplate) {
-    return customTemplate;
+    return `${customTemplate}\n\nIMPORTANT: Provide ONLY the transformed text without any additional commentary, explanations, or conversation.`;
   }
 
   const prompts: Record<string, string> = {
-    'Blog Post': 'Transform this journal entry into a well-structured blog post. Include a compelling introduction, clear sections, and a conclusion.',
-    'Email': 'Convert this journal entry into a professional email format. Keep it concise and clear.',
-    'Instagram Post': 'Transform this into an engaging Instagram post with appropriate tone and style. Include relevant hashtag suggestions.',
-    'YouTube Script': 'Convert this journal entry into a YouTube video script with clear sections for intro, main content, and outro.',
-    'X (Twitter) Post': 'Transform this into a concise, engaging tweet thread format, keeping within character limits.',
-    'Instagram Reel / TikTok Clip': 'Convert this into a short-form video script optimized for Instagram Reels or TikTok.',
-    'Podcast Show Notes': 'Transform this into detailed podcast show notes with timestamps, key points, and resources.',
-    'LinkedIn Article': 'Convert this into a professional LinkedIn article format with business insights.',
-    'Motivational Snippet': 'Extract and transform the key motivational elements into an inspiring message.',
-    'Quick Summary': 'Provide a brief, clear summary of the main points and insights.',
-    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection.',
-    'Daily Affirmation': 'Transform the key positive elements into uplifting affirmations.',
-    'Action Plan': 'Convert the content into a structured action plan with clear, achievable steps.',
-    'Psychoanalysis': 'Provide a therapy-style analysis of the thoughts and feelings expressed.',
-    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness.',
-    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals.',
-    'Short Paraphrase': 'Provide a concise paraphrase of the main content.',
+    'Blog Post': 'Transform this journal entry into a well-structured blog post. Include a compelling introduction, clear sections, and a conclusion. Provide ONLY the transformed blog post without any additional commentary.',
+    'Email': 'Convert this journal entry into a professional email format. Keep it concise and clear. Provide ONLY the email content without any additional commentary.',
+    'Instagram Post': 'Transform this into an engaging Instagram post with appropriate tone and style. Include relevant hashtag suggestions at the end. Provide ONLY the post content without any additional commentary.',
+    'YouTube Script': 'Convert this journal entry into a YouTube video script with clear sections for intro, main content, and outro. Provide ONLY the script without any additional commentary.',
+    'X (Twitter) Post': 'Transform this into a concise, engaging tweet thread format, keeping within character limits. Provide ONLY the tweet thread without any additional commentary.',
+    'Instagram Reel / TikTok Clip': 'Convert this into a short-form video script optimized for Instagram Reels or TikTok. Provide ONLY the script without any additional commentary.',
+    'Podcast Show Notes': 'Transform this into detailed podcast show notes with timestamps, key points, and resources. Provide ONLY the show notes without any additional commentary.',
+    'LinkedIn Article': 'Convert this into a professional LinkedIn article format with business insights. Provide ONLY the article content without any additional commentary.',
+    'Motivational Snippet': 'Extract and transform the key motivational elements into an inspiring message. Provide ONLY the motivational message without any additional commentary.',
+    'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Provide ONLY the summary without any additional commentary.',
+    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection. Provide ONLY the emotional analysis without any additional commentary.',
+    'Daily Affirmation': 'Transform the key positive elements into uplifting affirmations. Provide ONLY the affirmations without any additional commentary.',
+    'Action Plan': 'Convert the content into a structured action plan with clear, achievable steps. Provide ONLY the action plan without any additional commentary.',
+    'Psychoanalysis': 'Provide a therapy-style analysis of the thoughts and feelings expressed. Provide ONLY the analysis without any additional commentary.',
+    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness. Provide ONLY the reflection without any additional commentary.',
+    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals. Provide ONLY the goals without any additional commentary.',
+    'Short Paraphrase': 'Provide a concise paraphrase of the main content. Provide ONLY the paraphrase without any additional commentary.',
   };
 
-  return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent.';
+  return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent. Provide ONLY the transformed content without any additional commentary.';
 }
 
 serve(async (req) => {
@@ -49,7 +47,7 @@ serve(async (req) => {
   }
 
   try {
-    if (!DEEPSEEK_API_KEY) {
+    if (!Deno.env.get('DEEPSEEK_API_KEY')) {
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
@@ -63,7 +61,7 @@ serve(async (req) => {
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -71,7 +69,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: systemPrompt
+            content: `You are a direct and efficient text transformer. ${systemPrompt}\n\nIMPORTANT: Your response should contain ONLY the transformed text, without any introduction, explanation, or conversation. Do not include phrases like "Here's the transformed text:" or "I hope this helps!"`
           },
           { 
             role: 'user', 
