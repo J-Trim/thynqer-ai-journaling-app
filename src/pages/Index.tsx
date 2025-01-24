@@ -49,7 +49,7 @@ const Index = () => {
         .select('*')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
-        .limit(100); // Add a limit to prevent excessive data fetching
+        .limit(100);
 
       if (error) {
         console.error('Error fetching entries:', error);
@@ -119,6 +119,7 @@ const Index = () => {
                         hasBeenEdited={entry.has_been_edited}
                         onClick={() => navigate(`/journal/edit/${entry.id}`)}
                         onDelete={() => {
+                          navigate("/");
                           window.location.reload();
                         }}
                       />
