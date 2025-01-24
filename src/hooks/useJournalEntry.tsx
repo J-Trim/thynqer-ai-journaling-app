@@ -102,10 +102,19 @@ export const useJournalEntry = (id?: string) => {
       setIsSaveInProgress(true);
       setIsSaving(true);
       
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // Check session before saving
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('Current session:', session ? 'Active' : 'None');
 
-      if (userError || !user) {
-        throw new Error('You must be logged in to save entries');
+      if (sessionError || !session) {
+        console.error('Session error:', sessionError);
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to save your entry",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return null;
       }
 
       let finalContent = content;
@@ -116,7 +125,7 @@ export const useJournalEntry = (id?: string) => {
         : finalContent;
 
       const entryData = {
-        user_id: user.id,
+        user_id: session.user.id,
         title: title || `Journal Entry - ${format(new Date(), 'P')}`,
         text: fullText,
         audio_url: audioUrl,
