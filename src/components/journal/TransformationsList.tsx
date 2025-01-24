@@ -101,7 +101,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
   };
 
   const toggleTransformation = (id: string) => {
-    console.log('Toggling transformation:', id);
+    console.log('Toggling transformation:', id, 'Current state:', openStates[id]);
     setOpenStates(prev => ({
       ...prev,
       [id]: !prev[id]
