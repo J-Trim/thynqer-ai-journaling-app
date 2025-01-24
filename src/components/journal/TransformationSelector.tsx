@@ -72,6 +72,7 @@ export const TransformationSelector = ({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastTransformation, setLastTransformation] = useState<string | null>(null);
+  const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(true);
   const queryClient = useQueryClient();
 
@@ -155,6 +156,7 @@ export const TransformationSelector = ({
 
       console.log('Transformation saved successfully');
       setLastTransformation(transformResponse.transformedText);
+      setLastTransformationType(selectedType);
       setIsCollapsed(false);
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       setSelectedType("");
@@ -215,7 +217,7 @@ export const TransformationSelector = ({
         )}
       </Button>
 
-      {lastTransformation && (
+      {lastTransformation && lastTransformationType && (
         <Collapsible
           open={!isCollapsed}
           onOpenChange={setIsCollapsed}
@@ -223,7 +225,7 @@ export const TransformationSelector = ({
         >
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="w-full flex justify-between items-center">
-              <span>Last Transformation Result</span>
+              <span>{lastTransformationType}</span>
               {isCollapsed ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
