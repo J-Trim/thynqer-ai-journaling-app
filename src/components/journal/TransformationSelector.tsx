@@ -68,25 +68,30 @@ export const TransformationSelector = ({
 }: TransformationSelectorProps) => {
   const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const handleTransform = async () => {
     if (!selectedType || !entryText?.trim()) {
+      console.log('Missing required data:', { selectedType, hasText: !!entryText?.trim() });
       return;
     }
 
     setIsTransforming(true);
+    setError(null);
+
     try {
-      // If we don't have an entryId and onSaveEntry is provided, save first
       let finalEntryId = entryId;
+      
+      // If we don't have an entryId and onSaveEntry is provided, save first
       if (!entryId && onSaveEntry) {
         console.log('Saving entry before transformation...');
         const savedEntry = await onSaveEntry();
-        if (!savedEntry) {
+        if (!savedEntry?.id) {
           throw new Error('Failed to save entry');
         }
         finalEntryId = savedEntry.id;
-        console.log('Entry saved with ID:', finalEntryId);
+        console.log('Entry saved successfully with ID:', finalEntryId);
       }
 
       if (!finalEntryId) {
@@ -117,13 +122,11 @@ export const TransformationSelector = ({
         throw transformError;
       }
 
-      console.log('Transform response:', transformResponse);
-
       if (!transformResponse?.transformedText) {
-        throw new Error('No transformed text received from the function');
+        throw new Error('No transformed text received');
       }
 
-      console.log('Saving transformation to database...');
+      console.log('Transform successful, saving to database...');
       const { error: saveError } = await supabase
         .from('summaries')
         .insert({
@@ -138,26 +141,25 @@ export const TransformationSelector = ({
         throw saveError;
       }
 
-      // Invalidate the transformations query to trigger a refresh
+      console.log('Transformation saved successfully');
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
-    } catch (error) {
-      console.error('Error in transformation:', error);
+      setSelectedType(""); // Reset selection after successful transform
+    } catch (err) {
+      console.error('Error in transformation:', err);
+      setError(err instanceof Error ? err.message : 'Failed to transform text');
     } finally {
       setIsTransforming(false);
-      setSelectedType(""); // Reset selection after transform
     }
   };
-
-  const isButtonDisabled = isTransforming || !selectedType;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
           <div key={group} className="space-y-2">
-            <h3 className="text-sm font-medium text-text-muted mb-2">{group}</h3>
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">{group}</h3>
             <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
-              <SelectTrigger className="w-full bg-white">
+              <SelectTrigger className="w-full bg-background">
                 <SelectValue placeholder={`Choose ${group.split(' ')[1]} Type`} />
               </SelectTrigger>
               <SelectContent>
@@ -173,9 +175,16 @@ export const TransformationSelector = ({
           </div>
         ))}
       </div>
+      
+      {error && (
+        <div className="text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       <Button 
         onClick={handleTransform} 
-        disabled={isButtonDisabled}
+        disabled={isTransforming || !selectedType}
         className="w-full"
       >
         {isTransforming ? (
