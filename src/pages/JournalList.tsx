@@ -9,60 +9,22 @@ import JournalEntry from "@/components/JournalEntry";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/components/ui/use-toast";
 
 const JournalList = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>("");
   const queryClient = useQueryClient();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const { toast } = useToast();
-
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('Checking authentication status...');
-        const { data: { session }, error: authError } = await supabase.auth.getSession();
-        
-        if (authError || !session) {
-          console.error('Authentication error:', authError);
-          toast({
-            title: "Authentication Required",
-            description: "Please log in to view your journal entries",
-            variant: "destructive",
-          });
-          navigate("/auth");
-          return;
-        }
-
-        console.log('User authenticated:', session.user.id);
-        if (session.user.email) {
-          setUserName(session.user.email.split('@')[0]);
-        }
-      } catch (error) {
-        console.error('Unexpected authentication error:', error);
-        navigate("/auth");
-      }
-    };
-
-    checkAuth();
-  }, [navigate, toast]);
 
   const { data: tags } = useQuery({
     queryKey: ['tags'],
     queryFn: async () => {
-      console.log('Fetching tags...');
       const { data, error } = await supabase
         .from('tags')
         .select('*')
         .order('name');
 
-      if (error) {
-        console.error('Error fetching tags:', error);
-        throw error;
-      }
-      console.log('Tags fetched:', data);
+      if (error) throw error;
       return data;
     }
   });
@@ -126,17 +88,26 @@ const JournalList = () => {
         return entriesData;
       } catch (error) {
         console.error('Error in journal entries query:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load journal entries. Please try again.",
-          variant: "destructive",
-        });
         throw error;
       }
     },
     retry: 1,
     refetchOnWindowFocus: false
   });
+
+  useEffect(() => {
+    const getUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setUserName(user.email.split('@')[0]);
+        }
+      } catch (error) {
+        console.error("Error fetching user:", error);
+      }
+    };
+    getUser();
+  }, []);
 
   const handleTagToggle = (tagId: string) => {
     setSelectedTags(prev => 
