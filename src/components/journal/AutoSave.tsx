@@ -1,6 +1,4 @@
 import { useEffect } from 'react';
-import { useToast } from "@/hooks/use-toast";
-import { Save } from "lucide-react";
 
 interface JournalEntry {
   id: string;
@@ -30,8 +28,6 @@ const AutoSave = ({
   onSave,
   autoSaveDelay = 3000
 }: AutoSaveProps) => {
-  const { toast } = useToast();
-
   useEffect(() => {
     if (isInitializing || isSaveInProgress || !hasUnsavedChanges) return;
 
@@ -41,22 +37,12 @@ const AutoSave = ({
         const savedEntry = await onSave(true);
         if (savedEntry) {
           console.log('Auto-save successful');
-          toast({
-            title: "",
-            description: (
-              <div className="flex items-center gap-2">
-                <Save className="h-4 w-4 animate-fade-in" />
-                <span className="text-sm">Saved</span>
-              </div>
-            ),
-            duration: 2600, // 800ms fade in + 1000ms display + 800ms fade out
-          });
         }
       }
     }, autoSaveDelay);
 
     return () => clearTimeout(timeout);
-  }, [content, title, audioUrl, isInitializing, isSaveInProgress, hasUnsavedChanges, onSave, toast, autoSaveDelay]);
+  }, [content, title, audioUrl, isInitializing, isSaveInProgress, hasUnsavedChanges, onSave, autoSaveDelay]);
 
   return null;
 };
