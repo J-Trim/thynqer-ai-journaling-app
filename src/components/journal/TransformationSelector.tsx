@@ -5,7 +5,6 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -156,18 +155,26 @@ export const TransformationSelector = ({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="flex flex-nowrap gap-4 overflow-x-auto pb-4 -mx-4 px-4">
         {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
-          <div key={group} className="space-y-2">
-            <h3 className="text-sm font-medium text-text-muted mb-2">{group}</h3>
+          <div key={group} className="flex-none">
             <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger className="w-full bg-white">
-                <SelectValue placeholder={`Choose ${group.split(' ')[1]} Type`} />
+              <SelectTrigger 
+                className="min-w-[200px] rounded-full bg-secondary hover:bg-secondary/90 border-none text-sm font-medium transition-colors"
+              >
+                <SelectValue placeholder={group} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="min-w-[200px]">
                 <SelectGroup>
+                  <SelectItem value="" disabled>
+                    {group}
+                  </SelectItem>
                   {types.map((type) => (
-                    <SelectItem key={type} value={type}>
+                    <SelectItem 
+                      key={type} 
+                      value={type}
+                      className="cursor-pointer hover:bg-secondary/50"
+                    >
                       {type}
                     </SelectItem>
                   ))}
@@ -180,7 +187,7 @@ export const TransformationSelector = ({
       <Button 
         onClick={handleTransform} 
         disabled={isTransforming || !selectedType || !entryText.trim()}
-        className="w-full"
+        className="w-full rounded-full bg-primary hover:bg-primary-hover transition-colors"
       >
         {isTransforming ? (
           <>
