@@ -193,6 +193,8 @@ const JournalEntryForm = () => {
     }
   };
 
+  const hasContent = content || transcribedAudio;
+
   return (
     <>
       <Header />
@@ -223,15 +225,13 @@ const JournalEntryForm = () => {
               onTagToggle={handleTagToggle}
             />
           </div>
-          {id && (
-            <>
-              <TransformationSelector 
-                entryId={id} 
-                entryText={content || transcribedAudio || ''} 
-              />
-              <TransformationsList entryId={id} />
-            </>
+          {hasContent && (
+            <TransformationSelector 
+              entryId={id || ''} 
+              entryText={content || transcribedAudio || ''} 
+            />
           )}
+          {id && <TransformationsList entryId={id} />}
           {audioUrl && !showAudioPlayer && (
             <Button 
               variant="outline" 

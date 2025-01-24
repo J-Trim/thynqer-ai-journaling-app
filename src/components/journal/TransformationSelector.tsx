@@ -90,6 +90,15 @@ export const TransformationSelector = ({
       return;
     }
 
+    if (!entryId) {
+      toast({
+        title: "Cannot transform",
+        description: "Please save your entry first before transforming it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsTransforming(true);
     try {
       const { data: { session }, error: authError } = await supabase.auth.getSession();
