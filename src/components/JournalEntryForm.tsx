@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
+import Header from "@/components/Header";
 import JournalFormHeader from "./journal/form/JournalFormHeader";
 import JournalFormContent from "./journal/form/JournalFormContent";
 import JournalFormActions from "./journal/form/JournalFormActions";
@@ -125,92 +126,100 @@ const JournalEntryForm = () => {
   };
 
   if (isInitializing) {
-    return <LoadingState />;
+    return (
+      <>
+        <Header />
+        <LoadingState />
+      </>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
-      <AutoSave
-        content={content}
-        title={title}
-        audioUrl={audioUrl}
-        isInitializing={isInitializing}
-        isSaveInProgress={isSaveInProgress}
-        hasUnsavedChanges={hasUnsavedChanges}
-        onSave={handleSave}
-      />
-      
-      <div className="space-y-4">
-        <JournalFormHeader 
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
+        <AutoSave
+          content={content}
           title={title}
-          onTitleChange={setTitle}
+          audioUrl={audioUrl}
+          isInitializing={isInitializing}
+          isSaveInProgress={isSaveInProgress}
+          hasUnsavedChanges={hasUnsavedChanges}
+          onSave={handleSave}
         />
         
-        <JournalFormContent
-          content={content}
-          transcribedAudio={transcribedAudio}
-          onContentChange={setContent}
-        />
+        <div className="space-y-4">
+          <JournalFormHeader 
+            title={title}
+            onTitleChange={setTitle}
+          />
+          
+          <JournalFormContent
+            content={content}
+            transcribedAudio={transcribedAudio}
+            onContentChange={setContent}
+          />
 
-        <div className={`transition-opacity duration-800 ${
-          showTags ? 'opacity-100' : 'opacity-0'
-        }`}>
-          <TagSelector
-            selectedTags={selectedTags}
-            onTagToggle={handleTagToggle}
+          <div className={`transition-opacity duration-800 ${
+            showTags ? 'opacity-100' : 'opacity-0'
+          }`}>
+            <TagSelector
+              selectedTags={selectedTags}
+              onTagToggle={handleTagToggle}
+            />
+          </div>
+
+          {(content || transcribedAudio) && (
+            <div className="mt-8">
+              {!transformationEnabled ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setTransformationEnabled(true)}
+                  className="w-full"
+                >
+                  Show Transformation Options
+                </Button>
+              ) : (
+                <TransformationSelector 
+                  entryId={id || ''} 
+                  entryText={content || transcribedAudio || ''} 
+                  onSaveEntry={!id ? handleSave : undefined}
+                />
+              )}
+            </div>
+          )}
+
+          {id && <TransformationsList entryId={id} />}
+
+          {audioUrl && !showAudioPlayer && (
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAudioPlayer(true)}
+              className="w-full"
+            >
+              Load Audio Player
+            </Button>
+          )}
+
+          {audioPublicUrl && showAudioPlayer && (
+            <AudioPlayer audioUrl={audioPublicUrl} />
+          )}
+
+          <AudioHandler
+            onAudioSaved={(url) => {
+              setAudioUrl(url);
+              setIsTranscriptionPending(true);
+            }}
+            onTranscriptionComplete={handleTranscriptionComplete}
+          />
+
+          <JournalFormActions
+            onCancel={handleNavigateAway}
+            onSave={() => handleSave(false)}
+            isSaving={isSaving}
+            isTranscriptionPending={isTranscriptionPending}
           />
         </div>
-
-        {(content || transcribedAudio) && (
-          <div className="mt-8">
-            {!transformationEnabled ? (
-              <Button 
-                variant="outline" 
-                onClick={() => setTransformationEnabled(true)}
-                className="w-full"
-              >
-                Show Transformation Options
-              </Button>
-            ) : (
-              <TransformationSelector 
-                entryId={id || ''} 
-                entryText={content || transcribedAudio || ''} 
-                onSaveEntry={!id ? handleSave : undefined}
-              />
-            )}
-          </div>
-        )}
-
-        {id && <TransformationsList entryId={id} />}
-
-        {audioUrl && !showAudioPlayer && (
-          <Button 
-            variant="outline" 
-            onClick={() => setShowAudioPlayer(true)}
-            className="w-full"
-          >
-            Load Audio Player
-          </Button>
-        )}
-
-        {audioPublicUrl && showAudioPlayer && (
-          <AudioPlayer audioUrl={audioPublicUrl} />
-        )}
-
-        <AudioHandler
-          onAudioSaved={(url) => {
-            setAudioUrl(url);
-            setIsTranscriptionPending(true);
-          }}
-          onTranscriptionComplete={handleTranscriptionComplete}
-        />
-
-        <JournalFormActions
-          onCancel={handleNavigateAway}
-          onSave={() => handleSave(false)}
-          isSaving={isSaving}
-          isTranscriptionPending={isTranscriptionPending}
-        />
       </div>
     </div>
   );
