@@ -4,7 +4,6 @@ import { useJournalEntry } from "@/hooks/useJournalEntry";
 import Header from "@/components/Header";
 import EntryHeader from "./journal/EntryHeader";
 import EntryContent from "./journal/EntryContent";
-import TranscribedSection from "./journal/TranscribedSection";
 import ActionButtons from "./journal/ActionButtons";
 import LoadingState from "./journal/LoadingState";
 import AudioHandler from "./journal/AudioHandler";
@@ -46,8 +45,8 @@ const JournalEntryForm = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showTags, setShowTags] = useState(false);
-  const [isSaveComplete, setIsSaveComplete] = useState(false);
   const [saveAttempted, setSaveAttempted] = useState(false);
+  const [transformationEnabled, setTransformationEnabled] = useState(false);
 
   const { data: entryTags } = useQuery({
     queryKey: ['entry-tags', id],
@@ -72,7 +71,6 @@ const JournalEntryForm = () => {
 
   useEffect(() => {
     if (transcribedAudio) {
-      // Small delay to ensure content is rendered before animation
       const timer = setTimeout(() => {
         setShowTags(true);
       }, 100);
@@ -82,7 +80,6 @@ const JournalEntryForm = () => {
 
   const updateEntryTagsMutation = useMutation({
     mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
-      // First, remove all existing tags for this entry
       const { error: deleteError } = await supabase
         .from('entry_tags')
         .delete()
@@ -90,7 +87,6 @@ const JournalEntryForm = () => {
 
       if (deleteError) throw deleteError;
 
-      // Then, insert new tags
       if (tagIds.length > 0) {
         const { error: insertError } = await supabase
           .from('entry_tags')
@@ -110,7 +106,6 @@ const JournalEntryForm = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('Checking auth status in JournalEntryForm...');
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error || !session) {
@@ -118,8 +113,6 @@ const JournalEntryForm = () => {
           navigate("/auth", { replace: true });
           return;
         }
-
-        console.log('Auth check successful, user:', session.user.id);
       } catch (error) {
         console.error('Unexpected error during auth check:', error);
         navigate("/auth", { replace: true });
@@ -137,12 +130,10 @@ const JournalEntryForm = () => {
       }
 
       try {
-        console.log('Fetching public URL for audio:', audioUrl);
         const { data } = supabase.storage
           .from('audio_files')
           .getPublicUrl(audioUrl);
         
-        console.log('Fetched audio public URL:', data.publicUrl);
         setAudioPublicUrl(data.publicUrl);
       } catch (error) {
         console.error('Error fetching audio URL:', error);
@@ -168,20 +159,17 @@ const JournalEntryForm = () => {
   };
 
   const handleSave = async (isAutoSave = false) => {
-    if (isTranscriptionPending) {
-      console.log('Waiting for transcription to complete before saving...');
+    if (isTranscriptionPending || isSaveInProgress) {
+      console.log('Save prevented - transcription or save in progress');
+      return null;
+    }
+
+    if (!isAutoSave && saveAttempted) {
+      console.log('Manual save already attempted');
       return null;
     }
 
     if (!isAutoSave) {
-      if (saveAttempted || isSaveComplete) {
-        console.log('Save already attempted or completed, preventing duplicate save');
-        toast({
-          title: "Save in Progress",
-          description: "Please wait while your entry is being saved...",
-        });
-        return null;
-      }
       setSaveAttempted(true);
     }
     
@@ -195,23 +183,20 @@ const JournalEntryForm = () => {
       }
 
       if (!isAutoSave) {
-        setIsSaveComplete(true);
-        toast({
-          title: "Success",
-          description: "Journal entry saved successfully",
-        });
+        setTransformationEnabled(true);
       }
 
       return savedEntry;
     } catch (error) {
       console.error('Error saving entry:', error);
       setSaveAttempted(false);
-      setIsSaveComplete(false);
-      toast({
-        title: "Error",
-        description: "Failed to save journal entry. Please try again.",
-        variant: "destructive",
-      });
+      if (!isAutoSave) {
+        toast({
+          title: "Error",
+          description: "Failed to save journal entry",
+          variant: "destructive",
+        });
+      }
       return null;
     }
   };
@@ -258,11 +243,23 @@ const JournalEntryForm = () => {
             />
           </div>
           {(content || transcribedAudio) && (
-            <TransformationSelector 
-              entryId={id || ''} 
-              entryText={content || transcribedAudio || ''} 
-              onSaveEntry={!id ? handleSave : undefined}
-            />
+            <div className="mt-8">
+              {!transformationEnabled ? (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setTransformationEnabled(true)}
+                  className="w-full"
+                >
+                  Show Transformation Options
+                </Button>
+              ) : (
+                <TransformationSelector 
+                  entryId={id || ''} 
+                  entryText={content || transcribedAudio || ''} 
+                  onSaveEntry={!id ? handleSave : undefined}
+                />
+              )}
+            </div>
           )}
           {id && <TransformationsList entryId={id} />}
           {audioUrl && !showAudioPlayer && (
