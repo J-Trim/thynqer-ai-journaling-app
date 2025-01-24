@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, Square, FileAudio, Pause } from "lucide-react";
+import { Mic, FileAudio, Pause, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { formatTime, sanitizeFileName } from "@/utils/audio";
@@ -151,6 +151,11 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
       stopTimer();
       setCanTranscribe(audioChunks.current.length > 0 && audioChunks.current.some(chunk => chunk.size > 0));
       console.log("Recording stopped, chunks:", audioChunks.current.length);
+      
+      // Automatically trigger transcription after stopping
+      if (audioChunks.current.length > 0 && audioChunks.current.some(chunk => chunk.size > 0)) {
+        await handleTranscribe();
+      }
     }
   };
 
@@ -224,9 +229,10 @@ const AudioRecorder = ({ onAudioSaved }: AudioRecorderProps) => {
         {isRecording && (
           <Button
             onClick={stopRecording}
-            variant="destructive"
+            className="bg-green-600 hover:bg-green-700 text-white"
           >
-            <Square className="w-6 h-6" />
+            <Save className="w-6 h-6 mr-2" />
+            Save & Transcribe
           </Button>
         )}
         {canTranscribe && !isRecording && (
