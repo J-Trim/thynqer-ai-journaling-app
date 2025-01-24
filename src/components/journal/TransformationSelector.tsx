@@ -58,6 +58,13 @@ export const TransformationSelector = ({
 
     setIsTransforming(true);
     try {
+      // Get the current user's ID
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      
+      if (authError || !session) {
+        throw new Error('Authentication required');
+      }
+
       console.log('Calling transform-text function...');
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
@@ -71,6 +78,7 @@ export const TransformationSelector = ({
         .from('summaries')
         .insert({
           entry_id: entryId,
+          user_id: session.user.id,
           transformed_text: transformResponse.transformedText,
           transformation_type: selectedType,
         });
