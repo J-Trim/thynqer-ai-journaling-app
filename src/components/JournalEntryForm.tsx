@@ -44,6 +44,7 @@ const JournalEntryForm = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showTags, setShowTags] = useState(false);
+  const [isSaveComplete, setIsSaveComplete] = useState(false);
 
   // Fetch existing tags for this entry
   const { data: entryTags } = useQuery({
@@ -183,6 +184,11 @@ const JournalEntryForm = () => {
       console.log('Waiting for transcription to complete before saving...');
       return null;
     }
+
+    if (isSaveComplete && !isAutoSave) {
+      console.log('Save already completed, preventing duplicate save');
+      return null;
+    }
     
     const savedEntry = await saveEntry(isAutoSave);
     if (savedEntry && selectedTags.length > 0) {
@@ -191,6 +197,11 @@ const JournalEntryForm = () => {
         tagIds: selectedTags
       });
     }
+
+    if (!isAutoSave) {
+      setIsSaveComplete(true);
+    }
+
     return savedEntry;
   };
 
