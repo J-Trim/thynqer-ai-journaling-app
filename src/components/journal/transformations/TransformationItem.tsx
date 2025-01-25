@@ -35,7 +35,7 @@ const TransformationItem = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex items-center justify-between hover:bg-transparent"
+                className="flex items-center justify-between hover:bg-transparent w-full"
               >
                 <div className="text-sm font-medium">
                   {type}
