@@ -11,6 +11,7 @@ import {
 import { 
   Dialog,
   DialogContent,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Loader2, FileText, User, Briefcase, Share2 } from "lucide-react";
@@ -197,9 +198,9 @@ export const TransformationSelector = ({
                 <span className="text-sm font-medium">{group}</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md animate-fade-in">
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">{group}</h3>
+            <DialogContent className="sm:max-w-md">
+              <DialogTitle className="text-lg font-semibold">{group}</DialogTitle>
+              <div className="space-y-4 pt-4">
                 <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
                   <SelectTrigger className="w-full bg-background">
                     <SelectValue placeholder={`Choose ${group} Type`} />
