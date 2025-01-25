@@ -21,6 +21,8 @@ export const useJournalEntry = (id?: string) => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
   const [saveAttempted, setSaveAttempted] = useState(false);
+  const [hasBeenSavedBefore, setHasBeenSavedBefore] = useState(!!id); // Track if entry has been saved before
+  const [entryId, setEntryId] = useState<string | undefined>(id); // Track the entry ID
   const [initialContent, setInitialContent] = useState({ 
     title: "", 
     content: "", 
@@ -77,6 +79,8 @@ export const useJournalEntry = (id?: string) => {
             audioUrl: entry.audio_url,
             transcribedAudio: transcribed || ''
           });
+          setHasBeenSavedBefore(true);
+          setEntryId(entry.id);
         }
       } catch (error) {
         console.error('Error loading entry:', error);
@@ -131,27 +135,39 @@ export const useJournalEntry = (id?: string) => {
         title: title || `Journal Entry - ${format(new Date(), 'P')}`,
         text: fullText,
         audio_url: audioUrl,
-        has_been_edited: id ? hasActualChanges() : false,
+        has_been_edited: hasBeenSavedBefore,
       };
 
-      console.log('Saving entry:', entryData);
+      console.log(`${hasBeenSavedBefore ? 'Updating' : 'Creating new'} entry:`, entryData);
 
-      const { data: savedEntry, error: saveError } = id
-        ? await supabase
-            .from("journal_entries")
-            .update(entryData)
-            .eq('id', id)
-            .select()
-            .single()
-        : await supabase
-            .from("journal_entries")
-            .insert([entryData])
-            .select()
-            .single();
-
-      if (saveError) throw saveError;
-
-      console.log('Entry saved successfully:', savedEntry);
+      let savedEntry;
+      
+      if (hasBeenSavedBefore && entryId) {
+        // Update existing entry
+        const { data, error: saveError } = await supabase
+          .from("journal_entries")
+          .update(entryData)
+          .eq('id', entryId)
+          .select()
+          .single();
+          
+        if (saveError) throw saveError;
+        savedEntry = data;
+        console.log('Entry updated successfully:', savedEntry);
+      } else {
+        // Create new entry
+        const { data, error: saveError } = await supabase
+          .from("journal_entries")
+          .insert([entryData])
+          .select()
+          .single();
+          
+        if (saveError) throw saveError;
+        savedEntry = data;
+        console.log('New entry created successfully:', savedEntry);
+        setHasBeenSavedBefore(true);
+        setEntryId(savedEntry.id);
+      }
 
       setInitialContent({
         title: entryData.title,
@@ -165,7 +181,7 @@ export const useJournalEntry = (id?: string) => {
       if (!isAutoSave) {
         toast({
           title: "Success",
-          description: "Journal entry saved successfully",
+          description: `Journal entry ${hasBeenSavedBefore ? 'updated' : 'saved'} successfully`,
         });
       }
 
