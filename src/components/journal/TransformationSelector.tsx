@@ -14,10 +14,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, FileText, User, Briefcase, Share2 } from "lucide-react";
+import { Loader2, FileText, User, Briefcase, Share2, PenTool } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -74,6 +77,10 @@ const TRANSFORMATION_TYPES = {
       'Motivational Snippet',
     ]
   },
+  "Custom": {
+    icon: PenTool,
+    items: []
+  }
 } as const;
 
 export const TransformationSelector = ({ 
@@ -87,7 +94,65 @@ export const TransformationSelector = ({
   const [error, setError] = useState<string | null>(null);
   const [lastTransformation, setLastTransformation] = useState<string | null>(null);
   const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
+  const [newPromptName, setNewPromptName] = useState("");
+  const [newPromptTemplate, setNewPromptTemplate] = useState("");
+  const [customPrompts, setCustomPrompts] = useState<Array<{ prompt_name: string, prompt_template: string }>>([]);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const handleCreateCustomPrompt = async () => {
+    if (!newPromptName || !newPromptTemplate) {
+      toast({
+        title: "Error",
+        description: "Please fill in both the prompt name and template",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Authentication required');
+      }
+
+      const { error: saveError } = await supabase
+        .from('custom_prompts')
+        .insert({
+          user_id: session.user.id,
+          prompt_name: newPromptName,
+          prompt_template: newPromptTemplate
+        });
+
+      if (saveError) throw saveError;
+
+      toast({
+        description: "Custom prompt created successfully",
+      });
+
+      // Reset form
+      setNewPromptName("");
+      setNewPromptTemplate("");
+      
+      // Refresh custom prompts
+      const { data: updatedPrompts } = await supabase
+        .from('custom_prompts')
+        .select('prompt_name, prompt_template')
+        .eq('user_id', session.user.id);
+        
+      if (updatedPrompts) {
+        setCustomPrompts(updatedPrompts);
+      }
+    } catch (err) {
+      console.error('Error creating custom prompt:', err);
+      toast({
+        title: "Error",
+        description: "Failed to create custom prompt",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleTransform = async () => {
     if (!selectedType || !entryText?.trim()) {
@@ -201,20 +266,60 @@ export const TransformationSelector = ({
             <DialogContent className="sm:max-w-md">
               <DialogTitle className="text-lg font-semibold">{group}</DialogTitle>
               <div className="space-y-4 pt-4">
-                <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
-                  <SelectTrigger className="w-full bg-background">
-                    <SelectValue placeholder={`Choose ${group} Type`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {items.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                {group === "Custom" ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="Prompt Name"
+                        value={newPromptName}
+                        onChange={(e) => setNewPromptName(e.target.value)}
+                      />
+                      <Textarea
+                        placeholder="Prompt Template"
+                        value={newPromptTemplate}
+                        onChange={(e) => setNewPromptTemplate(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                      <Button 
+                        onClick={handleCreateCustomPrompt}
+                        className="w-full"
+                      >
+                        Create Custom Prompt
+                      </Button>
+                    </div>
+                    {customPrompts.length > 0 && (
+                      <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Choose Custom Prompt" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {customPrompts.map((prompt) => (
+                              <SelectItem key={prompt.prompt_name} value={prompt.prompt_name}>
+                                {prompt.prompt_name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                ) : (
+                  <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
+                    <SelectTrigger className="w-full bg-background">
+                      <SelectValue placeholder={`Choose ${group} Type`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {items.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {type}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </DialogContent>
           </Dialog>
