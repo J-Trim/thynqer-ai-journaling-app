@@ -8,11 +8,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { 
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Loader2, FileText, User, Briefcase, Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -23,43 +27,52 @@ interface TransformationSelectorProps {
 }
 
 const TRANSFORMATION_TYPES = {
-  "✨ Personal Growth": [
-    'Quick Summary',
-    'Emotional Check-In',
-    'Daily Affirmation',
-    'Mindfulness Reflection',
-    'Goal Setting',
-    'Short Paraphrase',
-    'Psychoanalysis',
-  ],
-  "💼 Professional": [
-    'Lesson Plan',
-    'Meeting Agenda',
-    'Project Proposal',
-    'Action Plan',
-    'Performance Review',
-    'Team Update / Status Report',
-    'Training Outline',
-    'Sales Pitch',
-    'Corporate Email / Internal Memo',
-    'Project Retrospective',
-    'Implementation Plan',
-    'Executive Summary',
-    'Brainstorm Session Outline',
-    'Risk Assessment',
-    'Professional White Paper',
-  ],
-  "🌐 Social Media": [
-    'Blog Post',
-    'Email',
-    'Instagram Post',
-    'YouTube Script',
-    'X (Twitter) Post',
-    'Instagram Reel / TikTok Clip',
-    'Podcast Show Notes',
-    'LinkedIn Article',
-    'Motivational Snippet',
-  ],
+  "Personal Growth": {
+    icon: User,
+    items: [
+      'Quick Summary',
+      'Emotional Check-In',
+      'Daily Affirmation',
+      'Mindfulness Reflection',
+      'Goal Setting',
+      'Short Paraphrase',
+      'Psychoanalysis',
+    ]
+  },
+  "Professional": {
+    icon: Briefcase,
+    items: [
+      'Lesson Plan',
+      'Meeting Agenda',
+      'Project Proposal',
+      'Action Plan',
+      'Performance Review',
+      'Team Update / Status Report',
+      'Training Outline',
+      'Sales Pitch',
+      'Corporate Email / Internal Memo',
+      'Project Retrospective',
+      'Implementation Plan',
+      'Executive Summary',
+      'Brainstorm Session Outline',
+      'Risk Assessment',
+      'Professional White Paper',
+    ]
+  },
+  "Social Media": {
+    icon: Share2,
+    items: [
+      'Blog Post',
+      'Email',
+      'Instagram Post',
+      'YouTube Script',
+      'X (Twitter) Post',
+      'Instagram Reel / TikTok Clip',
+      'Podcast Show Notes',
+      'LinkedIn Article',
+      'Motivational Snippet',
+    ]
+  },
 } as const;
 
 export const TransformationSelector = ({ 
@@ -73,7 +86,6 @@ export const TransformationSelector = ({
   const [error, setError] = useState<string | null>(null);
   const [lastTransformation, setLastTransformation] = useState<string | null>(null);
   const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(true);
   const queryClient = useQueryClient();
 
   const handleTransform = async () => {
@@ -157,7 +169,6 @@ export const TransformationSelector = ({
       console.log('Transformation saved successfully');
       setLastTransformation(transformResponse.transformedText);
       setLastTransformationType(selectedType);
-      setIsCollapsed(false);
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       setSelectedType("");
     } catch (err) {
@@ -171,28 +182,44 @@ export const TransformationSelector = ({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {Object.entries(TRANSFORMATION_TYPES).map(([group, types]) => (
-          <div key={group} className="space-y-2">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">{group}</h3>
-            <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
-              <SelectTrigger className="w-full bg-background">
-                <SelectValue placeholder={`Choose ${group.split(' ')[1]} Type`} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {types.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
+      <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
+      
+      <div className="flex justify-center gap-8 mb-8">
+        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon, items }]) => (
+          <Dialog key={group}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="flex flex-col items-center gap-2 p-4 hover:bg-secondary transition-colors"
+              >
+                <Icon className="h-8 w-8" />
+                <span className="text-sm font-medium">{group}</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md animate-fade-in">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">{group}</h3>
+                <Select value={selectedType} onValueChange={(value: ValidTransformation) => setSelectedType(value)}>
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder={`Choose ${group} Type`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {items.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </DialogContent>
+          </Dialog>
         ))}
       </div>
-      
+
       {error && (
         <div className="text-sm text-destructive">
           {error}
@@ -218,27 +245,12 @@ export const TransformationSelector = ({
       </Button>
 
       {lastTransformation && lastTransformationType && (
-        <Collapsible
-          open={!isCollapsed}
-          onOpenChange={setIsCollapsed}
-          className="w-full border rounded-lg p-2"
-        >
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full flex justify-between items-center">
-              <span>{lastTransformationType}</span>
-              {isCollapsed ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronUp className="h-4 w-4" />
-              )}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="p-4">
-            <p className="whitespace-pre-wrap text-sm">
-              {lastTransformation}
-            </p>
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="w-full border rounded-lg p-4 mt-4 animate-fade-in">
+          <h4 className="font-medium mb-2">{lastTransformationType}</h4>
+          <p className="whitespace-pre-wrap text-sm">
+            {lastTransformation}
+          </p>
+        </div>
       )}
     </div>
   );
