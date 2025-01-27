@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -84,6 +84,42 @@ export const TransformationSelector = ({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const fetchCustomPrompts = async () => {
+    try {
+      console.log('Fetching custom prompts...');
+      const { data: prompts, error } = await supabase
+        .from('custom_prompts')
+        .select('prompt_name, prompt_template');
+
+      if (error) {
+        console.error('Error fetching custom prompts:', error);
+        throw error;
+      }
+
+      if (prompts) {
+        console.log('Custom prompts fetched:', prompts);
+        setCustomPrompts(prompts);
+      }
+    } catch (err) {
+      console.error('Error in fetchCustomPrompts:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch custom prompts",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomPrompts();
+  }, []);
+
+  useEffect(() => {
+    if (isDialogOpen) {
+      fetchCustomPrompts();
+    }
+  }, [isDialogOpen]);
 
   const handleTransform = async () => {
     if (!selectedType || !entryText?.trim()) {
@@ -178,27 +214,6 @@ export const TransformationSelector = ({
     }
   };
 
-  const handlePromptSave = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Authentication required');
-      }
-
-      const { data: updatedPrompts } = await supabase
-        .from('custom_prompts')
-        .select('prompt_name, prompt_template')
-        .eq('user_id', session.user.id);
-        
-      if (updatedPrompts) {
-        setCustomPrompts(updatedPrompts);
-      }
-    } catch (err) {
-      console.error('Error fetching custom prompts:', err);
-    }
-  };
-
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
@@ -218,7 +233,7 @@ export const TransformationSelector = ({
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               customPrompts={customPrompts}
-              onPromptSave={handlePromptSave}
+              onPromptSave={fetchCustomPrompts}
             />
           </TransformationButton>
         ))}
