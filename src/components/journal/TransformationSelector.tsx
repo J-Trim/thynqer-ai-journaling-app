@@ -315,7 +315,7 @@ export const TransformationSelector = ({
                         value={newPromptName}
                         onChange={(e) => setNewPromptName(e.target.value)}
                       />
-                      <div className="relative">
+                      <div className="space-y-2">
                         <Textarea
                           placeholder="Write your custom prompt here..."
                           value={newPromptTemplate}
@@ -325,18 +325,16 @@ export const TransformationSelector = ({
                         <Button 
                           size="sm"
                           variant="outline"
-                          className="absolute right-2 top-2"
+                          className="w-full"
                           onClick={handleEnhancePrompt}
                           disabled={isEnhancing}
                         >
                           {isEnhancing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
                           ) : (
-                            <>
-                              <Wand2 className="h-4 w-4 mr-1" />
-                              Enhance
-                            </>
+                            <Wand2 className="h-4 w-4 mr-2" />
                           )}
+                          {isEnhancing ? "Enhancing..." : "Enhance Prompt"}
                         </Button>
                       </div>
                       <Button 
