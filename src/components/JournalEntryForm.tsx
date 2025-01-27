@@ -1,5 +1,5 @@
-import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useJournalEntry } from "@/hooks/useJournalEntry";
 import Header from "@/components/Header";
 import JournalFormHeader from "./journal/form/JournalFormHeader";
@@ -12,7 +12,6 @@ import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
 import { TransformationSelector } from "./journal/TransformationSelector";
 import { TransformationsList } from "./journal/TransformationsList";
-import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -40,6 +39,21 @@ const JournalEntryForm = () => {
     saveEntry,
     handleNavigateAway
   } = useJournalEntry(id);
+
+  // Add effect to handle navigation on refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+      navigate('/');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, navigate]);
 
   const {
     isRecording,
@@ -125,7 +139,7 @@ const JournalEntryForm = () => {
 
   const handleCancel = async () => {
     await cleanupAudioAndTranscription();
-    navigate("/journal");
+    navigate("/");
   };
 
   const { data: entryTags } = useQuery({
@@ -211,6 +225,7 @@ const JournalEntryForm = () => {
             title: "Success",
             description: "Journal entry saved successfully",
           });
+          navigate('/'); // Navigate to home after successful save
         }
       }
 
