@@ -21,7 +21,7 @@ import { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { chatWithDeepSeek } from "@/utils/deepseek";
+import { chatWithDeepSeek, type Message } from "@/utils/deepseek";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -117,7 +117,7 @@ export const TransformationSelector = ({
     try {
       const systemMessage = `You are an AI prompt engineer. Your task is to enhance and improve the following prompt to make it more specific, detailed, and effective. The enhanced prompt should maintain the original intent but add structure, clarity, and specific instructions. Here's the prompt to enhance:`;
       
-      const messages = [
+      const messages: Message[] = [
         { role: 'system', content: systemMessage },
         { role: 'user', content: newPromptTemplate }
       ];

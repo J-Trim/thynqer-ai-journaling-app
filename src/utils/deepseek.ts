@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-interface Message {
+export interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
