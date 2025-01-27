@@ -225,7 +225,8 @@ const JournalEntryForm = () => {
             title: "Success",
             description: "Journal entry saved successfully",
           });
-          navigate('/'); // Navigate to home after successful save
+          console.log('Navigating to home after successful save');
+          navigate('/journal');
         }
       }
 
