@@ -27,7 +27,7 @@ const TRANSFORMATION_TYPES = {
       'Goal Setting',
       'Short Paraphrase',
       'Psychoanalysis',
-    ]
+    ] as string[]
   },
   "Professional": {
     icon: Briefcase,
@@ -47,7 +47,7 @@ const TRANSFORMATION_TYPES = {
       'Brainstorm Session Outline',
       'Risk Assessment',
       'Professional White Paper',
-    ]
+    ] as string[]
   },
   "Social Media": {
     icon: Share2,
@@ -61,11 +61,11 @@ const TRANSFORMATION_TYPES = {
       'Podcast Show Notes',
       'LinkedIn Article',
       'Motivational Snippet',
-    ]
+    ] as string[]
   },
   "Custom": {
     icon: PenTool,
-    items: []
+    items: [] as string[]
   }
 } as const;
 
