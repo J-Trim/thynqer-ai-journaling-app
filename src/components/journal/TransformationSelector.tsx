@@ -245,6 +245,9 @@ export const TransformationSelector = ({
               onTypeChange={setSelectedType}
               customPrompts={customPrompts}
               onPromptSave={fetchCustomPrompts}
+              onTransform={handleTransform}
+              isTransforming={isTransforming}
+              isSaving={isSaving}
             />
           </TransformationButton>
         ))}
@@ -252,10 +255,6 @@ export const TransformationSelector = ({
 
       <TransformationResult
         error={error}
-        isTransforming={isTransforming}
-        isSaving={isSaving}
-        selectedType={selectedType}
-        onTransform={handleTransform}
         lastTransformation={lastTransformation}
         lastTransformationType={lastTransformationType}
       />

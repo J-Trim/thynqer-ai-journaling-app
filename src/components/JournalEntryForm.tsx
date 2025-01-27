@@ -322,21 +322,11 @@ const JournalEntryForm = () => {
 
           {(content || transcribedAudio) && (
             <div className="mt-8">
-              {!transformationEnabled ? (
-                <Button 
-                  variant="outline" 
-                  onClick={() => setTransformationEnabled(true)}
-                  className="w-full"
-                >
-                  Transformation Station
-                </Button>
-              ) : (
-                <TransformationSelector 
-                  entryId={lastSavedId || ''} 
-                  entryText={content || transcribedAudio || ''} 
-                  onSaveEntry={!lastSavedId ? handleForceSave : undefined}
-                />
-              )}
+              <TransformationSelector 
+                entryId={lastSavedId || ''} 
+                entryText={content || transcribedAudio || ''} 
+                onSaveEntry={!lastSavedId ? handleForceSave : undefined}
+              />
             </div>
           )}
 

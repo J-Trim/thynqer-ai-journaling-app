@@ -2,6 +2,8 @@ import { DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomPromptForm } from "./CustomPromptForm";
 import { Database } from "@/integrations/supabase/types";
+import { Button } from "@/components/ui/button";
+import { Car, Bot, Loader2 } from "lucide-react";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -12,6 +14,9 @@ interface TransformationDialogProps {
   onTypeChange: (value: ValidTransformation) => void;
   customPrompts: Array<{ prompt_name: string; prompt_template: string; }>;
   onPromptSave: () => void;
+  onTransform: () => void;
+  isTransforming: boolean;
+  isSaving: boolean;
 }
 
 export const TransformationDialog = ({
@@ -20,7 +25,10 @@ export const TransformationDialog = ({
   selectedType,
   onTypeChange,
   customPrompts,
-  onPromptSave
+  onPromptSave,
+  onTransform,
+  isTransforming,
+  isSaving
 }: TransformationDialogProps) => {
   return (
     <DialogContent className="sm:max-w-md">
@@ -30,37 +38,83 @@ export const TransformationDialog = ({
           <div className="space-y-4">
             <CustomPromptForm onPromptSave={onPromptSave} />
             {customPrompts.length > 0 && (
-              <Select value={selectedType} onValueChange={(value: ValidTransformation) => onTypeChange(value)}>
-                <SelectTrigger className="w-full bg-background">
-                  <SelectValue placeholder="Choose Custom Prompt" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {customPrompts.map((prompt) => (
-                      <SelectItem key={prompt.prompt_name} value={prompt.prompt_name}>
-                        {prompt.prompt_name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
+              <div className="space-y-4">
+                <Select value={selectedType} onValueChange={(value: ValidTransformation) => onTypeChange(value)}>
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue placeholder="Choose Custom Prompt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {customPrompts.map((prompt) => (
+                        <SelectItem key={prompt.prompt_name} value={prompt.prompt_name}>
+                          {prompt.prompt_name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {selectedType && (
+                  <Button 
+                    onClick={onTransform} 
+                    disabled={isTransforming || !selectedType || isSaving}
+                    size="sm"
+                    className="w-full"
+                  >
+                    {isTransforming || isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {isSaving ? 'Saving entry...' : 'Transforming...'}
+                      </>
+                    ) : (
+                      <>
+                        <Car className="mr-2 h-4 w-4" />
+                        Transform
+                        <Bot className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         ) : (
-          <Select value={selectedType} onValueChange={(value: ValidTransformation) => onTypeChange(value)}>
-            <SelectTrigger className="w-full bg-background">
-              <SelectValue placeholder={`Choose ${group} Type`} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {items.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="space-y-4">
+            <Select value={selectedType} onValueChange={(value: ValidTransformation) => onTypeChange(value)}>
+              <SelectTrigger className="w-full bg-background">
+                <SelectValue placeholder={`Choose ${group} Type`} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {items.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {selectedType && (
+              <Button 
+                onClick={onTransform} 
+                disabled={isTransforming || !selectedType || isSaving}
+                size="sm"
+                className="w-full"
+              >
+                {isTransforming || isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isSaving ? 'Saving entry...' : 'Transforming...'}
+                  </>
+                ) : (
+                  <>
+                    <Car className="mr-2 h-4 w-4" />
+                    Transform
+                    <Bot className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </DialogContent>
