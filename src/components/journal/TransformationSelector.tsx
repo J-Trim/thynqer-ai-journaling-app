@@ -27,7 +27,8 @@ const TRANSFORMATION_TYPES = {
       'Goal Setting',
       'Short Paraphrase',
       'Psychoanalysis',
-    ] as string[]
+      '2nd Iambic Pentameter Rap',
+    ] as ValidTransformation[]
   },
   "Professional": {
     icon: Briefcase,
@@ -47,7 +48,7 @@ const TRANSFORMATION_TYPES = {
       'Brainstorm Session Outline',
       'Risk Assessment',
       'Professional White Paper',
-    ] as string[]
+    ] as ValidTransformation[]
   },
   "Social Media": {
     icon: Share2,
@@ -61,11 +62,11 @@ const TRANSFORMATION_TYPES = {
       'Podcast Show Notes',
       'LinkedIn Article',
       'Motivational Snippet',
-    ] as string[]
+    ] as ValidTransformation[]
   },
   "Custom": {
     icon: PenTool,
-    items: [] as string[]
+    items: [] as ValidTransformation[]
   }
 } as const;
 
@@ -164,6 +165,7 @@ export const TransformationSelector = ({
       // Find custom prompt template if it's a custom transformation
       const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
       console.log('Custom prompt found:', customPrompt);
+      console.log('Selected transformation type:', selectedType);
 
       console.log('Starting transformation with:', {
         text: entryText,
