@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
+import { Trash2, AudioLines } from "lucide-react";
+import AudioPlayer from "./journal/AudioPlayer";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -20,18 +21,34 @@ interface JournalEntryProps {
   title: string;
   date: string;
   preview: string;
+  audioUrl?: string | null;
   hasBeenEdited?: boolean;
   onClick?: () => void;
   onDelete?: () => void;
 }
 
-const JournalEntry = ({ id, title, date, preview, hasBeenEdited, onClick, onDelete }: JournalEntryProps) => {
+const JournalEntry = ({ 
+  id, 
+  title, 
+  date, 
+  preview, 
+  audioUrl,
+  hasBeenEdited, 
+  onClick, 
+  onDelete 
+}: JournalEntryProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const { toast } = useToast();
 
   const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the card click
+    e.stopPropagation();
     setShowDeleteDialog(true);
+  };
+
+  const handleAudioClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowAudioPlayer(!showAudioPlayer);
   };
 
   const confirmDelete = async () => {
@@ -78,6 +95,16 @@ const JournalEntry = ({ id, title, date, preview, hasBeenEdited, onClick, onDele
                   Edited
                 </Badge>
               )}
+              {audioUrl && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleAudioClick}
+                  className="hover:bg-secondary"
+                >
+                  <AudioLines className="h-4 w-4 text-text-muted" />
+                </Button>
+              )}
               <div className="relative">
                 <div className="absolute -top-2 -right-2 w-8 h-8 group">
                   <button
@@ -95,6 +122,11 @@ const JournalEntry = ({ id, title, date, preview, hasBeenEdited, onClick, onDele
         </CardHeader>
         <CardContent>
           <p className="text-text-muted line-clamp-2">{preview}</p>
+          {showAudioPlayer && audioUrl && (
+            <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+              <AudioPlayer audioUrl={audioUrl} />
+            </div>
+          )}
         </CardContent>
       </Card>
 

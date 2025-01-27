@@ -116,6 +116,7 @@ const Index = () => {
                         title={entry.title || "Untitled Entry"}
                         date={format(new Date(entry.created_at), 'MMMM d, yyyy')}
                         preview={entry.text || "No content"}
+                        audioUrl={entry.audio_url}
                         hasBeenEdited={entry.has_been_edited}
                         onClick={() => navigate(`/journal/edit/${entry.id}`)}
                         onDelete={() => {
