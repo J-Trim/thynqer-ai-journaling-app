@@ -103,7 +103,7 @@ const Index = () => {
     <div className="min-h-screen bg-background animate-fade-in">
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-2xl mx-auto space-y-8">
-          <JournalEntryForm />
+          {isNewEntryPage && <JournalEntryForm />}
 
           {!isNewEntryPage && (
             <div className="space-y-6">
@@ -130,7 +130,6 @@ const Index = () => {
                           hasBeenEdited={entry.has_been_edited}
                           onClick={() => navigate(`/journal/edit/${entry.id}`)}
                           onDelete={() => {
-                            // Update this to navigate to /journal instead of /
                             navigate("/journal");
                             window.location.reload();
                           }}
