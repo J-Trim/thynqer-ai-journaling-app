@@ -66,7 +66,11 @@ const Index = () => {
         const existingEntry = uniqueEntriesMap.get(entry.id);
         if (!existingEntry || new Date(entry.created_at) > new Date(existingEntry.created_at)) {
           uniqueEntriesMap.set(entry.id, entry);
-          console.log(`Processing entry ID ${entry.id}, title: ${entry.title}`);
+          console.log(`Processing entry ID ${entry.id}:`, {
+            title: entry.title,
+            audioUrl: entry.audio_url,
+            hasAudio: Boolean(entry.audio_url)
+          });
         } else {
           console.log(`Skipping duplicate entry ID ${entry.id}, older timestamp`);
         }
@@ -109,22 +113,29 @@ const Index = () => {
               ) : (
                 <div className="space-y-4">
                   {entries && entries.length > 0 ? (
-                    entries.map((entry) => (
-                      <JournalEntry
-                        key={entry.id}
-                        id={entry.id}
-                        title={entry.title || "Untitled Entry"}
-                        date={format(new Date(entry.created_at), 'MMMM d, yyyy')}
-                        preview={entry.text || "No content"}
-                        audioUrl={entry.audio_url}
-                        hasBeenEdited={entry.has_been_edited}
-                        onClick={() => navigate(`/journal/edit/${entry.id}`)}
-                        onDelete={() => {
-                          navigate("/");
-                          window.location.reload();
-                        }}
-                      />
-                    ))
+                    entries.map((entry) => {
+                      console.log(`Rendering entry ${entry.id}:`, {
+                        title: entry.title,
+                        audioUrl: entry.audio_url,
+                        hasAudio: Boolean(entry.audio_url)
+                      });
+                      return (
+                        <JournalEntry
+                          key={entry.id}
+                          id={entry.id}
+                          title={entry.title || "Untitled Entry"}
+                          date={format(new Date(entry.created_at), 'MMMM d, yyyy')}
+                          preview={entry.text || "No content"}
+                          audioUrl={entry.audio_url}
+                          hasBeenEdited={entry.has_been_edited}
+                          onClick={() => navigate(`/journal/edit/${entry.id}`)}
+                          onDelete={() => {
+                            navigate("/");
+                            window.location.reload();
+                          }}
+                        />
+                      );
+                    })
                   ) : (
                     <div className="text-center py-12 space-y-4">
                       <div className="w-16 h-16 mx-auto text-muted-foreground">

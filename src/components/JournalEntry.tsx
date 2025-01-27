@@ -41,6 +41,13 @@ const JournalEntry = ({
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const { toast } = useToast();
 
+  console.log(`JournalEntry ${id} rendered:`, {
+    title,
+    audioUrl,
+    hasAudio: Boolean(audioUrl),
+    showAudioPlayer
+  });
+
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowDeleteDialog(true);
@@ -48,6 +55,11 @@ const JournalEntry = ({
 
   const handleAudioClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log(`Audio button clicked for entry ${id}:`, {
+      audioUrl,
+      currentShowAudioPlayer: showAudioPlayer,
+      willShow: !showAudioPlayer
+    });
     setShowAudioPlayer(!showAudioPlayer);
   };
 
