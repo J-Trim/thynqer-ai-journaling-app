@@ -46,7 +46,7 @@ const Index = () => {
       console.log('Fetching entries for user:', session.user.id);
       const { data, error } = await supabase
         .from('journal_entries')
-        .select('*')
+        .select('id, title, text, audio_url, has_been_edited, created_at')
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(100);
