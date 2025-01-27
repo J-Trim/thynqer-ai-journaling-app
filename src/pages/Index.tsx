@@ -130,7 +130,8 @@ const Index = () => {
                           hasBeenEdited={entry.has_been_edited}
                           onClick={() => navigate(`/journal/edit/${entry.id}`)}
                           onDelete={() => {
-                            navigate("/");
+                            // Update this to navigate to /journal instead of /
+                            navigate("/journal");
                             window.location.reload();
                           }}
                         />
