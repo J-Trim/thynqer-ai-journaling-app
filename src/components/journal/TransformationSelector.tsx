@@ -160,9 +160,14 @@ export const TransformationSelector = ({
         throw new Error('Authentication required');
       }
 
+      // Find custom prompt template if it's a custom transformation
+      const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
+      console.log('Custom prompt found:', customPrompt);
+
       console.log('Starting transformation with:', {
         text: entryText,
         transformationType: selectedType,
+        customTemplate: customPrompt?.prompt_template,
         entryId: finalEntryId
       });
 
@@ -170,7 +175,8 @@ export const TransformationSelector = ({
         .invoke('transform-text', {
           body: { 
             text: entryText, 
-            transformationType: selectedType 
+            transformationType: selectedType,
+            customTemplate: customPrompt?.prompt_template 
           }
         });
 
@@ -191,7 +197,7 @@ export const TransformationSelector = ({
           entry_id: finalEntryId,
           user_id: session.user.id,
           transformed_text: transformResponse.transformedText,
-          transformation_type: selectedType,
+          transformation_type: selectedType as ValidTransformation,
         });
 
       if (saveError) {

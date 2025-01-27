@@ -54,6 +54,7 @@ serve(async (req) => {
     const { text, transformationType, customTemplate } = await req.json() as TransformRequest
 
     console.log(`Processing transformation request of type: ${transformationType}`)
+    console.log('Custom template:', customTemplate)
     
     const systemPrompt = getSystemPrompt(transformationType, customTemplate)
     
