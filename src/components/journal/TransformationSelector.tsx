@@ -82,6 +82,7 @@ export const TransformationSelector = ({
   const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
   const [customPrompts, setCustomPrompts] = useState<Array<{ prompt_name: string, prompt_template: string }>>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -116,10 +117,10 @@ export const TransformationSelector = ({
   }, []);
 
   useEffect(() => {
-    if (isDialogOpen) {
+    if (isDialogOpen && activeGroup === "Custom") {
       fetchCustomPrompts();
     }
-  }, [isDialogOpen]);
+  }, [isDialogOpen, activeGroup]);
 
   const handleTransform = async () => {
     if (!selectedType || !entryText?.trim()) {
@@ -211,6 +212,7 @@ export const TransformationSelector = ({
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       setSelectedType("");
       setIsDialogOpen(false);
+      setActiveGroup(null);
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
@@ -230,8 +232,11 @@ export const TransformationSelector = ({
             key={group}
             group={group}
             Icon={Icon}
-            isDialogOpen={isDialogOpen}
-            onOpenChange={setIsDialogOpen}
+            isDialogOpen={isDialogOpen && activeGroup === group}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              setActiveGroup(open ? group : null);
+            }}
           >
             <TransformationDialog
               group={group}
