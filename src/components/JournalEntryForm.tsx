@@ -95,6 +95,39 @@ const JournalEntryForm = () => {
     }
   };
 
+  const cleanupAudioAndTranscription = async () => {
+    if (audioUrl) {
+      try {
+        console.log('Cleaning up audio file:', audioUrl);
+        const { error } = await supabase.storage
+          .from('audio_files')
+          .remove([audioUrl]);
+        
+        if (error) {
+          console.error('Error deleting audio file:', error);
+          throw error;
+        }
+        
+        setAudioUrl(null);
+        setTranscribedAudio('');
+        setAudioPublicUrl(null);
+        console.log('Audio cleanup completed successfully');
+      } catch (error) {
+        console.error('Error during audio cleanup:', error);
+        toast({
+          title: "Error",
+          description: "Failed to cleanup audio files",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleCancel = async () => {
+    await cleanupAudioAndTranscription();
+    navigate("/journal");
+  };
+
   const { data: entryTags } = useQuery({
     queryKey: ['entry-tags', lastSavedId],
     queryFn: async () => {
@@ -294,22 +327,8 @@ const JournalEntryForm = () => {
 
           {lastSavedId && <TransformationsList entryId={lastSavedId} />}
 
-          {audioUrl && !showAudioPlayer && (
-            <Button 
-              variant="outline" 
-              onClick={() => setShowAudioPlayer(true)}
-              className="w-full"
-            >
-              Load Audio Player
-            </Button>
-          )}
-
-          {audioPublicUrl && showAudioPlayer && (
-            <AudioPlayer audioUrl={audioPublicUrl} />
-          )}
-
           <JournalFormActions
-            onCancel={handleNavigateAway}
+            onCancel={handleCancel}
             onSave={() => handleSave(false)}
             isSaving={isSaving}
             isTranscriptionPending={isTranscriptionPending}
