@@ -14,13 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, FileText, User, Briefcase, Share2, PenTool, Car, Bot } from "lucide-react";
+import { Loader2, FileText, User, Briefcase, Share2, PenTool, Car, Bot, Wand2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { chatWithDeepSeek } from "@/utils/deepseek";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -96,10 +97,48 @@ export const TransformationSelector = ({
   const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
   const [newPromptName, setNewPromptName] = useState("");
   const [newPromptTemplate, setNewPromptTemplate] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [customPrompts, setCustomPrompts] = useState<Array<{ prompt_name: string, prompt_template: string }>>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const handleEnhancePrompt = async () => {
+    if (!newPromptTemplate.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a prompt to enhance",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsEnhancing(true);
+    try {
+      const systemMessage = `You are an AI prompt engineer. Your task is to enhance and improve the following prompt to make it more specific, detailed, and effective. The enhanced prompt should maintain the original intent but add structure, clarity, and specific instructions. Here's the prompt to enhance:`;
+      
+      const messages = [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: newPromptTemplate }
+      ];
+
+      const enhancedPrompt = await chatWithDeepSeek(messages);
+      setNewPromptTemplate(enhancedPrompt);
+      
+      toast({
+        description: "Prompt enhanced successfully",
+      });
+    } catch (error) {
+      console.error('Error enhancing prompt:', error);
+      toast({
+        title: "Error",
+        description: "Failed to enhance prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
 
   const handleCreateCustomPrompt = async () => {
     if (!newPromptName || !newPromptTemplate) {
@@ -276,17 +315,35 @@ export const TransformationSelector = ({
                         value={newPromptName}
                         onChange={(e) => setNewPromptName(e.target.value)}
                       />
-                      <Textarea
-                        placeholder="Prompt Template"
-                        value={newPromptTemplate}
-                        onChange={(e) => setNewPromptTemplate(e.target.value)}
-                        className="min-h-[100px]"
-                      />
+                      <div className="relative">
+                        <Textarea
+                          placeholder="Write your custom prompt here..."
+                          value={newPromptTemplate}
+                          onChange={(e) => setNewPromptTemplate(e.target.value)}
+                          className="min-h-[100px]"
+                        />
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          className="absolute right-2 top-2"
+                          onClick={handleEnhancePrompt}
+                          disabled={isEnhancing}
+                        >
+                          {isEnhancing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Wand2 className="h-4 w-4 mr-1" />
+                              Enhance
+                            </>
+                          )}
+                        </Button>
+                      </div>
                       <Button 
                         onClick={handleCreateCustomPrompt}
                         className="w-full"
                       >
-                        Create Custom Prompt
+                        Save Custom Prompt
                       </Button>
                     </div>
                     {customPrompts.length > 0 && (
