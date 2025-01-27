@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Loader2, FileText, User, Briefcase, Share2, PenTool, Car, Robot } from "lucide-react";
+import { Loader2, FileText, User, Briefcase, Share2, PenTool, Car, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
@@ -346,7 +346,7 @@ export const TransformationSelector = ({
           <>
             <Car className="mr-2 h-4 w-4" />
             Transform
-            <Robot className="ml-2 h-4 w-4" />
+            <Bot className="ml-2 h-4 w-4" />
           </>
         )}
       </Button>
