@@ -97,6 +97,7 @@ export const TransformationSelector = ({
   const [newPromptName, setNewPromptName] = useState("");
   const [newPromptTemplate, setNewPromptTemplate] = useState("");
   const [customPrompts, setCustomPrompts] = useState<Array<{ prompt_name: string, prompt_template: string }>>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -237,6 +238,7 @@ export const TransformationSelector = ({
       setLastTransformationType(selectedType);
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       setSelectedType("");
+      setIsDialogOpen(false);
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
@@ -252,7 +254,7 @@ export const TransformationSelector = ({
       
       <div className="flex justify-center gap-8 mb-8">
         {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon, items }]) => (
-          <Dialog key={group}>
+          <Dialog key={group} open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button
                 variant="ghost"
