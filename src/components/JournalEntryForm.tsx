@@ -138,8 +138,9 @@ const JournalEntryForm = () => {
   };
 
   const handleCancel = async () => {
+    console.log('Cancel button clicked, cleaning up and navigating to journal list');
     await cleanupAudioAndTranscription();
-    navigate("/");
+    navigate("/journal");
   };
 
   const { data: entryTags } = useQuery({
