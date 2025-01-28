@@ -58,7 +58,6 @@ IMPORTANT: Present your analysis in a clear, structured format that maintains th
     'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection. Provide ONLY the emotional analysis without any additional commentary.',
     'Daily Affirmation': 'Transform the key positive elements into uplifting affirmations. Provide ONLY the affirmations without any additional commentary.',
     'Action Plan': 'Convert the content into a structured action plan with clear, achievable steps. Provide ONLY the action plan without any additional commentary.',
-    'Psychoanalysis': 'Provide a therapy-style analysis of the thoughts and feelings expressed. Provide ONLY the analysis without any additional commentary.',
     'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness. Provide ONLY the reflection without any additional commentary.',
     'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals. Provide ONLY the goals without any additional commentary.',
     'Short Paraphrase': 'Provide a concise paraphrase of the main content. Provide ONLY the paraphrase without any additional commentary.',
@@ -66,44 +65,6 @@ IMPORTANT: Present your analysis in a clear, structured format that maintains th
   };
 
   return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent. Provide ONLY the transformed content without any additional commentary.';
-}
-
-const enhancePrompt = async (prompt: string): Promise<string> => {
-  if (!Deno.env.get('DEEPSEEK_API_KEY')) {
-    throw new Error('DEEPSEEK_API_KEY is not configured');
-  }
-
-  console.log('Enhancing prompt with DeepSeek:', prompt);
-  
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an AI prompt engineer specializing in therapeutic and psychological analysis. Your task is to enhance and improve the following prompt to make it more specific, detailed, and effective for generating therapeutic insights. The enhanced prompt should maintain the original therapeutic approach while adding structure, clarity, and specific instructions for deep psychological analysis.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error?.message || 'Failed to enhance prompt with DeepSeek');
-  }
-
-  return data.choices[0].message.content;
 }
 
 serve(async (req) => {
@@ -114,12 +75,14 @@ serve(async (req) => {
 
   try {
     if (!Deno.env.get('DEEPSEEK_API_KEY')) {
+      console.error('DEEPSEEK_API_KEY not configured');
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      console.error('No authorization header provided');
       throw new Error('No authorization header');
     }
 
@@ -135,49 +98,25 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    const { text, transformationType, customTemplate } = await req.json() as TransformRequest
+    const requestData = await req.json() as TransformRequest;
+    const { text, transformationType, customTemplate } = requestData;
 
-    console.log(`Processing transformation request of type: ${transformationType}`)
-    console.log('Custom template:', customTemplate)
+    if (!text || !transformationType) {
+      console.error('Missing required fields:', { hasText: !!text, hasType: !!transformationType });
+      throw new Error('Missing required fields');
+    }
+
+    console.log(`Processing transformation request:`, {
+      type: transformationType,
+      textLength: text.length,
+      hasCustomTemplate: !!customTemplate
+    });
     
     // Get the base prompt
-    const basePrompt = getSystemPrompt(transformationType, customTemplate)
+    const basePrompt = getSystemPrompt(transformationType, customTemplate);
+    console.log('Using base prompt:', basePrompt);
     
-    // Try to get an enhanced prompt from the database or create a new one
-    const { data: enhancedPrompts, error: fetchError } = await supabase
-      .from('enhanced_prompts')
-      .select('enhanced_template')
-      .eq('original_type', transformationType)
-      .single();
-
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error fetching enhanced prompt:', fetchError);
-      throw fetchError;
-    }
-
-    let enhancedPrompt = enhancedPrompts?.enhanced_template;
-
-    if (!enhancedPrompt) {
-      console.log('No enhanced prompt found, creating one...');
-      enhancedPrompt = await enhancePrompt(basePrompt);
-
-      const { error: insertError } = await supabase
-        .from('enhanced_prompts')
-        .insert({
-          user_id: user.id,
-          original_type: transformationType,
-          enhanced_template: enhancedPrompt
-        });
-
-      if (insertError) {
-        console.error('Error saving enhanced prompt:', insertError);
-        throw insertError;
-      }
-    }
-
-    console.log('Using enhanced prompt:', enhancedPrompt);
-    
-    console.log('Sending request to DeepSeek API...')
+    console.log('Sending request to DeepSeek API...');
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -189,7 +128,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: `You are a direct and efficient text transformer. ${enhancedPrompt}\n\nIMPORTANT: Your response should contain ONLY the transformed text, without any introduction, explanation, or conversation. Do not include phrases like "Here's the transformed text:" or "I hope this helps!"`
+            content: `You are a direct and efficient text transformer. ${basePrompt}\n\nIMPORTANT: Your response should contain ONLY the transformed text, without any introduction, explanation, or conversation.`
           },
           { 
             role: 'user', 
@@ -199,31 +138,45 @@ serve(async (req) => {
         temperature: 0.7,
         max_tokens: 2000,
       }),
-    })
+    });
 
-    const data = await response.json()
-    console.log('Received response from DeepSeek API')
+    const data = await response.json();
+    console.log('Received response from DeepSeek API:', {
+      status: response.status,
+      ok: response.ok,
+      hasChoices: !!data.choices
+    });
 
     if (!response.ok) {
-      throw new Error(data.error?.message || 'Failed to get response from DeepSeek')
+      console.error('DeepSeek API error:', data.error);
+      throw new Error(data.error?.message || 'Failed to get response from DeepSeek');
     }
 
-    const transformedText = data.choices[0].message.content
+    if (!data.choices?.[0]?.message?.content) {
+      console.error('Invalid response format from DeepSeek:', data);
+      throw new Error('Invalid response format from DeepSeek');
+    }
+
+    const transformedText = data.choices[0].message.content;
+    console.log('Successfully transformed text, length:', transformedText.length);
 
     return new Response(
       JSON.stringify({ transformedText }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
+    );
   } catch (error) {
-    console.error('Error in transform-text function:', error)
+    console.error('Error in transform-text function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.toString()
+      }),
       { 
-        status: 500,
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
+    );
   }
-})
+});
