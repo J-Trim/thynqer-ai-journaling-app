@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, User, Briefcase, Share2, PenTool } from "lucide-react";
+import { FileText, User, Briefcase, Share2, PenTool, Brain, Heart, UserPlus, Leaf } from "lucide-react";
 import { TransformationButton } from "./transformations/TransformationButton";
 import { TransformationDialog } from "./transformations/TransformationDialog";
 import { TransformationResult } from "./transformations/TransformationResult";
@@ -18,15 +18,15 @@ interface TransformationSelectorProps {
 
 const TRANSFORMATION_TYPES = {
   "Personal Growth": {
-    icon: User,
+    icon: Brain,
     items: [
+      'Psychoanalysis',
       'Quick Summary',
       'Emotional Check-In',
       'Daily Affirmation',
       'Mindfulness Reflection',
       'Goal Setting',
       'Short Paraphrase',
-      'Psychoanalysis',
     ] as ValidTransformation[]
   },
   "Professional": {
