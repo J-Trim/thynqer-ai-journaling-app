@@ -6,6 +6,7 @@ import { Loader2, Wand2 } from "lucide-react";
 import { chatWithDeepSeek, type Message } from "@/utils/deepseek";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface CustomPromptFormProps {
   onPromptSave: () => void;
@@ -16,6 +17,7 @@ export const CustomPromptForm = ({ onPromptSave }: CustomPromptFormProps) => {
   const [newPromptTemplate, setNewPromptTemplate] = useState("");
   const [isEnhancing, setIsEnhancing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleEnhancePrompt = async () => {
     if (!newPromptTemplate.trim()) {
@@ -65,12 +67,21 @@ export const CustomPromptForm = ({ onPromptSave }: CustomPromptFormProps) => {
     }
 
     try {
+      console.log('Getting current session...');
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error('Authentication required');
+        console.error('No active session found');
+        toast({
+          title: "Error",
+          description: "Please sign in to save custom prompts",
+          variant: "destructive",
+        });
+        navigate('/auth');
+        return;
       }
 
+      console.log('Saving custom prompt to Supabase...');
       const { error: saveError } = await supabase
         .from('custom_prompts')
         .insert({
@@ -79,8 +90,12 @@ export const CustomPromptForm = ({ onPromptSave }: CustomPromptFormProps) => {
           prompt_template: newPromptTemplate
         });
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('Error saving custom prompt:', saveError);
+        throw saveError;
+      }
 
+      console.log('Custom prompt saved successfully');
       toast({
         description: "Custom prompt created successfully",
       });
