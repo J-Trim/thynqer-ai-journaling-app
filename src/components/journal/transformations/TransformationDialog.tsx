@@ -43,7 +43,7 @@ export const TransformationDialog = ({
                   <SelectTrigger className="w-full bg-background">
                     <SelectValue placeholder="Choose Custom Prompt" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px] overflow-y-auto">
                     <SelectGroup>
                       {customPrompts.map((prompt) => (
                         <SelectItem key={prompt.prompt_name} value={prompt.prompt_name}>
@@ -83,7 +83,7 @@ export const TransformationDialog = ({
               <SelectTrigger className="w-full bg-background">
                 <SelectValue placeholder={`Choose ${group} Type`} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px] overflow-y-auto">
                 <SelectGroup>
                   {items.map((type) => (
                     <SelectItem key={type} value={type}>
