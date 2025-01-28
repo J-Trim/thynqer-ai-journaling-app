@@ -30,6 +30,30 @@ export type Database = {
         }
         Relationships: []
       }
+      enhanced_prompts: {
+        Row: {
+          created_at: string | null
+          enhanced_template: string
+          id: string
+          original_type: Database["public"]["Enums"]["valid_transformation"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          enhanced_template: string
+          id?: string
+          original_type: Database["public"]["Enums"]["valid_transformation"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          enhanced_template?: string
+          id?: string
+          original_type?: Database["public"]["Enums"]["valid_transformation"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       entry_tags: {
         Row: {
           entry_id: string

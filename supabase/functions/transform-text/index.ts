@@ -41,6 +41,44 @@ const getSystemPrompt = (transformationType: string, customTemplate?: string) =>
   return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent. Provide ONLY the transformed content without any additional commentary.';
 }
 
+const enhancePrompt = async (prompt: string): Promise<string> => {
+  if (!Deno.env.get('DEEPSEEK_API_KEY')) {
+    throw new Error('DEEPSEEK_API_KEY is not configured');
+  }
+
+  console.log('Enhancing prompt with DeepSeek:', prompt);
+  
+  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an AI prompt engineer. Your task is to enhance and improve the following prompt to make it more specific, detailed, and effective. The enhanced prompt should maintain the original intent but add structure, clarity, and specific instructions.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || 'Failed to enhance prompt with DeepSeek');
+  }
+
+  return data.choices[0].message.content;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -57,7 +95,42 @@ serve(async (req) => {
     console.log(`Processing transformation request of type: ${transformationType}`)
     console.log('Custom template:', customTemplate)
     
-    const systemPrompt = getSystemPrompt(transformationType, customTemplate)
+    // Get the base prompt
+    const basePrompt = getSystemPrompt(transformationType, customTemplate)
+    
+    // Try to get an enhanced prompt from the database or create a new one
+    const { data: enhancedPrompts, error: fetchError } = await supabase
+      .from('enhanced_prompts')
+      .select('enhanced_template')
+      .eq('original_type', transformationType)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found"
+      console.error('Error fetching enhanced prompt:', fetchError);
+      throw fetchError;
+    }
+
+    let enhancedPrompt = enhancedPrompts?.enhanced_template;
+
+    if (!enhancedPrompt) {
+      console.log('No enhanced prompt found, creating one...');
+      enhancedPrompt = await enhancePrompt(basePrompt);
+
+      const { error: insertError } = await supabase
+        .from('enhanced_prompts')
+        .insert({
+          user_id: auth.uid(),
+          original_type: transformationType,
+          enhanced_template: enhancedPrompt
+        });
+
+      if (insertError) {
+        console.error('Error saving enhanced prompt:', insertError);
+        throw insertError;
+      }
+    }
+
+    console.log('Using enhanced prompt:', enhancedPrompt);
     
     console.log('Sending request to DeepSeek API...')
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -71,7 +144,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: `You are a direct and efficient text transformer. ${systemPrompt}\n\nIMPORTANT: Your response should contain ONLY the transformed text, without any introduction, explanation, or conversation. Do not include phrases like "Here's the transformed text:" or "I hope this helps!"`
+            content: `You are a direct and efficient text transformer. ${enhancedPrompt}\n\nIMPORTANT: Your response should contain ONLY the transformed text, without any introduction, explanation, or conversation. Do not include phrases like "Here's the transformed text:" or "I hope this helps!"`
           },
           { 
             role: 'user', 
