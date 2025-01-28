@@ -1,24 +1,12 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Database } from "@/integrations/supabase/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Database } from "@/integrations/supabase/types";
+import { useToast } from "@/hooks/use-toast";
+import { FileText, User, Briefcase, Share2, PenTool } from "lucide-react";
+import { TransformationButton } from "./transformations/TransformationButton";
+import { TransformationDialog } from "./transformations/TransformationDialog";
+import { TransformationResult } from "./transformations/TransformationResult";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -28,160 +16,205 @@ interface TransformationSelectorProps {
   onSaveEntry?: () => Promise<{ id: string } | null>;
 }
 
-const PERSONAL_GROWTH_TRANSFORMATIONS: ValidTransformation[] = [
-  "Emotional Check-In",
-  "Daily Affirmation",
-  "Mindfulness Reflection",
-  "Psychoanalysis",
-  "Goal Setting",
-  "Action Plan",
-  "Self-Care Checklist",
-];
+const TRANSFORMATION_TYPES = {
+  "Personal Growth": {
+    icon: User,
+    items: [
+      'Quick Summary',
+      'Emotional Check-In',
+      'Daily Affirmation',
+      'Mindfulness Reflection',
+      'Goal Setting',
+      'Short Paraphrase',
+      'Psychoanalysis',
+    ] as ValidTransformation[]
+  },
+  "Professional": {
+    icon: Briefcase,
+    items: [
+      'Lesson Plan',
+      'Meeting Agenda',
+      'Project Proposal',
+      'Action Plan',
+      'Performance Review',
+      'Team Update / Status Report',
+      'Training Outline',
+      'Sales Pitch',
+      'Corporate Email / Internal Memo',
+      'Project Retrospective',
+      'Implementation Plan',
+      'Executive Summary',
+      'Brainstorm Session Outline',
+      'Risk Assessment',
+      'Professional White Paper',
+      '2nd Iambic Pentameter Rap',
+    ] as ValidTransformation[]
+  },
+  "Social Media": {
+    icon: Share2,
+    items: [
+      'Blog Post',
+      'Email',
+      'Instagram Post',
+      'YouTube Script',
+      'X (Twitter) Post',
+      'Instagram Reel / TikTok Clip',
+      'Podcast Show Notes',
+      'LinkedIn Article',
+      'Motivational Snippet',
+    ] as ValidTransformation[]
+  },
+  "Custom": {
+    icon: PenTool,
+    items: [] as ValidTransformation[]
+  }
+} as const;
 
-const CONTENT_CREATION_TRANSFORMATIONS: ValidTransformation[] = [
-  "Blog Post",
-  "Email",
-  "Instagram Post",
-  "YouTube Script",
-  "X (Twitter) Post",
-  "Instagram Reel / TikTok Clip",
-  "Podcast Show Notes",
-  "LinkedIn Article",
-  "Motivational Snippet",
-];
-
-const PROFESSIONAL_TRANSFORMATIONS: ValidTransformation[] = [
-  "Lesson Plan",
-  "Meeting Agenda",
-  "Project Proposal",
-  "Performance Review",
-  "Team Update / Status Report",
-  "Implementation Plan",
-  "Project Retrospective",
-  "Executive Summary",
-  "2nd Iambic Pentameter Rap",
-  "Bukowski",
-];
-
-const CREATIVE_TRANSFORMATIONS: ValidTransformation[] = [
-  "Short Story",
-  "Poem or Song Lyrics",
-  "Comedy Sketch",
-  "Screenplay Scene",
-];
-
-const ACADEMIC_TRANSFORMATIONS: ValidTransformation[] = [
-  "Summary Abstract",
-  "Annotated Bibliography",
-  "Discussion Questions",
-  "Lecture Notes",
-];
-
-const PLANNING_TRANSFORMATIONS: ValidTransformation[] = [
-  "Meal Plan",
-  "Workout Routine",
-  "Travel Itinerary",
-  "Brainstorm Session Outline",
-];
-
-const TEAM_TRANSFORMATIONS: ValidTransformation[] = [
-  "Feedback Request",
-  "Conflict Resolution Guide",
-  "Team Charter",
-];
-
-const MARKETING_TRANSFORMATIONS: ValidTransformation[] = [
-  "Tagline Generator",
-  "Ad Copy",
-  "Promotional Flyer",
-  "Marketing Strategy Outline",
-];
-
-const TECHNICAL_TRANSFORMATIONS: ValidTransformation[] = [
-  "Code Snippet Explanation",
-  "Bug Report",
-  "API Documentation",
-  "Technical Spec",
-];
-
-export const TransformationSelector = ({
-  entryId,
+export const TransformationSelector = ({ 
+  entryId, 
   entryText,
   onSaveEntry,
 }: TransformationSelectorProps) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<ValidTransformation>("Quick Summary");
+  const [selectedType, setSelectedType] = useState<ValidTransformation | "">("");
   const [isTransforming, setIsTransforming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastTransformation, setLastTransformation] = useState<string | null>(null);
+  const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
+  const [customPrompts, setCustomPrompts] = useState<Array<{ prompt_name: string, prompt_template: string }>>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const fetchCustomPrompts = async () => {
+    try {
+      console.log('Fetching custom prompts...');
+      const { data: prompts, error } = await supabase
+        .from('custom_prompts')
+        .select('prompt_name, prompt_template');
+
+      if (error) {
+        console.error('Error fetching custom prompts:', error);
+        throw error;
+      }
+
+      if (prompts) {
+        console.log('Custom prompts fetched:', prompts);
+        setCustomPrompts(prompts);
+      }
+    } catch (err) {
+      console.error('Error in fetchCustomPrompts:', err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch custom prompts",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomPrompts();
+  }, []);
+
+  useEffect(() => {
+    if (isDialogOpen && activeGroup === "Custom") {
+      fetchCustomPrompts();
+    }
+  }, [isDialogOpen, activeGroup]);
+
   const handleTransform = async () => {
-    if (!selectedType) {
-      setError("Please select a transformation type");
+    if (!selectedType || !entryText?.trim()) {
+      console.log('Missing required data:', { selectedType, hasText: !!entryText?.trim() });
       return;
     }
 
-    if (!entryText?.trim()) {
-      setError("Please ensure there is text to transform");
-      return;
-    }
-
-    setError(null);
     setIsTransforming(true);
-    setIsSaving(true);
+    setError(null);
 
     try {
       let finalEntryId = entryId;
-
-      // If we don't have an entry ID and onSaveEntry is provided, save the entry first
+      
       if (!entryId && onSaveEntry) {
-        console.log('No entry ID provided, saving entry first...');
+        console.log('No entry ID found, forcing save before transformation...');
+        setIsSaving(true);
         const savedEntry = await onSaveEntry();
+        
         if (!savedEntry?.id) {
+          console.error('Failed to save entry:', savedEntry);
           throw new Error('Failed to save entry');
         }
+        
         finalEntryId = savedEntry.id;
         console.log('Entry saved successfully with ID:', finalEntryId);
+        setIsSaving(false);
       }
 
-      console.log('Starting transformation with type:', selectedType);
+      if (!finalEntryId) {
+        console.error('No entry ID available after save attempt');
+        throw new Error('No entry ID available');
+      }
+
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      
+      if (authError || !session) {
+        console.error('Authentication error:', authError);
+        throw new Error('Authentication required');
+      }
+
+      // Find custom prompt template if it's a custom transformation
+      const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
+      console.log('Custom prompt found:', customPrompt);
+      console.log('Selected transformation type:', selectedType);
+
+      console.log('Starting transformation with:', {
+        text: entryText,
+        transformationType: selectedType,
+        customTemplate: customPrompt?.prompt_template,
+        entryId: finalEntryId
+      });
+
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
           body: { 
             text: entryText, 
-            transformationType: selectedType 
+            transformationType: selectedType,
+            customTemplate: customPrompt?.prompt_template 
           }
         });
 
-      if (transformError) throw transformError;
+      if (transformError) {
+        console.error('Transform function error:', transformError);
+        throw transformError;
+      }
+
       if (!transformResponse?.transformedText) {
+        console.error('No transformed text received from function');
         throw new Error('No transformed text received');
       }
 
-      console.log('Received transformed text, saving to database...');
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Authentication required');
-      }
-
+      console.log('Transform successful, saving to database...');
       const { error: saveError } = await supabase
         .from('summaries')
         .insert({
           entry_id: finalEntryId,
           user_id: session.user.id,
           transformed_text: transformResponse.transformedText,
-          transformation_type: selectedType,
+          transformation_type: selectedType as ValidTransformation,
         });
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('Error saving transformation:', saveError);
+        throw saveError;
+      }
 
-      toast({
-        description: "Text transformed successfully",
-      });
-      setSelectedType("Quick Summary");
-      setIsOpen(false);
+      console.log('Transformation saved successfully');
+      setLastTransformation(transformResponse.transformedText);
+      setLastTransformationType(selectedType);
+      queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
+      setSelectedType("");
+      setIsDialogOpen(false);
+      setActiveGroup(null);
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
@@ -197,125 +230,41 @@ export const TransformationSelector = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">Transform Text</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Transform Text</DialogTitle>
-          <DialogDescription>
-            Choose how you want to transform your journal entry
-          </DialogDescription>
-        </DialogHeader>
-
-        <Tabs defaultValue="personal">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-4">
-            <TabsTrigger value="personal">Personal Growth</TabsTrigger>
-            <TabsTrigger value="content">Content Creation</TabsTrigger>
-            <TabsTrigger value="professional">Professional</TabsTrigger>
-            <TabsTrigger value="creative">Creative</TabsTrigger>
-            <TabsTrigger value="academic">Academic</TabsTrigger>
-            <TabsTrigger value="planning">Planning</TabsTrigger>
-            <TabsTrigger value="team">Team</TabsTrigger>
-            <TabsTrigger value="marketing">Marketing</TabsTrigger>
-            <TabsTrigger value="technical">Technical</TabsTrigger>
-          </TabsList>
-
-          <div className="mt-4">
-            <Select value={selectedType} onValueChange={(value) => setSelectedType(value as ValidTransformation)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a transformation type" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[300px] overflow-y-auto">
-                <TabsContent value="personal">
-                  {PERSONAL_GROWTH_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="content">
-                  {CONTENT_CREATION_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="professional">
-                  {PROFESSIONAL_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="creative">
-                  {CREATIVE_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="academic">
-                  {ACADEMIC_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="planning">
-                  {PLANNING_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="team">
-                  {TEAM_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="marketing">
-                  {MARKETING_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-                <TabsContent value="technical">
-                  {TECHNICAL_TRANSFORMATIONS.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </TabsContent>
-              </SelectContent>
-            </Select>
-          </div>
-        </Tabs>
-
-        <div className="flex justify-end space-x-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsOpen(false)}
-            disabled={isTransforming}
+    <div className="space-y-6">
+      <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
+      
+      <div className="flex justify-center gap-8 mb-8">
+        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon, items }]) => (
+          <TransformationButton
+            key={group}
+            group={group}
+            Icon={Icon}
+            isDialogOpen={isDialogOpen && activeGroup === group}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              setActiveGroup(open ? group : null);
+            }}
           >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleTransform}
-            disabled={isTransforming}
-          >
-            {isTransforming ? "Transforming..." : "Transform"}
-          </Button>
-        </div>
+            <TransformationDialog
+              group={group}
+              items={items}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              customPrompts={customPrompts}
+              onPromptSave={fetchCustomPrompts}
+              onTransform={handleTransform}
+              isTransforming={isTransforming}
+              isSaving={isSaving}
+            />
+          </TransformationButton>
+        ))}
+      </div>
 
-        {error && (
-          <p className="text-red-500 text-sm mt-2">{error}</p>
-        )}
-      </DialogContent>
-    </Dialog>
+      <TransformationResult
+        error={error}
+        lastTransformation={lastTransformation}
+        lastTransformationType={lastTransformationType}
+      />
+    </div>
   );
 };

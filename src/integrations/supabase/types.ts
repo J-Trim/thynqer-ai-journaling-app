@@ -207,7 +207,6 @@ export type Database = {
         | "API Documentation"
         | "Technical Spec"
         | "2nd Iambic Pentameter Rap"
-        | "Bukowski"
     }
     CompositeTypes: {
       [_ in never]: never
