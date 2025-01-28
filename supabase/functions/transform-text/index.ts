@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,6 +91,24 @@ serve(async (req) => {
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
+    // Get the authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get user ID from the JWT token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      throw new Error('Authentication failed');
+    }
+
     const { text, transformationType, customTemplate } = await req.json() as TransformRequest
 
     console.log(`Processing transformation request of type: ${transformationType}`)
@@ -119,7 +138,7 @@ serve(async (req) => {
       const { error: insertError } = await supabase
         .from('enhanced_prompts')
         .insert({
-          user_id: auth.uid(),
+          user_id: user.id,
           original_type: transformationType,
           enhanced_template: enhancedPrompt
         });
