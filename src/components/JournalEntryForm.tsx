@@ -4,17 +4,14 @@ import { useJournalEntry } from "@/hooks/useJournalEntry";
 import Header from "@/components/Header";
 import JournalFormHeader from "./journal/form/JournalFormHeader";
 import JournalFormContent from "./journal/form/JournalFormContent";
-import JournalFormActions from "./journal/form/JournalFormActions";
+import SaveControls from "./journal/form/SaveControls";
 import LoadingState from "./journal/LoadingState";
-import AudioHandler from "./journal/AudioHandler";
-import AudioPlayer from "./journal/AudioPlayer";
 import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
 import { TransformationSelector } from "./journal/TransformationSelector";
 import { TransformationsList } from "./journal/TransformationsList";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
 
@@ -40,21 +37,6 @@ const JournalEntryForm = () => {
     handleNavigateAway
   } = useJournalEntry(id);
 
-  // Add effect to handle navigation on refresh
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-      navigate('/');
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges, navigate]);
-
   const {
     isRecording,
     isPaused,
@@ -69,32 +51,40 @@ const JournalEntryForm = () => {
   });
 
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
-  const [audioPublicUrl, setAudioPublicUrl] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showTags, setShowTags] = useState(false);
   const [transformationEnabled, setTransformationEnabled] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(id || null);
+
+  // Navigation warning effect
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+      navigate('/');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, navigate]);
 
   const handleAudioTranscription = async (audioFileName: string) => {
     try {
       console.log('Starting audio transcription process for:', audioFileName);
       
-      console.log('Invoking transcribe-audio function...');
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audioUrl: audioFileName }
       });
 
-      if (error) {
-        console.error('Transcription error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       if (data?.text) {
         console.log('Transcription completed successfully');
         setTranscribedAudio(data.text);
       } else {
-        console.error('No transcription text received');
         throw new Error('No transcription text received');
       }
     } catch (error) {
@@ -112,19 +102,14 @@ const JournalEntryForm = () => {
   const cleanupAudioAndTranscription = async () => {
     if (audioUrl) {
       try {
-        console.log('Cleaning up audio file:', audioUrl);
         const { error } = await supabase.storage
           .from('audio_files')
           .remove([audioUrl]);
         
-        if (error) {
-          console.error('Error deleting audio file:', error);
-          throw error;
-        }
+        if (error) throw error;
         
         setAudioUrl(null);
         setTranscribedAudio('');
-        setAudioPublicUrl(null);
         console.log('Audio cleanup completed successfully');
       } catch (error) {
         console.error('Error during audio cleanup:', error);
@@ -138,7 +123,6 @@ const JournalEntryForm = () => {
   };
 
   const handleCancel = async () => {
-    console.log('Cancel button clicked, cleaning up and navigating to journal list');
     await cleanupAudioAndTranscription();
     navigate("/journal");
   };
@@ -147,7 +131,6 @@ const JournalEntryForm = () => {
     queryKey: ['entry-tags', lastSavedId],
     queryFn: async () => {
       if (!lastSavedId) return [];
-      console.log('Fetching tags for entry:', lastSavedId);
       const { data, error } = await supabase
         .from('entry_tags')
         .select('tag_id')
@@ -161,7 +144,6 @@ const JournalEntryForm = () => {
 
   const updateEntryTagsMutation = useMutation({
     mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
-      console.log('Updating tags for entry:', entryId, 'with tags:', tagIds);
       const { error: deleteError } = await supabase
         .from('entry_tags')
         .delete()
@@ -185,12 +167,6 @@ const JournalEntryForm = () => {
     }
   });
 
-  const handleTranscriptionComplete = (transcribedText: string) => {
-    setTranscribedAudio(transcribedText);
-    setContent(prev => prev || '');
-    setIsTranscriptionPending(false);
-  };
-
   const handleTagToggle = (tagId: string) => {
     setSelectedTags(prev => 
       prev.includes(tagId)
@@ -206,11 +182,9 @@ const JournalEntryForm = () => {
     }
 
     try {
-      console.log('Starting save operation. Entry ID:', lastSavedId);
       const savedEntry = await saveEntry(isAutoSave);
       
       if (savedEntry) {
-        console.log('Entry saved successfully:', savedEntry.id);
         setLastSavedId(savedEntry.id);
         
         if (selectedTags.length > 0) {
@@ -226,7 +200,6 @@ const JournalEntryForm = () => {
             title: "Success",
             description: "Journal entry saved successfully",
           });
-          console.log('Navigating to home after successful save');
           navigate('/journal');
         }
       }
@@ -243,14 +216,11 @@ const JournalEntryForm = () => {
     }
   };
 
-  // Function for forced saves (used by transformation)
   const handleForceSave = async () => {
     try {
-      console.log('Starting forced save operation. Current entry ID:', lastSavedId);
       const savedEntry = await saveEntry(false, true);
       
       if (savedEntry) {
-        console.log('Entry force-saved successfully:', savedEntry.id);
         setLastSavedId(savedEntry.id);
         
         if (selectedTags.length > 0) {
@@ -334,7 +304,7 @@ const JournalEntryForm = () => {
 
           {lastSavedId && <TransformationsList entryId={lastSavedId} />}
 
-          <JournalFormActions
+          <SaveControls
             onCancel={handleCancel}
             onSave={() => handleSave(false)}
             isSaving={isSaving}
