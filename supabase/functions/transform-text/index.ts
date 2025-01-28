@@ -19,15 +19,41 @@ const getSystemPrompt = (transformationType: string, customTemplate?: string) =>
   }
 
   const prompts: Record<string, string> = {
-    'Blog Post': 'Transform this journal entry into a well-structured blog post. Include a compelling introduction, clear sections, and a conclusion. Provide ONLY the transformed blog post without any additional commentary.',
-    'Email': 'Convert this journal entry into a professional email format. Keep it concise and clear. Provide ONLY the email content without any additional commentary.',
-    'Instagram Post': 'Transform this into an engaging Instagram post with appropriate tone and style. Include relevant hashtag suggestions at the end. Provide ONLY the post content without any additional commentary.',
-    'YouTube Script': 'Convert this journal entry into a YouTube video script with clear sections for intro, main content, and outro. Provide ONLY the script without any additional commentary.',
-    'X (Twitter) Post': 'Transform this into a concise, engaging tweet thread format, keeping within character limits. Provide ONLY the tweet thread without any additional commentary.',
-    'Instagram Reel / TikTok Clip': 'Convert this into a short-form video script optimized for Instagram Reels or TikTok. Provide ONLY the script without any additional commentary.',
-    'Podcast Show Notes': 'Transform this into detailed podcast show notes with timestamps, key points, and resources. Provide ONLY the show notes without any additional commentary.',
-    'LinkedIn Article': 'Convert this into a professional LinkedIn article format with business insights. Provide ONLY the article content without any additional commentary.',
-    'Motivational Snippet': 'Extract and transform the key motivational elements into an inspiring message. Provide ONLY the motivational message without any additional commentary.',
+    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights. Consider:
+
+1. Psychodynamic Analysis:
+- Examine unconscious motivations and conflicts
+- Identify defense mechanisms
+- Explore early life experiences and their impact
+
+2. Cognitive Behavioral Perspective:
+- Identify thought patterns and beliefs
+- Analyze behavioral patterns
+- Suggest potential cognitive restructuring
+
+3. Humanistic/Existential Approach:
+- Explore self-actualization themes
+- Identify existential concerns
+- Analyze personal growth potential
+
+4. Gestalt Therapy Lens:
+- Focus on present moment awareness
+- Identify unfinished business
+- Analyze figure-ground dynamics
+
+5. Jungian Analysis:
+- Look for archetypal patterns
+- Analyze symbolic content
+- Identify shadow elements
+
+6. Attachment Theory:
+- Examine relationship patterns
+- Identify attachment styles
+- Analyze interpersonal dynamics
+
+Provide a comprehensive analysis that integrates insights from these approaches, focusing on patterns, underlying dynamics, and potential areas for growth. 
+
+IMPORTANT: Present your analysis in a clear, structured format that maintains therapeutic professionalism while being accessible and insightful. Focus on providing actionable insights rather than just observations.`,
     'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Provide ONLY the summary without any additional commentary.',
     'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection. Provide ONLY the emotional analysis without any additional commentary.',
     'Daily Affirmation': 'Transform the key positive elements into uplifting affirmations. Provide ONLY the affirmations without any additional commentary.',
@@ -60,7 +86,7 @@ const enhancePrompt = async (prompt: string): Promise<string> => {
       messages: [
         {
           role: 'system',
-          content: 'You are an AI prompt engineer. Your task is to enhance and improve the following prompt to make it more specific, detailed, and effective. The enhanced prompt should maintain the original intent but add structure, clarity, and specific instructions.'
+          content: 'You are an AI prompt engineer specializing in therapeutic and psychological analysis. Your task is to enhance and improve the following prompt to make it more specific, detailed, and effective for generating therapeutic insights. The enhanced prompt should maintain the original therapeutic approach while adding structure, clarity, and specific instructions for deep psychological analysis.'
         },
         {
           role: 'user',
