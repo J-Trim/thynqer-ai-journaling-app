@@ -218,6 +218,11 @@ export const TransformationSelector = ({
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
+      toast({
+        title: "Error",
+        description: "Failed to transform text. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsTransforming(false);
       setIsSaving(false);
