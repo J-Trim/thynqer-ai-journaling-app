@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { useJournalEntry } from "@/hooks/useJournalEntry";
+import { useEffect } from "react";
 import Header from "@/components/Header";
 import JournalFormHeader from "./journal/form/JournalFormHeader";
 import JournalFormContent from "./journal/form/JournalFormContent";
@@ -8,18 +7,18 @@ import SaveControls from "./journal/form/SaveControls";
 import LoadingState from "./journal/LoadingState";
 import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
-import { TransformationSelector } from "./journal/TransformationSelector";
-import { TransformationsList } from "./journal/TransformationsList";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { TransformationManager } from "./journal/transformations/TransformationManager";
+import { useJournalFormState } from "@/hooks/useJournalFormState";
+import { useJournalSave } from "@/hooks/useJournalSave";
 import { useAudioRecording } from "@/hooks/useAudioRecording";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const JournalEntryForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
+  
   const {
     title,
     setTitle,
@@ -29,13 +28,31 @@ const JournalEntryForm = () => {
     setTranscribedAudio,
     audioUrl,
     setAudioUrl,
+    isTranscriptionPending,
+    setIsTranscriptionPending,
+    selectedTags,
+    setSelectedTags,
+    showTags,
+    setShowTags,
+    transformationEnabled,
+    setTransformationEnabled,
+    lastSavedId,
+    setLastSavedId
+  } = useJournalFormState(id);
+
+  const {
     isSaving,
-    isInitializing,
     isSaveInProgress,
-    hasUnsavedChanges,
-    saveEntry,
-    handleNavigateAway
-  } = useJournalEntry(id);
+    saveEntry
+  } = useJournalSave({
+    title,
+    content,
+    audioUrl,
+    transcribedAudio,
+    lastSavedId,
+    selectedTags,
+    onSuccess: () => navigate('/journal')
+  });
 
   const {
     isRecording,
@@ -50,16 +67,10 @@ const JournalEntryForm = () => {
     handleAudioTranscription(url);
   });
 
-  const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showTags, setShowTags] = useState(false);
-  const [transformationEnabled, setTransformationEnabled] = useState(false);
-  const [lastSavedId, setLastSavedId] = useState<string | null>(id || null);
-
   // Navigation warning effect
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasUnsavedChanges) {
+      if (content || title || audioUrl) {
         e.preventDefault();
         e.returnValue = '';
         return '';
@@ -69,7 +80,7 @@ const JournalEntryForm = () => {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasUnsavedChanges, navigate]);
+  }, [content, title, audioUrl, navigate]);
 
   const handleAudioTranscription = async (audioFileName: string) => {
     try {
@@ -127,122 +138,7 @@ const JournalEntryForm = () => {
     navigate("/journal");
   };
 
-  const { data: entryTags } = useQuery({
-    queryKey: ['entry-tags', lastSavedId],
-    queryFn: async () => {
-      if (!lastSavedId) return [];
-      const { data, error } = await supabase
-        .from('entry_tags')
-        .select('tag_id')
-        .eq('entry_id', lastSavedId);
-
-      if (error) throw error;
-      return data.map(et => et.tag_id);
-    },
-    enabled: !!lastSavedId
-  });
-
-  const updateEntryTagsMutation = useMutation({
-    mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
-      const { error: deleteError } = await supabase
-        .from('entry_tags')
-        .delete()
-        .eq('entry_id', entryId);
-
-      if (deleteError) throw deleteError;
-
-      if (tagIds.length > 0) {
-        const { error: insertError } = await supabase
-          .from('entry_tags')
-          .insert(tagIds.map(tagId => ({
-            entry_id: entryId,
-            tag_id: tagId
-          })));
-
-        if (insertError) throw insertError;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entry-tags'] });
-    }
-  });
-
-  const handleTagToggle = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId)
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
-
-  const handleSave = async (isAutoSave = false) => {
-    if (isTranscriptionPending || isSaveInProgress) {
-      console.log('Save prevented - transcription or save in progress');
-      return null;
-    }
-
-    try {
-      const savedEntry = await saveEntry(isAutoSave);
-      
-      if (savedEntry) {
-        setLastSavedId(savedEntry.id);
-        
-        if (selectedTags.length > 0) {
-          await updateEntryTagsMutation.mutateAsync({
-            entryId: savedEntry.id,
-            tagIds: selectedTags
-          });
-        }
-
-        if (!isAutoSave) {
-          setTransformationEnabled(true);
-          toast({
-            title: "Success",
-            description: "Journal entry saved successfully",
-          });
-          navigate('/journal');
-        }
-      }
-
-      return savedEntry;
-    } catch (error) {
-      console.error('Error saving entry:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save journal entry",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  const handleForceSave = async () => {
-    try {
-      const savedEntry = await saveEntry(false, true);
-      
-      if (savedEntry) {
-        setLastSavedId(savedEntry.id);
-        
-        if (selectedTags.length > 0) {
-          await updateEntryTagsMutation.mutateAsync({
-            entryId: savedEntry.id,
-            tagIds: selectedTags
-          });
-        }
-      }
-      return savedEntry;
-    } catch (error) {
-      console.error('Error in forced save:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save journal entry",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  if (isInitializing) {
+  if (!id) {
     return (
       <>
         <Header />
@@ -259,10 +155,10 @@ const JournalEntryForm = () => {
           content={content}
           title={title}
           audioUrl={audioUrl}
-          isInitializing={isInitializing}
+          isInitializing={false}
           isSaveInProgress={isSaveInProgress}
-          hasUnsavedChanges={hasUnsavedChanges}
-          onSave={handleSave}
+          hasUnsavedChanges={!!(content || title || audioUrl)}
+          onSave={(isAutoSave) => saveEntry(isAutoSave)}
         />
         
         <div className="space-y-4">
@@ -288,25 +184,29 @@ const JournalEntryForm = () => {
           }`}>
             <TagSelector
               selectedTags={selectedTags}
-              onTagToggle={handleTagToggle}
+              onTagToggle={(tagId) => {
+                setSelectedTags(prev => 
+                  prev.includes(tagId)
+                    ? prev.filter(id => id !== tagId)
+                    : [...prev, tagId]
+                );
+              }}
             />
           </div>
 
           {(content || transcribedAudio) && (
             <div className="mt-8">
-              <TransformationSelector 
-                entryId={lastSavedId || ''} 
-                entryText={content || transcribedAudio || ''} 
-                onSaveEntry={!lastSavedId ? handleForceSave : undefined}
+              <TransformationManager
+                entryId={lastSavedId || ''}
+                entryText={content || transcribedAudio || ''}
+                onSaveEntry={!lastSavedId ? () => saveEntry(false) : undefined}
               />
             </div>
           )}
 
-          {lastSavedId && <TransformationsList entryId={lastSavedId} />}
-
           <SaveControls
             onCancel={handleCancel}
-            onSave={() => handleSave(false)}
+            onSave={() => saveEntry(false)}
             isSaving={isSaving}
             isTranscriptionPending={isTranscriptionPending}
           />
