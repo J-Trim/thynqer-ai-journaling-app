@@ -27,7 +27,6 @@ const TRANSFORMATION_TYPES = {
       'Goal Setting',
       'Short Paraphrase',
       'Psychoanalysis',
-      '2nd Iambic Pentameter Rap',
     ] as ValidTransformation[]
   },
   "Professional": {
@@ -48,6 +47,7 @@ const TRANSFORMATION_TYPES = {
       'Brainstorm Session Outline',
       'Risk Assessment',
       'Professional White Paper',
+      '2nd Iambic Pentameter Rap',
     ] as ValidTransformation[]
   },
   "Social Media": {
