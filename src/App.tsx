@@ -20,7 +20,7 @@ function App() {
           <Router>
             <div className="min-h-screen bg-background">
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Navigate to="/journal" replace />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route
                   path="/journal"
