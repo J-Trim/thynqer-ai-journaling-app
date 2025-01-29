@@ -32,6 +32,7 @@ export const useJournalSave = ({
   const updateEntryTags = async (entryId: string) => {
     if (selectedTags.length > 0) {
       await queryClient.getMutationCache().build(queryClient, {
+        mutationKey: ['updateEntryTags', entryId],
         mutationFn: async () => {
           const { error: deleteError } = await supabase
             .from('entry_tags')
