@@ -6,10 +6,12 @@ import JournalEntryForm from "@/components/JournalEntryForm";
 import LoadingState from "@/components/journal/LoadingState";
 import { format } from "date-fns";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const isNewEntryPage = location.pathname === "/";
 
   // Check authentication status
@@ -46,14 +48,18 @@ const Index = () => {
       console.log('Fetching entries for user:', session.user.id);
       const { data, error } = await supabase
         .from('journal_entries')
-        .select('id, title, text, audio_url, has_been_edited, created_at')
+        .select('*')
         .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching entries:', error);
         throw error;
+      }
+
+      if (!data) {
+        console.log('No entries found');
+        return [];
       }
 
       console.log('Raw entries from database:', data);
@@ -63,6 +69,11 @@ const Index = () => {
       
       // Process each entry and only keep the most recent version
       data.forEach(entry => {
+        if (!entry) {
+          console.warn('Found null or undefined entry in data');
+          return;
+        }
+
         const existingEntry = uniqueEntriesMap.get(entry.id);
         if (!existingEntry || new Date(entry.created_at) > new Date(existingEntry.created_at)) {
           uniqueEntriesMap.set(entry.id, entry);
@@ -73,14 +84,11 @@ const Index = () => {
             audioUrl: entry.audio_url,
             hasAudio: Boolean(entry.audio_url)
           });
-        } else {
-          console.log(`Skipping duplicate entry ID ${entry.id}, older timestamp`);
         }
       });
 
       const uniqueEntries = Array.from(uniqueEntriesMap.values());
       console.log(`Found ${data.length} total entries, reduced to ${uniqueEntries.length} unique entries`);
-      console.log('Final unique entries:', uniqueEntries);
       
       return uniqueEntries;
     },
@@ -90,6 +98,11 @@ const Index = () => {
 
   if (error) {
     console.error('Error in journal entries query:', error);
+    toast({
+      title: "Error loading entries",
+      description: "There was a problem loading your journal entries. Please try again.",
+      variant: "destructive",
+    });
     return (
       <div className="min-h-screen bg-background">
         <main className="container mx-auto p-4 md:p-8">
@@ -116,6 +129,11 @@ const Index = () => {
                 <div className="space-y-4">
                   {entries && entries.length > 0 ? (
                     entries.map((entry) => {
+                      if (!entry || !entry.id) {
+                        console.warn('Invalid entry found:', entry);
+                        return null;
+                      }
+
                       console.log(`Rendering entry ${entry.id}:`, {
                         title: entry.title,
                         textLength: entry.text?.length || 0,
@@ -123,6 +141,7 @@ const Index = () => {
                         audioUrl: entry.audio_url,
                         hasAudio: Boolean(entry.audio_url)
                       });
+
                       return (
                         <JournalEntry
                           key={entry.id}
