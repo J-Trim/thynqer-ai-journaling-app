@@ -68,6 +68,8 @@ const Index = () => {
           uniqueEntriesMap.set(entry.id, entry);
           console.log(`Processing entry ID ${entry.id}:`, {
             title: entry.title,
+            textLength: entry.text?.length || 0,
+            hasText: Boolean(entry.text),
             audioUrl: entry.audio_url,
             hasAudio: Boolean(entry.audio_url)
           });
@@ -116,6 +118,8 @@ const Index = () => {
                     entries.map((entry) => {
                       console.log(`Rendering entry ${entry.id}:`, {
                         title: entry.title,
+                        textLength: entry.text?.length || 0,
+                        hasText: Boolean(entry.text),
                         audioUrl: entry.audio_url,
                         hasAudio: Boolean(entry.audio_url)
                       });
@@ -125,7 +129,7 @@ const Index = () => {
                           id={entry.id}
                           title={entry.title || "Untitled Entry"}
                           date={format(new Date(entry.created_at), 'MMMM d, yyyy')}
-                          preview={entry.text || "No content"}
+                          preview={entry.text || ""}
                           audioUrl={entry.audio_url}
                           hasBeenEdited={entry.has_been_edited}
                           onClick={() => navigate(`/journal/edit/${entry.id}`)}

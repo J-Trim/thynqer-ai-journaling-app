@@ -41,11 +41,13 @@ const JournalEntry = ({
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const { toast } = useToast();
 
-  console.log(`JournalEntry ${id} rendered:`, {
+  console.log(`JournalEntry ${id} rendered with:`, {
     title,
+    preview,
     audioUrl,
-    hasAudio: Boolean(audioUrl),
-    showAudioPlayer
+    hasBeenEdited,
+    previewLength: preview?.length,
+    isPreviewEmpty: !preview || preview.trim() === ''
   });
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -92,6 +94,11 @@ const JournalEntry = ({
     }
   };
 
+  // If preview is empty or undefined, show a placeholder message
+  const displayPreview = preview?.trim() 
+    ? preview 
+    : "No content available";
+
   return (
     <>
       <Card 
@@ -100,7 +107,9 @@ const JournalEntry = ({
       >
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-medium text-text">{title}</CardTitle>
+            <CardTitle className="text-lg font-medium text-text">
+              {title || "Untitled Entry"}
+            </CardTitle>
             <div className="flex items-center gap-2">
               {hasBeenEdited && (
                 <Badge variant="secondary" className="ml-2">
@@ -133,7 +142,7 @@ const JournalEntry = ({
           <p className="text-sm text-text-muted">{date}</p>
         </CardHeader>
         <CardContent>
-          <p className="text-text-muted line-clamp-2">{preview}</p>
+          <p className="text-text-muted line-clamp-2">{displayPreview}</p>
           {showAudioPlayer && audioUrl && (
             <div className="mt-4" onClick={(e) => e.stopPropagation()}>
               <AudioPlayer audioUrl={audioUrl} />
