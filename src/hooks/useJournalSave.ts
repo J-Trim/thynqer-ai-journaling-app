@@ -54,7 +54,8 @@ export const useJournalSave = ({
         }
       });
 
-      await mutation.execute();
+      // Pass undefined as argument since mutationFn doesn't require variables
+      await mutation.execute(undefined);
     }
   };
 
