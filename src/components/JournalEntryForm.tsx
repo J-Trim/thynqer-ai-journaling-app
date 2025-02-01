@@ -8,6 +8,7 @@ import SaveControls from "./journal/form/SaveControls";
 import LoadingState from "./journal/LoadingState";
 import AutoSave from "./journal/AutoSave";
 import TagSelector from "./journal/TagSelector";
+import AudioPlayer from "./journal/AudioPlayer";
 import { TransformationManager } from "./journal/transformations/TransformationManager";
 import { useJournalFormState } from "@/hooks/useJournalFormState";
 import { useJournalSave } from "@/hooks/useJournalSave";
