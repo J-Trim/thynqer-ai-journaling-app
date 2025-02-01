@@ -103,20 +103,6 @@ const JournalEntryForm = () => {
     handleAudioTranscription(url);
   });
 
-  // Navigation warning effect
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (content || title || audioUrl) {
-        e.preventDefault();
-        e.returnValue = '';
-        return '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [content, title, audioUrl]);
-
   const handleAudioTranscription = async (audioFileName: string) => {
     try {
       console.log('Starting audio transcription process for:', audioFileName);
@@ -206,6 +192,7 @@ const JournalEntryForm = () => {
             recordingTime={recordingTime}
             onToggleRecording={toggleRecording}
             onStopRecording={stopRecording}
+            isExistingEntry={!!id}
           />
           
           <JournalFormContent
@@ -213,6 +200,12 @@ const JournalEntryForm = () => {
             transcribedAudio={transcribedAudio}
             onContentChange={setContent}
           />
+
+          {audioUrl && (
+            <div className="mt-4">
+              <AudioPlayer audioUrl={audioUrl} />
+            </div>
+          )}
 
           <div className={`transition-opacity duration-800 ${
             showTags ? 'opacity-100' : 'opacity-0'

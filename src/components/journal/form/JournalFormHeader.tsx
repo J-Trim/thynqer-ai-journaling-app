@@ -11,6 +11,7 @@ interface JournalFormHeaderProps {
   recordingTime?: number;
   onToggleRecording?: () => void;
   onStopRecording?: () => void;
+  isExistingEntry?: boolean;
 }
 
 const JournalFormHeader = ({ 
@@ -21,7 +22,8 @@ const JournalFormHeader = ({
   isProcessing = false,
   recordingTime = 0,
   onToggleRecording = () => {},
-  onStopRecording = () => {}
+  onStopRecording = () => {},
+  isExistingEntry = false
 }: JournalFormHeaderProps) => {
   return (
     <div className="space-y-4">
@@ -37,18 +39,20 @@ const JournalFormHeader = ({
           onChange={(e) => onTitleChange(e.target.value)}
           className="text-2xl font-semibold"
         />
-        <div className="flex items-center gap-2 min-w-fit">
-          <div className="text-lg font-semibold text-muted-foreground">
-            {recordingTime > 0 && <AudioRecorderTimer recordingTime={recordingTime} />}
+        {!isExistingEntry && (
+          <div className="flex items-center gap-2 min-w-fit">
+            <div className="text-lg font-semibold text-muted-foreground">
+              {recordingTime > 0 && <AudioRecorderTimer recordingTime={recordingTime} />}
+            </div>
+            <AudioRecorderControls
+              isRecording={isRecording}
+              isPaused={isPaused}
+              isProcessing={isProcessing}
+              onToggleRecording={onToggleRecording}
+              onStopRecording={onStopRecording}
+            />
           </div>
-          <AudioRecorderControls
-            isRecording={isRecording}
-            isPaused={isPaused}
-            isProcessing={isProcessing}
-            onToggleRecording={onToggleRecording}
-            onStopRecording={onStopRecording}
-          />
-        </div>
+        )}
       </div>
     </div>
   );
