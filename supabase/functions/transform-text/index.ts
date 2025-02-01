@@ -61,6 +61,7 @@ IMPORTANT: Present your analysis in a clear, structured format that maintains th
     'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness. Provide ONLY the reflection without any additional commentary.',
     'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals. Provide ONLY the goals without any additional commentary.',
     'Short Paraphrase': 'Provide a concise paraphrase of the main content. Provide ONLY the paraphrase without any additional commentary.',
+    'Motivational Snippet': 'Transform this content into a short, powerful motivational message that inspires action and positive change. Focus on extracting and amplifying the motivational elements while maintaining authenticity. The snippet should be concise, energetic, and immediately actionable. Provide ONLY the motivational snippet without any additional commentary.',
     '2nd Iambic Pentameter Rap': 'Transform this text into a rap using iambic pentameter (10 syllables per line with alternating unstressed and stressed syllables). Make it engaging and rhythmic while maintaining the core message. Provide ONLY the rap without any additional commentary.',
   };
 

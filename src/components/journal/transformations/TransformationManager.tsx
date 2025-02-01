@@ -111,6 +111,9 @@ export const TransformationManager = ({
       }
 
       const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
+      console.log('Custom prompt found:', customPrompt);
+      console.log('Selected transformation type:', selectedType);
+      console.log('Starting transformation with text:', entryText);
 
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
@@ -127,6 +130,7 @@ export const TransformationManager = ({
         throw new Error('No transformed text received');
       }
 
+      console.log('Transform successful, saving to database...');
       const { error: saveError } = await supabase
         .from('summaries')
         .insert({
@@ -138,6 +142,7 @@ export const TransformationManager = ({
 
       if (saveError) throw saveError;
 
+      console.log('Transformation saved successfully');
       setLastTransformation(transformResponse.transformedText);
       setLastTransformationType(selectedType);
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
