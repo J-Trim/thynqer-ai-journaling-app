@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import JournalFormHeader from "./journal/form/JournalFormHeader";
 import JournalFormContent from "./journal/form/JournalFormContent";
@@ -40,6 +41,41 @@ const JournalEntryForm = () => {
     setLastSavedId
   } = useJournalFormState(id);
 
+  // Add query to fetch existing entry data
+  const { data: existingEntry, isLoading: isLoadingEntry } = useQuery({
+    queryKey: ['journal-entry', id],
+    queryFn: async () => {
+      console.log('Fetching existing entry:', id);
+      if (!id) return null;
+
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching entry:', error);
+        throw error;
+      }
+
+      console.log('Fetched entry data:', data);
+      return data;
+    },
+    enabled: !!id, // Only run query if we have an ID
+  });
+
+  // Effect to populate form with existing entry data
+  useEffect(() => {
+    if (existingEntry) {
+      console.log('Setting form state with existing entry:', existingEntry);
+      setTitle(existingEntry.title || '');
+      setContent(existingEntry.text || '');
+      setAudioUrl(existingEntry.audio_url);
+      setLastSavedId(existingEntry.id);
+    }
+  }, [existingEntry]);
+
   const {
     isSaving,
     isSaveInProgress,
@@ -75,12 +111,11 @@ const JournalEntryForm = () => {
         e.returnValue = '';
         return '';
       }
-      navigate('/');
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [content, title, audioUrl, navigate]);
+  }, [content, title, audioUrl]);
 
   const handleAudioTranscription = async (audioFileName: string) => {
     try {
@@ -138,7 +173,7 @@ const JournalEntryForm = () => {
     navigate("/journal");
   };
 
-  if (!id) {
+  if (isLoadingEntry) {
     return (
       <>
         <Header />
