@@ -32,10 +32,17 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     queryKey: ['transformations', entryId],
     queryFn: async () => {
       console.log('Fetching transformations for entry:', entryId);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('No authenticated session');
+      }
+
       const { data, error } = await supabase
         .from('summaries')
         .select('*')
         .eq('entry_id', entryId)
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
