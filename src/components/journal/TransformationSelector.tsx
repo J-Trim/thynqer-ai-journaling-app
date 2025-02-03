@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { PenTool } from "lucide-react";
+import { FileText, User, Briefcase, Share2, PenTool, Brain, Heart, UserPlus, Leaf } from "lucide-react";
 import { TransformationButton } from "./transformations/TransformationButton";
 import { TransformationDialog } from "./transformations/TransformationDialog";
 import { TransformationResult } from "./transformations/TransformationResult";
@@ -15,6 +15,60 @@ interface TransformationSelectorProps {
   entryText: string;
   onSaveEntry?: () => Promise<{ id: string } | null>;
 }
+
+const TRANSFORMATION_TYPES = {
+  "Personal Growth": {
+    icon: Brain,
+    items: [
+      'Psychoanalysis',
+      'Quick Summary',
+      'Emotional Check-In',
+      'Daily Affirmation',
+      'Mindfulness Reflection',
+      'Goal Setting',
+      'Short Paraphrase',
+    ] as ValidTransformation[]
+  },
+  "Professional": {
+    icon: Briefcase,
+    items: [
+      'Lesson Plan',
+      'Meeting Agenda',
+      'Project Proposal',
+      'Action Plan',
+      'Performance Review',
+      'Team Update / Status Report',
+      'Training Outline',
+      'Sales Pitch',
+      'Corporate Email / Internal Memo',
+      'Project Retrospective',
+      'Implementation Plan',
+      'Executive Summary',
+      'Brainstorm Session Outline',
+      'Risk Assessment',
+      'Professional White Paper',
+      '2nd Iambic Pentameter Rap',
+    ] as ValidTransformation[]
+  },
+  "Social Media": {
+    icon: Share2,
+    items: [
+      'Blog Post',
+      'Email',
+      'Instagram Post',
+      'YouTube Script',
+      'X (Twitter) Post',
+      'Instagram Reel / TikTok Clip',
+      'Podcast Show Notes',
+      'LinkedIn Article',
+      'Motivational Snippet',
+    ] as ValidTransformation[]
+  },
+  "Custom": {
+    icon: PenTool,
+    items: [] as ValidTransformation[]
+  }
+} as const;
 
 export const TransformationSelector = ({ 
   entryId, 
@@ -29,6 +83,7 @@ export const TransformationSelector = ({
   const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
   const [customPrompts, setCustomPrompts] = useState<Array<{ prompt_name: string, prompt_template: string }>>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -63,10 +118,10 @@ export const TransformationSelector = ({
   }, []);
 
   useEffect(() => {
-    if (isDialogOpen) {
+    if (isDialogOpen && activeGroup === "Custom") {
       fetchCustomPrompts();
     }
-  }, [isDialogOpen]);
+  }, [isDialogOpen, activeGroup]);
 
   const handleTransform = async () => {
     if (!selectedType || !entryText?.trim()) {
@@ -107,6 +162,7 @@ export const TransformationSelector = ({
         throw new Error('Authentication required');
       }
 
+      // Find custom prompt template if it's a custom transformation
       const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
       console.log('Custom prompt found:', customPrompt);
       console.log('Selected transformation type:', selectedType);
@@ -158,6 +214,7 @@ export const TransformationSelector = ({
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       setSelectedType("");
       setIsDialogOpen(false);
+      setActiveGroup(null);
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
@@ -176,25 +233,31 @@ export const TransformationSelector = ({
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
       
-      <div className="flex justify-center mb-8">
-        <TransformationButton
-          group="Custom"
-          Icon={PenTool}
-          isDialogOpen={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-        >
-          <TransformationDialog
-            group="Custom"
-            items={[]}
-            selectedType={selectedType}
-            onTypeChange={setSelectedType}
-            customPrompts={customPrompts}
-            onPromptSave={fetchCustomPrompts}
-            onTransform={handleTransform}
-            isTransforming={isTransforming}
-            isSaving={isSaving}
-          />
-        </TransformationButton>
+      <div className="flex justify-center gap-8 mb-8">
+        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon, items }]) => (
+          <TransformationButton
+            key={group}
+            group={group}
+            Icon={Icon}
+            isDialogOpen={isDialogOpen && activeGroup === group}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              setActiveGroup(open ? group : null);
+            }}
+          >
+            <TransformationDialog
+              group={group}
+              items={items}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              customPrompts={customPrompts}
+              onPromptSave={fetchCustomPrompts}
+              onTransform={handleTransform}
+              isTransforming={isTransforming}
+              isSaving={isSaving}
+            />
+          </TransformationButton>
+        ))}
       </div>
 
       <TransformationResult
