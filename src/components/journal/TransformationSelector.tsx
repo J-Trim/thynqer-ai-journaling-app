@@ -166,6 +166,7 @@ export const TransformationSelector = ({
       const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
       console.log('Custom prompt found:', customPrompt);
       console.log('Selected transformation type:', selectedType);
+      console.log('Starting transformation with entry ID:', finalEntryId);
 
       console.log('Starting transformation with:', {
         text: entryText,
@@ -193,7 +194,12 @@ export const TransformationSelector = ({
         throw new Error('No transformed text received');
       }
 
-      console.log('Transform successful, saving to database...');
+      console.log('Transform successful, saving to database...', {
+        entryId: finalEntryId,
+        userId: session.user.id,
+        transformationType: selectedType
+      });
+
       const { error: saveError } = await supabase
         .from('summaries')
         .insert({
@@ -215,6 +221,10 @@ export const TransformationSelector = ({
       setSelectedType("");
       setIsDialogOpen(false);
       setActiveGroup(null);
+
+      toast({
+        description: "Transformation completed successfully",
+      });
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
