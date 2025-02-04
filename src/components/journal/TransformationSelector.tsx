@@ -5,6 +5,8 @@ import { TransformationDialog } from "./transformations/TransformationDialog";
 import { TransformationResult } from "./transformations/TransformationResult";
 import { useCustomPrompts } from "@/hooks/useCustomPrompts";
 import { useTransformationProcess } from "@/hooks/useTransformationProcess";
+import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
+import { TransformationsList } from "./TransformationsList";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -35,8 +37,10 @@ export const TransformationSelector = ({
 
   const handleTransformationRequest = async () => {
     if (selectedType) {
+      console.log('Starting transformation request with type:', selectedType);
       const success = await handleTransform(selectedType, customPrompts);
       if (success) {
+        console.log('Transformation completed successfully');
         setLastTransformation(null); // Will be updated via query invalidation
         setLastTransformationType(selectedType);
         setSelectedType("");
@@ -76,6 +80,8 @@ export const TransformationSelector = ({
         lastTransformation={lastTransformation}
         lastTransformationType={lastTransformationType}
       />
+
+      <TransformationsList entryId={entryId} />
     </div>
   );
 };
