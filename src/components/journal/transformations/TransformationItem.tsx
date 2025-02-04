@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Copy, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useToast } from "@/hooks/use-toast";
 
 interface TransformationItemProps {
   id: string;
@@ -23,24 +22,6 @@ const TransformationItem = ({
   onCopy,
   onDelete
 }: TransformationItemProps) => {
-  const { toast } = useToast();
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        description: "Transformation copied to clipboard",
-      });
-      onCopy();
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast({
-        variant: "destructive",
-        description: "Failed to copy to clipboard",
-      });
-    }
-  };
-
   return (
     <Collapsible
       open={isOpen}
@@ -70,7 +51,7 @@ const TransformationItem = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleCopy}
+                onClick={onCopy}
                 className="hover:bg-transparent"
               >
                 <Copy className="h-4 w-4" />
