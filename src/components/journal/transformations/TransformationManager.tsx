@@ -35,7 +35,9 @@ export const TransformationManager = ({
     error,
     setError,
     lastTransformation,
+    setLastTransformation,
     lastTransformationType,
+    setLastTransformationType,
     isDialogOpen,
     setIsDialogOpen,
     activeGroup,
@@ -54,6 +56,8 @@ export const TransformationManager = ({
     setError,
     setIsTransforming,
     setIsSaving,
+    setLastTransformation,
+    setLastTransformationType,
   });
 
   const handleTransformWrapper = useCallback(() => {
