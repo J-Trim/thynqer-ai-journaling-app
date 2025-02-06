@@ -5,6 +5,7 @@ import { TransformationError } from "./components/TransformationError";
 import { TransformationForm } from "./components/TransformationForm";
 import TransformationHeader from "./components/TransformationHeader";
 import TransformationButtonGroup from "./components/TransformationButtonGroup";
+import { TransformationResult } from "./TransformationResult";
 import { useTransformationState } from "./hooks/useTransformationState";
 import { useTransformationHandlers } from "./hooks/useTransformationHandlers";
 import { useCustomPrompts } from "@/hooks/useCustomPrompts";
@@ -33,6 +34,8 @@ export const TransformationManager = ({
     setIsSaving,
     error,
     setError,
+    lastTransformation,
+    lastTransformationType,
     isDialogOpen,
     setIsDialogOpen,
     activeGroup,
@@ -96,6 +99,13 @@ export const TransformationManager = ({
       </TransformationButtonGroup>
 
       <TransformationError error={error} />
+
+      <TransformationResult
+        error={error}
+        lastTransformation={lastTransformation}
+        lastTransformationType={lastTransformationType}
+        isLoading={isTransforming || isSaving}
+      />
     </div>
   );
 };
