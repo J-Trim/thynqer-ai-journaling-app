@@ -62,6 +62,9 @@ IMPORTANT: Present your analysis in a clear, structured format that maintains th
     'Short Paraphrase': 'Provide a concise paraphrase of the main content. Provide ONLY the paraphrase without any additional commentary.',
     'Motivational Snippet': 'Transform this content into a short, powerful motivational message that inspires action and positive change. Focus on extracting and amplifying the motivational elements while maintaining authenticity. The snippet should be concise, energetic, and immediately actionable. Provide ONLY the motivational snippet without any additional commentary.',
     '2nd Iambic Pentameter Rap': 'Transform this text into a rap using iambic pentameter (10 syllables per line with alternating unstressed and stressed syllables). Make it engaging and rhythmic while maintaining the core message. Provide ONLY the rap without any additional commentary.',
+    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth, learning opportunities, and potential action steps for self-improvement. Focus on transformative insights and practical applications.',
+    'Professional': 'Transform this text into professional, business-oriented insights. Extract key points relevant to work, career development, and professional relationships. Structure the output in a clear, actionable format.',
+    'Social Media': 'Transform this content into engaging social media content, maintaining the core message while making it more shareable and engaging. Focus on creating impactful, concise messaging suitable for social platforms.'
   };
 
   return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent. Provide ONLY the transformed content without any additional commentary.';
