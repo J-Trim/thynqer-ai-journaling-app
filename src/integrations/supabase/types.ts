@@ -77,21 +77,18 @@ export type Database = {
           created_at: string | null
           enhanced_template: string
           id: string
-          original_type: Database["public"]["Enums"]["valid_transformation"]
           user_id: string
         }
         Insert: {
           created_at?: string | null
           enhanced_template: string
           id?: string
-          original_type: Database["public"]["Enums"]["valid_transformation"]
           user_id: string
         }
         Update: {
           created_at?: string | null
           enhanced_template?: string
           id?: string
-          original_type?: Database["public"]["Enums"]["valid_transformation"]
           user_id?: string
         }
         Relationships: []
@@ -167,7 +164,6 @@ export type Database = {
           created_at: string | null
           entry_id: string
           id: string
-          transformation_type: Database["public"]["Enums"]["valid_transformation"]
           transformed_text: string
           user_id: string
         }
@@ -175,7 +171,6 @@ export type Database = {
           created_at?: string | null
           entry_id: string
           id?: string
-          transformation_type?: Database["public"]["Enums"]["valid_transformation"]
           transformed_text: string
           user_id: string
         }
@@ -183,7 +178,6 @@ export type Database = {
           created_at?: string | null
           entry_id?: string
           id?: string
-          transformation_type?: Database["public"]["Enums"]["valid_transformation"]
           transformed_text?: string
           user_id?: string
         }
@@ -230,8 +224,23 @@ export type Database = {
         | "Mindfulness Reflection"
         | "Psychoanalysis"
         | "Goal Setting"
+        | "Short Paraphrase"
+        | "Lesson Plan"
+        | "Meeting Agenda"
+        | "Project Proposal"
         | "Action Plan"
-        | "Self-Care Checklist"
+        | "Performance Review"
+        | "Team Update / Status Report"
+        | "Training Outline"
+        | "Sales Pitch"
+        | "Corporate Email / Internal Memo"
+        | "Project Retrospective"
+        | "Implementation Plan"
+        | "Executive Summary"
+        | "Brainstorm Session Outline"
+        | "Risk Assessment"
+        | "Professional White Paper"
+        | "2nd Iambic Pentameter Rap"
         | "Blog Post"
         | "Email"
         | "Instagram Post"
@@ -241,39 +250,6 @@ export type Database = {
         | "Podcast Show Notes"
         | "LinkedIn Article"
         | "Motivational Snippet"
-        | "Lesson Plan"
-        | "Meeting Agenda"
-        | "Project Proposal"
-        | "Performance Review"
-        | "Team Update / Status Report"
-        | "Implementation Plan"
-        | "Project Retrospective"
-        | "Executive Summary"
-        | "Short Story"
-        | "Poem or Song Lyrics"
-        | "Comedy Sketch"
-        | "Screenplay Scene"
-        | "Summary Abstract"
-        | "Annotated Bibliography"
-        | "Discussion Questions"
-        | "Lecture Notes"
-        | "Meal Plan"
-        | "Workout Routine"
-        | "Travel Itinerary"
-        | "Brainstorm Session Outline"
-        | "Feedback Request"
-        | "Conflict Resolution Guide"
-        | "Team Charter"
-        | "Tagline Generator"
-        | "Ad Copy"
-        | "Promotional Flyer"
-        | "Marketing Strategy Outline"
-        | "Code Snippet Explanation"
-        | "Bug Report"
-        | "API Documentation"
-        | "Technical Spec"
-        | "2nd Iambic Pentameter Rap"
-        | "Bukowski"
     }
     CompositeTypes: {
       [_ in never]: never

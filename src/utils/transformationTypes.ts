@@ -1,4 +1,5 @@
-import { FileText, User, Briefcase, Share2, PenTool, Brain } from "lucide-react";
+
+import { Brain, Briefcase, Share2, PenTool } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
@@ -7,13 +8,13 @@ export const TRANSFORMATION_TYPES = {
   "Personal Growth": {
     icon: Brain,
     items: [
-      'Psychoanalysis',
       'Quick Summary',
       'Emotional Check-In',
       'Daily Affirmation',
       'Mindfulness Reflection',
+      'Psychoanalysis',
       'Goal Setting',
-      'Short Paraphrase',
+      'Short Paraphrase'
     ] as ValidTransformation[]
   },
   "Professional": {
@@ -34,7 +35,7 @@ export const TRANSFORMATION_TYPES = {
       'Brainstorm Session Outline',
       'Risk Assessment',
       'Professional White Paper',
-      '2nd Iambic Pentameter Rap',
+      '2nd Iambic Pentameter Rap'
     ] as ValidTransformation[]
   },
   "Social Media": {
@@ -48,7 +49,7 @@ export const TRANSFORMATION_TYPES = {
       'Instagram Reel / TikTok Clip',
       'Podcast Show Notes',
       'LinkedIn Article',
-      'Motivational Snippet',
+      'Motivational Snippet'
     ] as ValidTransformation[]
   },
   "Custom": {
