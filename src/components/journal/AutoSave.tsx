@@ -26,7 +26,7 @@ const AutoSave = ({
   isSaveInProgress,
   hasUnsavedChanges,
   onSave,
-  autoSaveDelay = 10000 // Increased to 10 seconds
+  autoSaveDelay = 30000 // Increased to 30 seconds
 }: AutoSaveProps) => {
   useEffect(() => {
     if (isInitializing || isSaveInProgress || !hasUnsavedChanges) return;

@@ -18,41 +18,7 @@ const getSystemPrompt = (transformationType: string, customTemplate?: string) =>
   }
 
   const prompts: Record<string, string> = {
-    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights. Consider:
-
-1. Psychodynamic Analysis:
-- Examine unconscious motivations and conflicts
-- Identify defense mechanisms
-- Explore early life experiences and their impact
-
-2. Cognitive Behavioral Perspective:
-- Identify thought patterns and beliefs
-- Analyze behavioral patterns
-- Suggest potential cognitive restructuring
-
-3. Humanistic/Existential Approach:
-- Explore self-actualization themes
-- Identify existential concerns
-- Analyze personal growth potential
-
-4. Gestalt Therapy Lens:
-- Focus on present moment awareness
-- Identify unfinished business
-- Analyze figure-ground dynamics
-
-5. Jungian Analysis:
-- Look for archetypal patterns
-- Analyze symbolic content
-- Identify shadow elements
-
-6. Attachment Theory:
-- Examine relationship patterns
-- Identify attachment styles
-- Analyze interpersonal dynamics
-
-Provide a comprehensive analysis that integrates insights from these approaches, focusing on patterns, underlying dynamics, and potential areas for growth. 
-
-IMPORTANT: Present your analysis in a clear, structured format that maintains therapeutic professionalism while being accessible and insightful. Focus on providing actionable insights rather than just observations.`,
+    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights.`,
     'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Provide ONLY the summary without any additional commentary.',
     'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection. Provide ONLY the emotional analysis without any additional commentary.',
     'Daily Affirmation': 'Transform the key positive elements into uplifting affirmations. Provide ONLY the affirmations without any additional commentary.',
@@ -60,20 +26,18 @@ IMPORTANT: Present your analysis in a clear, structured format that maintains th
     'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness. Provide ONLY the reflection without any additional commentary.',
     'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals. Provide ONLY the goals without any additional commentary.',
     'Short Paraphrase': 'Provide a concise paraphrase of the main content. Provide ONLY the paraphrase without any additional commentary.',
-    'Motivational Snippet': 'Transform this content into a short, powerful motivational message that inspires action and positive change. Focus on extracting and amplifying the motivational elements while maintaining authenticity. The snippet should be concise, energetic, and immediately actionable. Provide ONLY the motivational snippet without any additional commentary.',
-    '2nd Iambic Pentameter Rap': 'Transform this text into a rap using iambic pentameter (10 syllables per line with alternating unstressed and stressed syllables). Make it engaging and rhythmic while maintaining the core message. Provide ONLY the rap without any additional commentary.',
-    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth, learning opportunities, and potential action steps for self-improvement. Focus on transformative insights and practical applications.',
-    'Professional': 'Transform this text into professional, business-oriented insights. Extract key points relevant to work, career development, and professional relationships. Structure the output in a clear, actionable format.',
-    'Social Media': 'Transform this content into engaging social media content, maintaining the core message while making it more shareable and engaging. Focus on creating impactful, concise messaging suitable for social platforms.'
+    'Motivational Snippet': 'Transform this content into a short, powerful motivational message that inspires action and positive change.',
+    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth and learning opportunities.',
+    'Professional': 'Transform this text into professional, business-oriented insights.',
+    'Social Media': 'Transform this content into engaging social media content, maintaining the core message while making it more shareable.'
   };
 
-  return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent. Provide ONLY the transformed content without any additional commentary.';
+  return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent.';
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -96,7 +60,6 @@ serve(async (req) => {
       hasCustomTemplate: !!customTemplate
     });
     
-    // Get the base prompt
     const basePrompt = getSystemPrompt(transformationType, customTemplate);
     console.log('Using base prompt:', basePrompt);
     
@@ -112,7 +75,7 @@ serve(async (req) => {
         messages: [
           { 
             role: 'system', 
-            content: `You are a direct and efficient text transformer. ${basePrompt}\n\nIMPORTANT: Your response should contain ONLY the transformed text, without any introduction, explanation, or conversation.`
+            content: `You are a direct and efficient text transformer. ${basePrompt}`
           },
           { 
             role: 'user', 
@@ -124,17 +87,18 @@ serve(async (req) => {
       }),
     });
 
+    if (!response.ok) {
+      const error = await response.json();
+      console.error('DeepSeek API error:', error);
+      throw new Error(error.error?.message || 'Failed to get response from DeepSeek');
+    }
+
     const data = await response.json();
     console.log('Received response from DeepSeek API:', {
       status: response.status,
       ok: response.ok,
       hasChoices: !!data.choices
     });
-
-    if (!response.ok) {
-      console.error('DeepSeek API error:', data.error);
-      throw new Error(data.error?.message || 'Failed to get response from DeepSeek');
-    }
 
     if (!data.choices?.[0]?.message?.content) {
       console.error('Invalid response format from DeepSeek:', data);
