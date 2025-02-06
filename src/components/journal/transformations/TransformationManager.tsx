@@ -1,13 +1,13 @@
-import { useEffect } from "react";
+import React from 'react';
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { TransformationButton } from "./TransformationButton";
 import { TransformationDialog } from "./TransformationDialog";
-import { TransformationError } from "./TransformationError";
-import { TransformationForm } from "./TransformationForm";
+import { TransformationError } from "./components/TransformationError";
+import { TransformationForm } from "./components/TransformationForm";
 import { useTransformationState } from "@/hooks/useTransformationState";
 import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
-import { transformationService } from "@/services/transformationService";
+import { transformationService } from "./services/TransformationService";
 import { Database } from "@/integrations/supabase/types";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
@@ -41,12 +41,6 @@ export const TransformationManager = ({
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (isDialogOpen && activeGroup === "Custom") {
-      console.log('Fetching custom prompts for Custom group');
-    }
-  }, [isDialogOpen, activeGroup]);
 
   const handleTransform = async (type: ValidTransformation) => {
     if (!type || !entryText?.trim()) {
@@ -129,7 +123,9 @@ export const TransformationManager = ({
               isSaving={isSaving}
             >
               <TransformationForm
-                onTransform={handleTransform}
+                selectedType={selectedType}
+                onTypeChange={setSelectedType}
+                onTransform={() => selectedType && handleTransform(selectedType)}
                 isTransforming={isTransforming}
                 isSaving={isSaving}
                 customPrompts={customPrompts}
