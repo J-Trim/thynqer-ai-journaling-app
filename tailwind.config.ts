@@ -68,6 +68,8 @@ export default {
       },
       boxShadow: {
         neumorph: '8px 8px 16px var(--shadow-base), -8px -8px 16px var(--shadow-highlight)',
+        'neumorph-hover': '6px 6px 12px var(--shadow-base), -6px -6px 12px var(--shadow-highlight)',
+        'neumorph-active': 'inset 4px 4px 8px var(--shadow-base), inset -4px -4px 8px var(--shadow-highlight)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -114,3 +116,4 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
