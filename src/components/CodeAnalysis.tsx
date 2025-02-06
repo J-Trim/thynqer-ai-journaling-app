@@ -3,6 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+interface AnalysisResult {
+  complexity: string;
+  performance: string;
+  bestPractices: string;
+  improvements: string;
+}
+
+interface CodeAnalysis {
+  id: string;
+  component_name: string;
+  analysis_result: AnalysisResult;
+  analyzed_at: string;
+}
+
 export const CodeAnalysis = () => {
   const { data: analyses, isLoading, error } = useQuery({
     queryKey: ['code-analysis'],
@@ -19,7 +33,7 @@ export const CodeAnalysis = () => {
       }
 
       console.log('Retrieved analyses:', data);
-      return data;
+      return data as CodeAnalysis[];
     }
   });
 
