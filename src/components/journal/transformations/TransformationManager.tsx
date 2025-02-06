@@ -24,6 +24,8 @@ export const TransformationManager = ({
   onSaveEntry
 }: TransformationManagerProps) => {
   const {
+    selectedType,
+    setSelectedType,
     isTransforming,
     setIsTransforming,
     isSaving,
@@ -42,14 +44,13 @@ export const TransformationManager = ({
 
   useEffect(() => {
     if (isDialogOpen && activeGroup === "Custom") {
-      // Fetch custom prompts when dialog opens
       console.log('Fetching custom prompts for Custom group');
     }
   }, [isDialogOpen, activeGroup]);
 
-  const handleTransform = async (selectedType: ValidTransformation) => {
-    if (!selectedType || !entryText?.trim()) {
-      console.log('Missing required data:', { selectedType, hasText: !!entryText?.trim() });
+  const handleTransform = async (type: ValidTransformation) => {
+    if (!type || !entryText?.trim()) {
+      console.log('Missing required data:', { type, hasText: !!entryText?.trim() });
       return;
     }
 
@@ -74,7 +75,7 @@ export const TransformationManager = ({
 
       const result = await transformationService.transformText(
         finalEntryId,
-        selectedType,
+        type,
         customPrompts
       );
 
@@ -120,6 +121,12 @@ export const TransformationManager = ({
             <TransformationDialog
               group={group}
               items={TRANSFORMATION_TYPES[group]?.items || []}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              customPrompts={customPrompts}
+              onTransform={() => handleTransform(selectedType)}
+              isTransforming={isTransforming}
+              isSaving={isSaving}
             >
               <TransformationForm
                 onTransform={handleTransform}
