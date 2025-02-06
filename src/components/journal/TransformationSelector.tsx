@@ -39,6 +39,7 @@ export const TransformationSelector = ({
   const handleTransformationRequest = async () => {
     if (selectedType) {
       console.log('Starting transformation request with type:', selectedType);
+      console.log('Entry text to transform:', entryText);
       const success = await handleTransform(selectedType, customPrompts);
       if (success) {
         console.log('Transformation completed successfully');

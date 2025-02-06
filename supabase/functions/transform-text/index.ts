@@ -80,25 +80,6 @@ serve(async (req) => {
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
-    // Get the authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('No authorization header provided');
-      throw new Error('No authorization header');
-    }
-
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Get user ID from the JWT token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (authError || !user) {
-      console.error('Auth error:', authError);
-      throw new Error('Authentication failed');
-    }
-
     const requestData = await req.json() as TransformRequest;
     const { text, transformationType, customTemplate } = requestData;
 
