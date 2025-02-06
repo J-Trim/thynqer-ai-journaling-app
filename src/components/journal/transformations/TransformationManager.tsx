@@ -8,6 +8,7 @@ import { useTransformationState } from "./hooks/useTransformationState";
 import { useTransformationHandlers } from "./hooks/useTransformationHandlers";
 import { useCustomPrompts } from "@/hooks/useCustomPrompts";
 import { Database } from "@/integrations/supabase/types";
+import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
