@@ -1,3 +1,4 @@
+
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -59,10 +60,17 @@ export const useTransformationHandlers = ({
       const customPrompt = customPrompts.find(p => p.prompt_name === type);
       const url = 'https://zacanxuybdaejwjagwwe.functions.supabase.co/transform-text';
       
+      console.log('Sending transformation request with:', {
+        type,
+        textLength: entryText.length,
+        hasCustomPrompt: !!customPrompt
+      });
+
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
+          text: entryText,
           transformationType: type,
           customTemplate: customPrompt?.prompt_template 
         })
@@ -73,7 +81,9 @@ export const useTransformationHandlers = ({
         throw new Error(data.error || 'Failed to transform text');
       }
 
-      console.log('Transformation completed successfully');
+      const data = await response.json();
+      console.log('Transformation completed with response:', data);
+
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       
       toast({
