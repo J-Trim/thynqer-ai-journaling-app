@@ -25,6 +25,8 @@
     --ring: #3BB873;
     --radius: 0.5rem;
     --animation-duration: 800ms;
+    --shadow-base: #DADFE1;
+    --shadow-highlight: #FFFFFF;
   }
 
   .dark {
@@ -47,6 +49,8 @@
     --border: #2A2A2A;
     --input: #2A2A2A;
     --ring: #48C285;
+    --shadow-base: rgba(0, 0, 0, 0.2);
+    --shadow-highlight: rgba(255, 255, 255, 0.05);
   }
 }
 

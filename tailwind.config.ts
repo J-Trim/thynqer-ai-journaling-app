@@ -63,6 +63,9 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      boxShadow: {
+        neumorph: '8px 8px 16px var(--shadow-base), -8px -8px 16px var(--shadow-highlight)',
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
