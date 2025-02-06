@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Database } from "@/integrations/supabase/types";
+import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -24,11 +25,31 @@ export const TransformationForm = memo(({
   customPrompts,
   activeGroup
 }: TransformationFormProps) => {
+  console.log('Rendering TransformationForm with activeGroup:', activeGroup);
+  console.log('Current transformation types:', TRANSFORMATION_TYPES[activeGroup || ""]?.items || []);
+
   const handleTransform = () => {
     if (selectedType) {
       onTransform(selectedType);
     }
   };
+
+  const getTransformationItems = () => {
+    if (activeGroup === "Custom") {
+      return customPrompts.map(prompt => ({
+        value: prompt.prompt_name,
+        label: prompt.prompt_name
+      }));
+    }
+    
+    return (TRANSFORMATION_TYPES[activeGroup || ""]?.items || []).map(item => ({
+      value: item,
+      label: item
+    }));
+  };
+
+  const items = getTransformationItems();
+  console.log('Available transformation items:', items);
 
   return (
     <div className="space-y-4">
@@ -38,14 +59,11 @@ export const TransformationForm = memo(({
         </SelectTrigger>
         <SelectContent className="max-h-[300px] overflow-y-auto">
           <SelectGroup>
-            {activeGroup === "Custom" 
-              ? customPrompts.map((prompt) => (
-                  <SelectItem key={prompt.prompt_name} value={prompt.prompt_name}>
-                    {prompt.prompt_name}
-                  </SelectItem>
-                ))
-              : []
-            }
+            {items.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectGroup>
         </SelectContent>
       </Select>
