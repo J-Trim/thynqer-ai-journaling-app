@@ -65,20 +65,6 @@ export const transformationService = {
       throw error;
     }
 
-    // Save the transformation to Supabase
-    const { error: saveError } = await supabase
-      .from('summaries')
-      .insert({
-        entry_id: entryId,
-        user_id: session.user.id,
-        transformed_text: data.transformedText,
-        transformation_type: type
-      });
-
-    if (saveError) {
-      throw saveError;
-    }
-
     return data;
   }
 };

@@ -1,4 +1,3 @@
-
 import ContentEditor from "./ContentEditor";
 import TranscriptionDisplay from "./TranscriptionDisplay";
 
@@ -13,13 +12,10 @@ const JournalFormContent = ({
   transcribedAudio, 
   onContentChange 
 }: JournalFormContentProps) => {
-  // Extract main content without transcribed audio
-  const mainContent = content.split('\n\n---\nTranscribed Audio:\n')[0];
-
   return (
     <div className="space-y-4">
       <ContentEditor
-        content={mainContent}
+        content={content}
         transcribedAudio={transcribedAudio}
         onContentChange={onContentChange}
       />
