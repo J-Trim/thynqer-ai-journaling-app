@@ -17,6 +17,18 @@ interface CodeAnalysis {
   analyzed_at: string;
 }
 
+interface SupabaseAnalysis {
+  id: string;
+  component_name: string;
+  analysis_result: {
+    complexity: string;
+    performance: string;
+    bestPractices: string;
+    improvements: string;
+  };
+  analyzed_at: string;
+}
+
 export const CodeAnalysis = () => {
   const { data: analyses, isLoading, error } = useQuery({
     queryKey: ['code-analysis'],
@@ -33,7 +45,21 @@ export const CodeAnalysis = () => {
       }
 
       console.log('Retrieved analyses:', data);
-      return data as CodeAnalysis[];
+      
+      // Type assertion and validation
+      const validatedData = (data as SupabaseAnalysis[]).map(item => ({
+        id: item.id,
+        component_name: item.component_name,
+        analysis_result: {
+          complexity: item.analysis_result.complexity || '',
+          performance: item.analysis_result.performance || '',
+          bestPractices: item.analysis_result.bestPractices || '',
+          improvements: item.analysis_result.improvements || ''
+        },
+        analyzed_at: item.analyzed_at
+      }));
+
+      return validatedData as CodeAnalysis[];
     }
   });
 
