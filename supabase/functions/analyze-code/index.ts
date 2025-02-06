@@ -1,103 +1,126 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { code } = await req.json()
+    const { code } = await req.json();
     
     if (!code) {
-      throw new Error('No code provided for analysis')
+      throw new Error('No code provided for analysis');
     }
 
-    const openAiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openAiKey) {
-      throw new Error('OpenAI API key not configured')
-    }
+    console.log('Starting code analysis...');
 
-    // Call OpenAI for code analysis
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [{
-          role: "system",
-          content: `You are a senior React developer specializing in code analysis. 
-          Analyze the provided React component and provide detailed feedback on:
-          1. Component length and complexity
-          2. State management
-          3. Side effects organization
-          4. Performance considerations
-          5. Error handling
-          6. Accessibility
-          7. Code organization and potential refactoring suggestions
-          8. Best practices compliance
-          Be specific and provide actionable recommendations.`
-        }, {
-          role: "user",
-          content: `Please analyze this React component:\n\n${code}`
-        }],
-        temperature: 0.3,
-        max_tokens: 2000
-      })
-    })
+    // Initialize analysis results
+    const analysis = {
+      length: code.split('\n').length,
+      issues: [] as string[],
+      suggestions: [] as string[],
+      complexity: {
+        stateVariables: 0,
+        effects: 0,
+        handlers: 0,
+        conditionalRenders: 0
+      }
+    };
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${await response.text()}`)
-    }
-
-    const result = await response.json()
-    const analysis = result.choices[0].message.content
-
-    // Store the analysis in Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    // Analyze state management
+    const stateMatches = code.match(/\b(useState|useReducer)\b/g) || [];
+    analysis.complexity.stateVariables = stateMatches.length;
     
-    if (supabaseUrl && supabaseServiceRole) {
-      const supabase = createClient(supabaseUrl, supabaseServiceRole)
-      
-      await supabase
-        .from('code_analysis')
-        .insert({
-          component_name: 'JournalEntryForm',
-          analysis,
-          analyzed_at: new Date().toISOString()
-        })
+    if (analysis.complexity.stateVariables > 5) {
+      analysis.issues.push('High number of state variables. Consider using useReducer or combining related state.');
     }
+
+    // Analyze effects
+    const effectMatches = code.match(/useEffect/g) || [];
+    analysis.complexity.effects = effectMatches.length;
+    
+    if (analysis.complexity.effects > 3) {
+      analysis.issues.push('Multiple useEffect hooks detected. Consider grouping related effects.');
+    }
+
+    // Analyze event handlers
+    const handlerMatches = code.match(/handle[A-Z]\w+/g) || [];
+    analysis.complexity.handlers = handlerMatches.length;
+    
+    if (analysis.complexity.handlers > 5) {
+      analysis.issues.push('High number of event handlers. Consider grouping related functionality.');
+    }
+
+    // Analyze conditional rendering
+    const conditionalMatches = code.match(/\{.*\?.*:.*\}/g) || [];
+    analysis.complexity.conditionalRenders = conditionalMatches.length;
+    
+    if (analysis.complexity.conditionalRenders > 3) {
+      analysis.issues.push('Multiple conditional renders. Consider extracting into separate components.');
+    }
+
+    // Check component length
+    if (analysis.length > 200) {
+      analysis.issues.push('Component is too long. Consider splitting into smaller components.');
+      analysis.suggestions.push('Extract form sections into separate components');
+      analysis.suggestions.push('Move complex logic into custom hooks');
+    }
+
+    // Check for prop drilling
+    if (code.includes('props.') && code.match(/props\./g)?.length > 5) {
+      analysis.issues.push('Potential prop drilling detected');
+      analysis.suggestions.push('Consider using React Context or state management library');
+    }
+
+    // Check for accessibility
+    if (!code.includes('aria-') && !code.includes('role=')) {
+      analysis.issues.push('Missing accessibility attributes');
+      analysis.suggestions.push('Add ARIA labels and roles for better accessibility');
+    }
+
+    // Store analysis results in Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { error: insertError } = await supabase
+      .from('code_analysis')
+      .insert({
+        component_name: 'JournalEntryForm',
+        analysis_result: analysis,
+        analyzed_at: new Date().toISOString()
+      });
+
+    if (insertError) {
+      console.error('Error storing analysis:', insertError);
+    }
+
+    console.log('Analysis completed successfully');
 
     return new Response(
-      JSON.stringify({ analysis }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
+      JSON.stringify({
+        analysis,
+        message: 'Code analysis completed successfully'
+      }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
-
+    );
   } catch (error) {
-    console.error('Analysis error:', error)
+    console.error('Error in analyze-code function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
         status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
-    )
+    );
   }
-})
+});

@@ -1,45 +1,40 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const analyzeComponent = async (code: string) => {
+export const analyzeCode = async (code: string) => {
   try {
-    console.log('Starting code analysis...');
+    console.log('Sending code for analysis...');
     
     const { data, error } = await supabase.functions.invoke('analyze-code', {
       body: { code }
     });
 
     if (error) {
-      console.error('Analysis error:', error);
+      console.error('Error analyzing code:', error);
       throw error;
     }
 
-    console.log('Analysis completed successfully');
+    console.log('Analysis results:', data);
     return data.analysis;
-  } catch (err) {
-    console.error('Failed to analyze code:', err);
-    throw err;
+  } catch (error) {
+    console.error('Failed to analyze code:', error);
+    throw error;
   }
 };
 
-export const analyzeFiles = async (files: { name: string; content: string }[]) => {
-  const results = [];
-  
-  for (const file of files) {
-    try {
-      console.log(`Analyzing ${file.name}...`);
-      const analysis = await analyzeComponent(file.content);
-      results.push({
-        fileName: file.name,
-        analysis
-      });
-    } catch (err) {
-      console.error(`Failed to analyze ${file.name}:`, err);
-      results.push({
-        fileName: file.name,
-        error: err instanceof Error ? err.message : 'Unknown error'
-      });
-    }
+export const getLatestAnalysis = async (componentName: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('code_analysis')
+      .select('*')
+      .eq('component_name', componentName)
+      .order('analyzed_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error fetching analysis:', error);
+    throw error;
   }
-  
-  return results;
 };
