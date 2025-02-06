@@ -8,72 +8,76 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { code } = await req.json();
-    
+    const { code, component } = await req.json();
+
     if (!code) {
       throw new Error('No code provided for analysis');
     }
 
     const openAiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAiKey) {
-      throw new Error('Missing OpenAI API key');
+      throw new Error('OpenAI API key not configured');
     }
 
-    const context = `You are an expert TypeScript and React developer. Analyze the following code and suggest improvements for:
-    1. Code organization and component structure
-    2. Performance optimizations (including React rendering optimizations)
-    3. Error handling and edge cases
-    4. Type safety and TypeScript best practices
-    5. React hooks usage and potential issues
-    6. State management approaches
-    7. Code reusability and DRY principles
-    8. Security considerations
-    9. Accessibility improvements
-    10. Testing suggestions
+    const systemPrompt = `You are an expert React and TypeScript code analyzer. Analyze the following ${component} code for:
+1. Potential bugs and errors
+2. Performance optimizations
+3. Code organization and maintainability
+4. TypeScript type safety
+5. React best practices
+6. State management efficiency
+7. Memory leaks
+8. Error handling
+9. Accessibility issues
+10. Security concerns
 
-    For each category, provide specific, actionable suggestions with code examples where relevant.
-    Focus on practical improvements that would have the most impact.`;
+Provide specific, actionable recommendations for each category where improvements are needed.`;
 
-    console.log('Sending code analysis request to OpenAI...');
-    const openAiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: 'gpt-4o',
         messages: [
-          { role: "system", content: context },
-          { role: "user", content: `Here's the code to analyze:\n\n${code}` }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Here's the code for ${component}:\n\n${code}` }
         ],
-        temperature: 0.7,
-        max_tokens: 4000
-      })
+        max_tokens: 4000,
+        temperature: 0.7
+      }),
     });
 
-    if (!openAiRes.ok) {
-      const error = await openAiRes.text();
+    if (!response.ok) {
+      const error = await response.text();
       console.error('OpenAI API error:', error);
       throw new Error(`OpenAI API error: ${error}`);
     }
 
-    const analysis = await openAiRes.json();
-    console.log('Code analysis completed successfully');
+    const data = await response.json();
+    const analysis = data.choices[0].message.content;
+
+    console.log(`Analysis completed for ${component}`);
 
     return new Response(
-      JSON.stringify({ analysis: analysis.choices[0].message.content }),
+      JSON.stringify({ analysis }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error) {
     console.error('Error in analyze-code function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
     );
   }
 });
