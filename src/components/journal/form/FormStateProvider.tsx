@@ -13,7 +13,7 @@ interface FormStateContextType {
   isTranscriptionPending: boolean;
   setIsTranscriptionPending: (value: boolean) => void;
   selectedTags: string[];
-  setSelectedTags: (value: string[]) => void;
+  setSelectedTags: (value: string[] | ((prev: string[]) => string[])) => void;
   showTags: boolean;
   setShowTags: (value: boolean) => void;
   transformationEnabled: boolean;
