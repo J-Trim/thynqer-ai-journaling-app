@@ -1,41 +1,42 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const analyzeComponent = async (code: string, component: string) => {
+export const analyzeComponent = async (code: string) => {
   try {
-    console.log(`Starting analysis of ${component}`);
+    console.log('Starting code analysis...');
     
     const { data, error } = await supabase.functions.invoke('analyze-code', {
-      body: { code, component }
+      body: { code }
     });
 
     if (error) {
-      console.error('Error analyzing code:', error);
+      console.error('Analysis error:', error);
       throw error;
     }
 
-    console.log(`Analysis completed for ${component}`);
+    console.log('Analysis completed successfully');
     return data.analysis;
   } catch (err) {
-    console.error('Error in analyzeComponent:', err);
+    console.error('Failed to analyze code:', err);
     throw err;
   }
 };
 
-export const analyzeFiles = async (files: { code: string; component: string }[]) => {
+export const analyzeFiles = async (files: { name: string; content: string }[]) => {
   const results = [];
   
   for (const file of files) {
     try {
-      const analysis = await analyzeComponent(file.code, file.component);
+      console.log(`Analyzing ${file.name}...`);
+      const analysis = await analyzeComponent(file.content);
       results.push({
-        component: file.component,
+        fileName: file.name,
         analysis
       });
-    } catch (error) {
-      console.error(`Error analyzing ${file.component}:`, error);
+    } catch (err) {
+      console.error(`Failed to analyze ${file.name}:`, err);
       results.push({
-        component: file.component,
-        error: error.message
+        fileName: file.name,
+        error: err instanceof Error ? err.message : 'Unknown error'
       });
     }
   }

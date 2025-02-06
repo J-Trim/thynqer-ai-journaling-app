@@ -1,30 +1,29 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { code, component } = await req.json();
+    const { code } = await req.json()
     
-    if (!code || !component) {
-      throw new Error('Missing required parameters');
+    if (!code) {
+      throw new Error('No code provided for analysis')
     }
 
-    const openAiKey = Deno.env.get('OPENAI_API_KEY');
+    const openAiKey = Deno.env.get('OPENAI_API_KEY')
     if (!openAiKey) {
-      throw new Error('OpenAI API key not configured');
+      throw new Error('OpenAI API key not configured')
     }
 
-    console.log(`Analyzing component: ${component}`);
-
+    // Call OpenAI for code analysis
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -32,53 +31,73 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a senior React/TypeScript developer analyzing code for potential issues and improvements. Focus on:
-              1. Code organization and structure
-              2. Performance optimizations
-              3. Error handling
-              4. TypeScript type safety
-              5. React best practices
-              6. Memory leaks
-              7. State management
-              8. Side effects handling
-              9. Accessibility
-              10. Code duplication
-              
-              Provide specific, actionable recommendations.`
-          },
-          {
-            role: 'user',
-            content: `Please analyze this ${component} component:\n\n${code}`
-          }
-        ],
-        temperature: 0.7,
+        model: "gpt-4",
+        messages: [{
+          role: "system",
+          content: `You are a senior React developer specializing in code analysis. 
+          Analyze the provided React component and provide detailed feedback on:
+          1. Component length and complexity
+          2. State management
+          3. Side effects organization
+          4. Performance considerations
+          5. Error handling
+          6. Accessibility
+          7. Code organization and potential refactoring suggestions
+          8. Best practices compliance
+          Be specific and provide actionable recommendations.`
+        }, {
+          role: "user",
+          content: `Please analyze this React component:\n\n${code}`
+        }],
+        temperature: 0.3,
         max_tokens: 2000
-      }),
-    });
+      })
+    })
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
+      throw new Error(`OpenAI API error: ${await response.text()}`)
     }
 
-    const data = await response.json();
-    console.log('Analysis completed successfully');
+    const result = await response.json()
+    const analysis = result.choices[0].message.content
 
-    return new Response(JSON.stringify({
-      analysis: data.choices[0].message.content
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    // Store the analysis in Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    if (supabaseUrl && supabaseServiceRole) {
+      const supabase = createClient(supabaseUrl, supabaseServiceRole)
+      
+      await supabase
+        .from('code_analysis')
+        .insert({
+          component_name: 'JournalEntryForm',
+          analysis,
+          analyzed_at: new Date().toISOString()
+        })
+    }
+
+    return new Response(
+      JSON.stringify({ analysis }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
+    )
 
   } catch (error) {
-    console.error('Error in analyze-code function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    console.error('Analysis error:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        }
+      }
+    )
   }
-});
+})
