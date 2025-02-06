@@ -1,3 +1,4 @@
+
 import { useCallback } from "react";
 import { TransformationDialog } from "./TransformationDialog";
 import { TransformationError } from "./components/TransformationError";
@@ -53,11 +54,15 @@ export const TransformationManager = ({
   });
 
   const handleTransformWrapper = useCallback(() => {
-    if (selectedType) {
+    if (selectedType && entryText) {
       return handleTransform(selectedType);
     }
+    if (!entryText) {
+      setError("Please enter some text to transform");
+      return Promise.resolve(false);
+    }
     return Promise.resolve(false);
-  }, [handleTransform, selectedType]);
+  }, [handleTransform, selectedType, entryText, setError]);
 
   return (
     <div className="space-y-6">
@@ -93,4 +98,3 @@ export const TransformationManager = ({
       <TransformationError error={error} />
     </div>
   );
-};

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
@@ -16,6 +17,7 @@ export const transformationService = {
 
   async transformText(
     entryId: string,
+    entryText: string,
     selectedType: ValidTransformation,
     customPrompts: Array<{ prompt_name: string, prompt_template: string }>,
   ) {
@@ -29,6 +31,7 @@ export const transformationService = {
     const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
     const { data, error } = await supabase.functions.invoke('transform-text', {
       body: { 
+        text: entryText,
         transformationType: selectedType,
         customTemplate: customPrompt?.prompt_template 
       }
