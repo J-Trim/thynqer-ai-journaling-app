@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useFormState } from './FormStateProvider';
 import JournalFormHeader from './JournalFormHeader';
@@ -6,14 +7,13 @@ import AudioPlayer from '../AudioPlayer';
 import TagSelector from '../TagSelector';
 import { TransformationManager } from '../transformations/TransformationManager';
 import SaveControls from './SaveControls';
+import { useAudioRecording } from '@/hooks/useAudioRecording';
 
-interface FormContentProps {
+const FormContent: React.FC<{
   onSave: () => Promise<{ id: string }>;
   onCancel: () => void;
   isSaving: boolean;
-}
-
-const FormContent: React.FC<FormContentProps> = ({
+}> = ({
   onSave,
   onCancel,
   isSaving,
@@ -25,12 +25,24 @@ const FormContent: React.FC<FormContentProps> = ({
     setContent,
     transcribedAudio,
     audioUrl,
+    setAudioUrl,
     isTranscriptionPending,
     selectedTags,
     setSelectedTags,
     showTags,
     lastSavedId
   } = useFormState();
+
+  const {
+    isRecording,
+    isPaused,
+    recordingTime,
+    isProcessing,
+    toggleRecording,
+    stopRecording
+  } = useAudioRecording((url) => {
+    setAudioUrl(url);
+  });
 
   const handleTagToggle = (tagId: string) => {
     setSelectedTags((prev: string[]) => 
@@ -45,6 +57,12 @@ const FormContent: React.FC<FormContentProps> = ({
       <JournalFormHeader 
         title={title}
         onTitleChange={setTitle}
+        isRecording={isRecording}
+        isPaused={isPaused}
+        isProcessing={isProcessing}
+        recordingTime={recordingTime}
+        onToggleRecording={toggleRecording}
+        onStopRecording={stopRecording}
       />
       
       <JournalFormContent
