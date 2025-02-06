@@ -14,6 +14,12 @@ interface AudioPlayerProps {
 const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
   const [totalDuration, setTotalDuration] = useState<number | null>(null);
 
+  const { error, isLoading, audioRef } = useAudioInitialization({
+    audioUrl,
+    onDurationCalculated: setTotalDuration,
+    isMuted: false
+  });
+
   const {
     volume,
     isMuted,
@@ -21,12 +27,9 @@ const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
     setShowVolumeSlider,
     handleVolumeChange,
     toggleMute
-  } = useAudioVolume({ initialVolume: 1 });
-
-  const { error, isLoading, audioRef } = useAudioInitialization({
-    audioUrl,
-    onDurationCalculated: setTotalDuration,
-    isMuted
+  } = useAudioVolume({ 
+    audioRef,
+    initialVolume: 1 
   });
 
   const { isPlaying, hasEnded, togglePlay } = useAudioPlayback({

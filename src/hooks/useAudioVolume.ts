@@ -14,7 +14,7 @@ export const useAudioVolume = ({ audioRef, initialVolume = 1 }: UseAudioVolumePr
     if (audioRef.current) {
       audioRef.current.volume = volume;
     }
-  }, [volume]);
+  }, [volume, audioRef]);
 
   const handleVolumeChange = (newVolume: number) => {
     setVolume(newVolume);
