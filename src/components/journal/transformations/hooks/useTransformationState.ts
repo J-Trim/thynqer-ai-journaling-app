@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Database } from "@/integrations/supabase/types";
 
@@ -8,6 +9,8 @@ export const useTransformationState = () => {
   const [isTransforming, setIsTransforming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastTransformation, setLastTransformation] = useState<string | null>(null);
+  const [lastTransformationType, setLastTransformationType] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
 
@@ -20,6 +23,10 @@ export const useTransformationState = () => {
     setIsSaving,
     error,
     setError,
+    lastTransformation,
+    setLastTransformation,
+    lastTransformationType,
+    setLastTransformationType,
     isDialogOpen,
     setIsDialogOpen,
     activeGroup,
