@@ -1,49 +1,49 @@
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
-import { supabase } from "@/integrations/supabase/client";
+import { useTransformationReducer } from "./transformations/useTransformationReducer";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
-interface TransformationProcessProps {
+interface UseTransformationProcessProps {
   entryId: string;
   entryText: string;
   onSaveEntry?: () => Promise<{ id: string } | null>;
 }
 
-export const useTransformationProcess = ({ 
-  entryId, 
-  entryText, 
-  onSaveEntry 
-}: TransformationProcessProps) => {
-  const [isTransforming, setIsTransforming] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorType, setErrorType] = useState<'network' | 'validation' | 'server' | 'general'>('general');
+export const useTransformationProcess = ({
+  entryId,
+  entryText,
+  onSaveEntry,
+}: UseTransformationProcessProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const {
+    state: { isTransforming, isSaving, error, errorType },
+    setTransforming,
+    setSaving,
+    setError,
+    setLastTransformation,
+  } = useTransformationReducer();
 
   const handleTransform = async (
-    selectedType: ValidTransformation,
-    customPrompts: Array<{ prompt_name: string, prompt_template: string }>,
+    type: ValidTransformation,
+    customPrompts: Array<{ prompt_name: string; prompt_template: string }>
   ) => {
-    if (!selectedType || !entryText?.trim()) {
-      console.log('Missing required data:', { selectedType, hasText: !!entryText?.trim() });
-      setError('Please provide both transformation type and text content.');
-      setErrorType('validation');
+    if (!type || !entryText?.trim()) {
+      console.log('Missing required data:', { type, hasText: !!entryText?.trim() });
       return false;
     }
 
-    setIsTransforming(true);
+    setTransforming(true);
     setError(null);
 
     try {
       let finalEntryId = entryId;
       
       if (!entryId && onSaveEntry) {
-        console.log('No entry ID found, saving entry first...');
-        setIsSaving(true);
+        console.log('No entry ID found, forcing save before transformation...');
+        setSaving(true);
         const savedEntry = await onSaveEntry();
         
         if (!savedEntry?.id) {
@@ -51,69 +51,29 @@ export const useTransformationProcess = ({
         }
         
         finalEntryId = savedEntry.id;
-        setIsSaving(false);
+        setSaving(false);
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const customPrompt = customPrompts.find(p => p.prompt_name === type);
+      const url = 'https://zacanxuybdaejwjagwwe.functions.supabase.co/transform-text';
       
-      if (!session) {
-        setError('Authentication required. Please sign in.');
-        setErrorType('validation');
-        return false;
-      }
-
-      const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
-      console.log('Custom prompt found:', customPrompt);
-      console.log('Selected transformation type:', selectedType);
-      console.log('Text to transform:', entryText);
-
-      const { data, error: transformError } = await supabase.functions
-        .invoke('transform-text', {
-          body: { 
-            text: entryText, 
-            transformationType: selectedType,
-            customTemplate: customPrompt?.prompt_template 
-          }
-        });
-
-      if (transformError) {
-        console.error('Transform error:', transformError);
-        setError(transformError.message || 'Failed to transform text');
-        setErrorType('server');
-        return false;
-      }
-
-      if (!data?.transformedText) {
-        setError('No transformed text received');
-        setErrorType('server');
-        return false;
-      }
-
-      console.log('Transform successful, saving to database...', {
-        entryId: finalEntryId,
-        userId: session.user.id,
-        transformationType: selectedType
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          transformationType: type,
+          customTemplate: customPrompt?.prompt_template 
+        })
       });
 
-      const { error: saveError } = await supabase
-        .from('summaries')
-        .insert({
-          entry_id: finalEntryId,
-          user_id: session.user.id,
-          transformed_text: data.transformedText,
-          transformation_type: selectedType,
-        });
-
-      if (saveError) {
-        console.error('Save error:', saveError);
-        setError(saveError.message);
-        setErrorType('server');
-        return false;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to transform text');
       }
 
-      console.log('Transformation saved successfully');
+      console.log('Transformation completed successfully');
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
-
+      
       toast({
         description: "Transformation completed successfully",
       });
@@ -122,8 +82,10 @@ export const useTransformationProcess = ({
     } catch (err) {
       console.error('Error in transformation process:', err);
       const isNetworkError = err instanceof Error && err.message.includes('network');
-      setError(err instanceof Error ? err.message : 'Failed to transform text');
-      setErrorType(isNetworkError ? 'network' : 'server');
+      setError(
+        err instanceof Error ? err.message : 'Failed to transform text',
+        isNetworkError ? 'network' : 'server'
+      );
       toast({
         title: "Error",
         description: "Failed to transform text. Please try again.",
@@ -131,8 +93,8 @@ export const useTransformationProcess = ({
       });
       return false;
     } finally {
-      setIsTransforming(false);
-      setIsSaving(false);
+      setTransforming(false);
+      setSaving(false);
     }
   };
 
