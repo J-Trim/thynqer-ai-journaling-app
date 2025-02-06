@@ -22,10 +22,20 @@ const AutoSave = ({
   onSave,
 }: AutoSaveProps) => {
   const timeoutRef = useRef<number>();
+  const lastSaveRef = useRef<string>(''); // Track last saved content
   const { toast } = useToast();
 
   useEffect(() => {
     if (isInitializing || !hasUnsavedChanges) {
+      return;
+    }
+
+    // Create a hash of current content to compare
+    const currentContentHash = `${title}-${content}-${audioUrl}`;
+
+    // Don't save if content hasn't changed since last save
+    if (currentContentHash === lastSaveRef.current) {
+      console.log('AutoSave: Content unchanged since last save, skipping...');
       return;
     }
 
@@ -36,12 +46,19 @@ const AutoSave = ({
 
     // Set a new timeout for 30 seconds
     timeoutRef.current = window.setTimeout(() => {
-      console.log('AutoSave: Initiating auto-save...');
+      console.log('AutoSave: Initiating auto-save...', {
+        contentLength: content?.length || 0,
+        hasTitle: !!title,
+        hasAudio: !!audioUrl
+      });
+      
+      lastSaveRef.current = currentContentHash;
       onSave(true);
+      
       toast({
         description: "Entry saved automatically",
       });
-    }, 30000); // Increased to 30 seconds
+    }, 30000);
 
     // Cleanup on unmount or when dependencies change
     return () => {
