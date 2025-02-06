@@ -24,11 +24,18 @@ interface FormStateContextType {
 
 const FormStateContext = createContext<FormStateContextType | undefined>(undefined);
 
-export const FormStateProvider: React.FC<{ 
-  children: React.ReactNode; 
+interface FormStateProviderProps {
+  children: React.ReactNode;
   id?: string;
-}> = ({ children, id }) => {
-  const formState = useJournalFormState(id);
+  initialData?: any;
+}
+
+export const FormStateProvider: React.FC<FormStateProviderProps> = ({ 
+  children, 
+  id,
+  initialData 
+}) => {
+  const formState = useJournalFormState(id, initialData);
 
   return (
     <FormStateContext.Provider value={formState}>
