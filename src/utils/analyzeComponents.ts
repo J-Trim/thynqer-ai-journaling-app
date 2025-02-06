@@ -31,260 +31,299 @@ export const analyzeComponent = async (componentName: string, code: string) => {
   }
 };
 
-// Analyze the JournalEntryForm component
-const journalEntryFormComponent = {
-  name: 'JournalEntryForm',
+// Analyze the AudioPlayer component
+const audioPlayerComponent = {
+  name: 'AudioPlayer',
   code: `
-    import { useParams, useNavigate } from "react-router-dom";
-    import { useEffect } from "react";
-    import { useQuery } from "@tanstack/react-query";
-    import Header from "@/components/Header";
-    import JournalFormHeader from "./journal/form/JournalFormHeader";
-    import JournalFormContent from "./journal/form/JournalFormContent";
-    import SaveControls from "./journal/form/SaveControls";
-    import LoadingState from "./journal/LoadingState";
-    import AutoSave from "./journal/AutoSave";
-    import TagSelector from "./journal/TagSelector";
-    import AudioPlayer from "./journal/AudioPlayer";
-    import { TransformationManager } from "./journal/transformations/TransformationManager";
-    import { useJournalFormState } from "@/hooks/useJournalFormState";
-    import { useJournalSave } from "@/hooks/useJournalSave";
-    import { useAudioRecording } from "@/hooks/useAudioRecording";
-    import { useToast } from "@/hooks/use-toast";
-    import { supabase } from "@/integrations/supabase/client";
+    import React, { useRef, useEffect, useState } from 'react';
+    import { supabase } from '@/integrations/supabase/client';
+    import { useAudioProgress } from '@/hooks/useAudioProgress';
+    import { useAudioVolume } from '@/hooks/useAudioVolume';
+    import { useAudioPlayback } from '@/hooks/useAudioPlayback';
+    import { getMimeType } from '@/utils/audio';
+    import AudioControls from './audio/AudioControls';
+    import AudioProgress from './audio/AudioProgress';
+    import { Alert, AlertDescription } from "@/components/ui/alert";
 
-    const JournalEntryForm = () => {
-      const { id } = useParams();
-      const navigate = useNavigate();
-      const { toast } = useToast();
-      
-      const {
-        title,
-        setTitle,
-        content,
-        setContent,
-        transcribedAudio,
-        setTranscribedAudio,
-        audioUrl,
-        setAudioUrl,
-        isTranscriptionPending,
-        setIsTranscriptionPending,
-        selectedTags,
-        setSelectedTags,
-        showTags,
-        setShowTags,
-        transformationEnabled,
-        setTransformationEnabled,
-        lastSavedId,
-        setLastSavedId
-      } = useJournalFormState(id);
+    interface AudioPlayerProps {
+      audioUrl: string;
+    }
 
-      // Add query to fetch existing entry data
-      const { data: existingEntry, isLoading: isLoadingEntry } = useQuery({
-        queryKey: ['journal-entry', id],
-        queryFn: async () => {
-          console.log('Fetching existing entry:', id);
-          if (!id) return null;
+    const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
+      const [error, setError] = useState<string | null>(null);
+      const [isLoading, setIsLoading] = useState(true);
+      const [totalDuration, setTotalDuration] = useState<number | null>(null);
+      const audioRef = useRef<HTMLAudioElement | null>(null);
+      const blobUrlRef = useRef<string | null>(null);
 
-          const { data, error } = await supabase
-            .from('journal_entries')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-          if (error) {
-            console.error('Error fetching entry:', error);
-            throw error;
+      const { isPlaying, hasEnded, togglePlay } = useAudioPlayback({
+        audioRef,
+        onPlaybackEnd: () => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
           }
-
-          console.log('Fetched entry data:', data);
-          return data;
-        },
-        enabled: !!id, // Only run query if we have an ID
+        }
       });
 
-      // Effect to populate form with existing entry data
+      const {
+        volume,
+        isMuted,
+        showVolumeSlider,
+        setShowVolumeSlider,
+        handleVolumeChange,
+        toggleMute
+      } = useAudioVolume({ audioRef });
+
+      const {
+        progress,
+        currentTime,
+        duration,
+        setDuration,
+        handleProgressChange
+      } = useAudioProgress({ audioRef, isPlaying, totalDuration });
+
       useEffect(() => {
-        if (existingEntry) {
-          console.log('Setting form state with existing entry:', existingEntry);
-          setTitle(existingEntry.title || '');
-          setContent(existingEntry.text || '');
-          setAudioUrl(existingEntry.audio_url);
-          setLastSavedId(existingEntry.id);
-        }
-      }, [existingEntry]);
-
-      const {
-        isSaving,
-        isSaveInProgress,
-        saveEntry
-      } = useJournalSave({
-        title,
-        content,
-        audioUrl,
-        transcribedAudio,
-        lastSavedId,
-        selectedTags,
-        onSuccess: () => navigate('/journal')
-      });
-
-      const {
-        isRecording,
-        isPaused,
-        recordingTime,
-        isProcessing,
-        toggleRecording,
-        stopRecording
-      } = useAudioRecording((url) => {
-        setAudioUrl(url);
-        setIsTranscriptionPending(true);
-        handleAudioTranscription(url);
-      });
-
-      const handleAudioTranscription = async (audioFileName: string) => {
-        try {
-          console.log('Starting audio transcription process for:', audioFileName);
-          
-          const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-            body: { audioUrl: audioFileName }
-          });
-
-          if (error) throw error;
-
-          if (data?.text) {
-            console.log('Transcription completed successfully');
-            setTranscribedAudio(data.text);
-          } else {
-            throw new Error('No transcription text received');
-          }
-        } catch (error) {
-          console.error('Transcription error:', error);
-          toast({
-            title: "Error",
-            description: "Failed to transcribe audio",
-            variant: "destructive",
-          });
-        } finally {
-          setIsTranscriptionPending(false);
-        }
-      };
-
-      const cleanupAudioAndTranscription = async () => {
-        if (audioUrl) {
+        const initializeAudio = async () => {
           try {
-            const { error } = await supabase.storage
+            setIsLoading(true);
+            setError(null);
+            
+            if (!audioUrl) {
+              console.error('No audio URL provided');
+              setError('No audio URL provided');
+              return;
+            }
+
+            const filename = audioUrl.split('/').pop()?.split('?')[0];
+            if (!filename) {
+              console.error('Invalid audio URL format:', audioUrl);
+              setError('Invalid audio URL format');
+              return;
+            }
+
+            console.log('Starting audio download for:', filename);
+            
+            const { data: audioData, error: downloadError } = await supabase.storage
               .from('audio_files')
-              .remove([audioUrl]);
+              .download(filename);
+
+            if (downloadError) {
+              console.error('Error downloading audio:', downloadError);
+              setError('Error downloading audio: ${downloadError.message}');
+              return;
+            }
+
+            if (!audioData) {
+              console.error('No audio data received from storage');
+              setError('No audio data received');
+              return;
+            }
+
+            const mimeType = getMimeType(filename);
+            const audioBlob = new Blob([audioData], { type: mimeType });
+            console.log('Created audio blob with type:', mimeType);
+
+            // Calculate duration using Web Audio API
+            const audioContext = new AudioContext();
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            const calculatedDuration = audioBuffer.duration;
+            setTotalDuration(calculatedDuration);
+            console.log('Calculated audio duration:', calculatedDuration);
+
+            if (blobUrlRef.current) {
+              URL.revokeObjectURL(blobUrlRef.current);
+            }
+
+            const newBlobUrl = URL.createObjectURL(audioBlob);
+            blobUrlRef.current = newBlobUrl;
+            console.log('Created blob URL:', newBlobUrl);
+
+            if (!audioRef.current) {
+              audioRef.current = new Audio();
+            }
+
+            const audio = audioRef.current;
+            audio.src = newBlobUrl;
+            audio.muted = isMuted;
+
+            const handleLoadedMetadata = () => {
+              console.log('Audio metadata loaded. Duration:', audio.duration);
+              if (isFinite(audio.duration)) {
+                setDuration(audio.duration);
+              }
+            };
+
+            audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+            audio.load();
             
-            if (error) throw error;
-            
-            setAudioUrl(null);
-            setTranscribedAudio('');
-            console.log('Audio cleanup completed successfully');
-          } catch (error) {
-            console.error('Error during audio cleanup:', error);
-            toast({
-              title: "Error",
-              description: "Failed to cleanup audio files",
-              variant: "destructive",
+            await new Promise((resolve, reject) => {
+              const handleCanPlay = () => {
+                console.log('Audio can play. Duration:', audio.duration);
+                audio.removeEventListener('canplay', handleCanPlay);
+                resolve(true);
+              };
+
+              const handleError = (e: Event) => {
+                console.error('Error loading audio:', e);
+                audio.removeEventListener('error', handleError);
+                reject(new Error('Failed to load audio'));
+              };
+
+              audio.addEventListener('canplay', handleCanPlay);
+              audio.addEventListener('error', handleError);
             });
+
+            setError(null);
+            setIsLoading(false);
+            
+          } catch (error: any) {
+            console.error('Error in audio setup:', error);
+            setError('Error setting up audio: ${error.message}');
+            setIsLoading(false);
           }
-        }
-      };
+        };
 
-      const handleCancel = async () => {
-        await cleanupAudioAndTranscription();
-        navigate("/journal");
-      };
+        initializeAudio();
 
-      if (isLoadingEntry) {
+        return () => {
+          if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current);
+            blobUrlRef.current = null;
+          }
+          if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+          }
+        };
+      }, [audioUrl, isMuted]);
+
+      if (isLoading) {
+        return <div className="text-muted-foreground">Loading audio...</div>;
+      }
+
+      if (error) {
         return (
-          <>
-            <Header />
-            <LoadingState />
-          </>
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         );
       }
 
       return (
-        <div className="min-h-screen bg-background">
-          <Header />
-          <div className="max-w-4xl mx-auto p-6 space-y-8 animate-fade-in">
-            <AutoSave
-              content={content}
-              title={title}
-              audioUrl={audioUrl}
-              isInitializing={false}
-              isSaveInProgress={isSaveInProgress}
-              hasUnsavedChanges={!!(content || title || audioUrl)}
-              onSave={(isAutoSave) => saveEntry(isAutoSave)}
+        <div className="p-4 bg-secondary rounded-lg space-y-4">
+          <div className="flex items-center gap-4">
+            <AudioControls
+              isPlaying={isPlaying}
+              isMuted={isMuted}
+              volume={volume}
+              onPlayPause={togglePlay}
+              onMuteToggle={toggleMute}
+              onVolumeChange={handleVolumeChange}
+              hasEnded={hasEnded}
+              showVolumeSlider={showVolumeSlider}
+              setShowVolumeSlider={setShowVolumeSlider}
             />
-            
-            <div className="space-y-4">
-              <JournalFormHeader 
-                title={title}
-                onTitleChange={setTitle}
-                isRecording={isRecording}
-                isPaused={isPaused}
-                isProcessing={isProcessing}
-                recordingTime={recordingTime}
-                onToggleRecording={toggleRecording}
-                onStopRecording={stopRecording}
-                isExistingEntry={!!id}
-              />
-              
-              <JournalFormContent
-                content={content}
-                transcribedAudio={transcribedAudio}
-                onContentChange={setContent}
-              />
-
-              {audioUrl && (
-                <div className="mt-4">
-                  <AudioPlayer audioUrl={audioUrl} />
-                </div>
-              )}
-
-              <div className={`transition-opacity duration-800 ${
-                showTags ? 'opacity-100' : 'opacity-0'
-              }`}>
-                <TagSelector
-                  selectedTags={selectedTags}
-                  onTagToggle={(tagId) => {
-                    setSelectedTags(prev => 
-                      prev.includes(tagId)
-                        ? prev.filter(id => id !== tagId)
-                        : [...prev, tagId]
-                    );
-                  }}
-                />
-              </div>
-
-              {(content || transcribedAudio) && (
-                <div className="mt-8">
-                  <TransformationManager
-                    entryId={lastSavedId || ''}
-                    entryText={content || transcribedAudio || ''}
-                    onSaveEntry={!lastSavedId ? () => saveEntry(false) : undefined}
-                  />
-                </div>
-              )}
-
-              <SaveControls
-                onCancel={handleCancel}
-                onSave={() => saveEntry(false)}
-                isSaving={isSaving}
-                isTranscriptionPending={isTranscriptionPending}
-              />
-            </div>
+            <AudioProgress
+              progress={progress}
+              duration={totalDuration || duration}
+              currentTime={currentTime}
+              onProgressChange={(values) => handleProgressChange(values[0])}
+            />
           </div>
         </div>
       );
     };
 
-    export default JournalEntryForm;
+    export default AudioPlayer;
+  `
+};
+
+// Analyze the AudioHandler component
+const audioHandlerComponent = {
+  name: 'AudioHandler',
+  code: `
+    import { useState } from "react";
+    import AudioRecorder from "@/components/AudioRecorder";
+    import { supabase } from "@/integrations/supabase/client";
+
+    interface AudioHandlerProps {
+      onAudioSaved: (audioUrl: string) => void;
+      onTranscriptionComplete: (text: string) => void;
+      isRecording?: boolean;
+      isPaused?: boolean;
+      isProcessing?: boolean;
+      onToggleRecording?: () => void;
+      onStopRecording?: () => void;
+    }
+
+    const AudioHandler = ({ 
+      onAudioSaved, 
+      onTranscriptionComplete,
+      isRecording,
+      isPaused,
+      isProcessing,
+      onToggleRecording,
+      onStopRecording
+    }: AudioHandlerProps) => {
+      const [isTranscribing, setIsTranscribing] = useState(false);
+
+      const handleAudioSaved = async (audioFileName: string) => {
+        try {
+          setIsTranscribing(true);
+          console.log('Starting audio transcription process for:', audioFileName);
+          
+          // Save the audio URL first
+          onAudioSaved(audioFileName);
+          
+          console.log('Invoking transcribe-audio function...');
+          const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+            body: { audioUrl: audioFileName }
+          });
+
+          if (error) {
+            console.error('Transcription error:', error);
+            throw error;
+          }
+
+          if (data?.text) {
+            console.log('Transcription completed successfully');
+            onTranscriptionComplete(data.text);
+          } else {
+            console.error('No transcription text received');
+            throw new Error('No transcription text received');
+          }
+        } catch (error) {
+          console.error('Transcription error:', error);
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      return (
+        <div className="relative">
+          <AudioRecorder 
+            onAudioSaved={handleAudioSaved}
+            isRecording={isRecording}
+            isPaused={isPaused}
+            isProcessing={isProcessing}
+            onToggleRecording={onToggleRecording}
+            onStopRecording={onStopRecording}
+          />
+          {isTranscribing && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <span>Transcribing audio...</span>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    export default AudioHandler;
   `
 };
 
 // Trigger the analysis
-analyzeComponent(journalEntryFormComponent.name, journalEntryFormComponent.code).catch(console.error);
+analyzeComponent(audioPlayerComponent.name, audioPlayerComponent.code).catch(console.error);
+analyzeComponent(audioHandlerComponent.name, audioHandlerComponent.code).catch(console.error);
