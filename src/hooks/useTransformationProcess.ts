@@ -20,6 +20,7 @@ export const useTransformationProcess = ({
   const [isTransforming, setIsTransforming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'network' | 'validation' | 'server' | 'general'>('general');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -29,7 +30,9 @@ export const useTransformationProcess = ({
   ) => {
     if (!selectedType || !entryText?.trim()) {
       console.log('Missing required data:', { selectedType, hasText: !!entryText?.trim() });
-      return;
+      setError('Please provide both transformation type and text content.');
+      setErrorType('validation');
+      return false;
     }
 
     setIsTransforming(true);
@@ -52,26 +55,23 @@ export const useTransformationProcess = ({
       }
 
       if (!finalEntryId) {
-        throw new Error('No entry ID available');
+        setError('No entry ID available');
+        setErrorType('validation');
+        return false;
       }
 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error('Authentication required');
+        setError('Authentication required. Please sign in.');
+        setErrorType('validation');
+        return false;
       }
 
       const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
       console.log('Custom prompt found:', customPrompt);
       console.log('Selected transformation type:', selectedType);
       console.log('Starting transformation with entry ID:', finalEntryId);
-
-      console.log('Starting transformation with:', {
-        text: entryText,
-        transformationType: selectedType,
-        customTemplate: customPrompt?.prompt_template,
-        entryId: finalEntryId
-      });
 
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
@@ -82,10 +82,17 @@ export const useTransformationProcess = ({
           }
         });
 
-      if (transformError) throw transformError;
+      if (transformError) {
+        console.error('Transform error:', transformError);
+        setError(transformError.message || 'Failed to transform text');
+        setErrorType('server');
+        return false;
+      }
 
       if (!transformResponse?.transformedText) {
-        throw new Error('No transformed text received');
+        setError('No transformed text received');
+        setErrorType('server');
+        return false;
       }
 
       console.log('Transform successful, saving to database...', {
@@ -103,7 +110,12 @@ export const useTransformationProcess = ({
           transformation_type: selectedType,
         });
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        console.error('Save error:', saveError);
+        setError(saveError.message);
+        setErrorType('server');
+        return false;
+      }
 
       console.log('Transformation saved successfully');
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
@@ -115,7 +127,9 @@ export const useTransformationProcess = ({
       return true;
     } catch (err) {
       console.error('Error in transformation process:', err);
+      const isNetworkError = err instanceof Error && err.message.includes('network');
       setError(err instanceof Error ? err.message : 'Failed to transform text');
+      setErrorType(isNetworkError ? 'network' : 'server');
       toast({
         title: "Error",
         description: "Failed to transform text. Please try again.",
@@ -132,6 +146,7 @@ export const useTransformationProcess = ({
     isTransforming,
     isSaving,
     error,
+    errorType,
     handleTransform
   };
 };

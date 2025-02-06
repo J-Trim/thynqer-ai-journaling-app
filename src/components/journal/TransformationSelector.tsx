@@ -31,7 +31,8 @@ export const TransformationSelector = ({
   const { 
     isTransforming, 
     isSaving, 
-    error, 
+    error,
+    errorType, 
     handleTransform 
   } = useTransformationProcess({ entryId, entryText, onSaveEntry });
 
@@ -41,7 +42,7 @@ export const TransformationSelector = ({
       const success = await handleTransform(selectedType, customPrompts);
       if (success) {
         console.log('Transformation completed successfully');
-        setLastTransformation(null); // Will be updated via query invalidation
+        setLastTransformation(null);
         setLastTransformationType(selectedType);
         setSelectedType("");
         setIsDialogOpen(false);
@@ -77,8 +78,10 @@ export const TransformationSelector = ({
 
       <TransformationResult
         error={error}
+        errorType={errorType}
         lastTransformation={lastTransformation}
         lastTransformationType={lastTransformationType}
+        isLoading={isTransforming || isSaving}
       />
 
       <TransformationsList entryId={entryId} />
