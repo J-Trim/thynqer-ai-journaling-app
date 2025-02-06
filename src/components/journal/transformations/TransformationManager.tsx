@@ -98,3 +98,4 @@ export const TransformationManager = ({
       <TransformationError error={error} />
     </div>
   );
+};
