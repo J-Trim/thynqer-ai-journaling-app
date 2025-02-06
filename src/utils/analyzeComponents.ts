@@ -1,45 +1,34 @@
 import JournalEntry from "@/components/JournalEntry";
 import JournalEntryForm from "@/components/JournalEntryForm";
+import { supabase } from "@/integrations/supabase/client";
 
 export const analyzeJournalComponents = async () => {
   try {
     console.log('Starting code analysis...');
     
-    // Get the component source code using toString()
+    // Get the component source code
     const journalEntryCode = JournalEntry.toString();
     const journalEntryFormCode = JournalEntryForm.toString();
     
-    // Analyze JournalEntry component
-    const journalEntryAnalysis = await (window as any).gpt4o.complete(
-      `You are an expert React code analyzer. Analyze the following React component for:
-      1. Complexity (state management, effects, handlers)
-      2. Performance considerations
-      3. Best practices
-      4. Potential improvements
-      Provide a structured analysis with specific recommendations.`,
-      `Component: JournalEntry
-      
-      Code:
-      ${journalEntryCode}`
-    );
-    
-    console.log('JournalEntry Analysis:', journalEntryAnalysis);
+    const analyzeComponent = async (componentName: string, code: string) => {
+      const { data, error } = await supabase.functions.invoke('analyze-code', {
+        body: { componentName, code }
+      });
 
-    // Analyze JournalEntryForm component
-    const journalEntryFormAnalysis = await (window as any).gpt4o.complete(
-      `You are an expert React code analyzer. Analyze the following React component for:
-      1. Complexity (state management, effects, handlers)
-      2. Performance considerations
-      3. Best practices
-      4. Potential improvements
-      Provide a structured analysis with specific recommendations.`,
-      `Component: JournalEntryForm
-      
-      Code:
-      ${journalEntryFormCode}`
-    );
-    
-    console.log('JournalEntryForm Analysis:', journalEntryFormAnalysis);
+      if (error) {
+        console.error(`Error analyzing ${componentName}:`, error);
+        throw error;
+      }
+
+      console.log(`${componentName} Analysis:`, data.analysis);
+      return data.analysis;
+    };
+
+    // Analyze both components
+    const [journalEntryAnalysis, journalEntryFormAnalysis] = await Promise.all([
+      analyzeComponent('JournalEntry', journalEntryCode),
+      analyzeComponent('JournalEntryForm', journalEntryFormCode)
+    ]);
 
     return {
       journalEntry: journalEntryAnalysis,
@@ -51,5 +40,5 @@ export const analyzeJournalComponents = async () => {
   }
 };
 
-// Run the analysis immediately
+// Run the analysis
 analyzeJournalComponents().catch(console.error);

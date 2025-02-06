@@ -1,111 +1,91 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.0'
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-interface AnalysisResult {
-  complexity: {
-    stateCount: number;
-    effectCount: number;
-    handlerCount: number;
-    lineCount: number;
-  };
-  patterns: {
-    usesCustomHooks: boolean;
-    usesMemo: boolean;
-    usesCallback: boolean;
-    usesContext: boolean;
-  };
-  suggestions: string[];
-}
+};
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { code, componentName } = await req.json();
-    
-    if (!code || !componentName) {
-      throw new Error('Missing required fields: code and componentName');
-    }
-
+    const { componentName, code } = await req.json();
     console.log(`Analyzing component: ${componentName}`);
 
-    // Basic analysis
-    const analysis: AnalysisResult = {
-      complexity: {
-        stateCount: (code.match(/useState/g) || []).length,
-        effectCount: (code.match(/useEffect/g) || []).length,
-        handlerCount: (code.match(/handle[A-Z]/g) || []).length,
-        lineCount: code.split('\n').length,
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('Missing OpenAI API key');
+    }
+
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceRole);
+
+    // Call OpenAI API for analysis
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
       },
-      patterns: {
-        usesCustomHooks: /use[A-Z]/.test(code),
-        usesMemo: /useMemo/.test(code),
-        usesCallback: /useCallback/.test(code),
-        usesContext: /useContext/.test(code),
-      },
-      suggestions: []
-    };
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert React code analyzer. Analyze the code for: 1) Complexity 2) Performance considerations 3) Best practices 4) Potential improvements'
+          },
+          {
+            role: 'user',
+            content: `Analyze this React component:\n\n${code}`
+          }
+        ],
+      }),
+    });
 
-    // Generate suggestions based on analysis
-    if (analysis.complexity.stateCount > 5) {
-      analysis.suggestions.push('Consider breaking down component or using reducer for complex state');
-    }
-    if (analysis.complexity.effectCount > 3) {
-      analysis.suggestions.push('High number of effects detected. Consider consolidating related effects');
-    }
-    if (analysis.complexity.lineCount > 200) {
-      analysis.suggestions.push('Component is quite large. Consider splitting into smaller components');
-    }
-    if (!analysis.patterns.usesMemo && analysis.complexity.lineCount > 100) {
-      analysis.suggestions.push('Large component might benefit from memoization');
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${await response.text()}`);
     }
 
-    // Store analysis in database
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const data = await response.json();
+    const analysis = data.choices[0].message.content;
 
-    const { error: insertError } = await supabaseClient
+    console.log('Analysis completed, storing results...');
+
+    // Store analysis in the database
+    const { error: dbError } = await supabase
       .from('code_analysis')
-      .insert({
-        component_name: componentName,
-        analysis_result: analysis,
-      });
+      .insert([
+        {
+          component_name: componentName,
+          analysis_result: { analysis },
+          analyzed_at: new Date().toISOString()
+        }
+      ]);
 
-    if (insertError) {
-      throw insertError;
+    if (dbError) {
+      throw new Error(`Database error: ${dbError.message}`);
     }
-
-    console.log(`Analysis completed for ${componentName}`);
 
     return new Response(
-      JSON.stringify(analysis),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        } 
+      JSON.stringify({ analysis }),
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
+
   } catch (error) {
     console.error('Error in analyze-code function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
-        status: 400,
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }
