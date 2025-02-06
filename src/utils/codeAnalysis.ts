@@ -11,8 +11,9 @@ Provide a structured analysis with specific recommendations.`;
 
     const userPrompt = `Component name: ${componentName}\n\nCode:\n${code}`;
 
-    // Use GPT-4o directly for analysis
-    const analysis = await gpt4o.complete(systemPrompt, userPrompt);
+    // Since we're in a browser environment, we can use the window object
+    // which has gpt4o already loaded and available globally
+    const analysis = await (window as any).gpt4o.complete(systemPrompt, userPrompt);
     console.log('Analysis completed:', analysis);
     return analysis;
   } catch (error) {
