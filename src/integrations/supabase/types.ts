@@ -11,22 +11,22 @@ export type Database = {
     Tables: {
       code_analysis: {
         Row: {
+          id: string
+          component_name: string
           analysis_result: Json
           analyzed_at: string | null
-          component_name: string
-          id: string
         }
         Insert: {
+          id?: string
+          component_name: string
           analysis_result: Json
           analyzed_at?: string | null
-          component_name: string
-          id?: string
         }
         Update: {
+          id?: string
+          component_name?: string
           analysis_result?: Json
           analyzed_at?: string | null
-          component_name?: string
-          id?: string
         }
         Relationships: []
       }
