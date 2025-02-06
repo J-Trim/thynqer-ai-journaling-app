@@ -108,11 +108,9 @@ export const TransformationManager = ({
     setActiveGroup(open ? group : null);
   }, [setIsDialogOpen, setActiveGroup]);
 
-  const handleTransformClick = useCallback(() => {
-    if (selectedType) {
-      handleTransform(selectedType);
-    }
-  }, [selectedType, handleTransform]);
+  const handleTransformClick = useCallback(async (type: ValidTransformation) => {
+    return handleTransform(type);
+  }, [handleTransform]);
 
   return (
     <div className="space-y-6">
