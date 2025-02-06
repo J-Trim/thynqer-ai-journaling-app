@@ -124,7 +124,7 @@ export const TransformationManager = ({
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               customPrompts={customPrompts}
-              onTransform={() => handleTransform(selectedType)}
+              onTransform={() => selectedType && handleTransform(selectedType)}
               isTransforming={isTransforming}
               isSaving={isSaving}
             >
