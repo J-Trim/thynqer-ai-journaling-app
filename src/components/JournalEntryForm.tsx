@@ -7,6 +7,7 @@ import { useJournalSave } from "@/hooks/useJournalSave";
 import { supabase } from "@/integrations/supabase/client";
 import { FormStateProvider, useFormState } from "./journal/form/FormStateProvider";
 import FormContent from "./journal/form/FormContent";
+import AudioTranscriptionHandler from "./journal/form/AudioTranscriptionHandler";
 
 const JournalEntryContent = () => {
   const navigate = useNavigate();

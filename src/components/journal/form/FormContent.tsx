@@ -20,7 +20,9 @@ const FormContent: React.FC<FormContentProps> = ({
 }) => {
   const {
     title,
+    setTitle,
     content,
+    setContent,
     transcribedAudio,
     audioUrl,
     isTranscriptionPending,
@@ -40,11 +42,15 @@ const FormContent: React.FC<FormContentProps> = ({
 
   return (
     <div className="space-y-4">
-      <JournalFormHeader title={title} />
+      <JournalFormHeader 
+        title={title}
+        onTitleChange={setTitle}
+      />
       
       <JournalFormContent
         content={content}
         transcribedAudio={transcribedAudio}
+        onContentChange={setContent}
       />
 
       {audioUrl && (
