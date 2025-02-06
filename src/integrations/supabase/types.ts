@@ -51,6 +51,27 @@ export type Database = {
         }
         Relationships: []
       }
+      default_prompts: {
+        Row: {
+          created_at: string | null
+          id: string
+          prompt_template: string
+          transformation_type: Database["public"]["Enums"]["valid_transformation"]
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          prompt_template: string
+          transformation_type: Database["public"]["Enums"]["valid_transformation"]
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          prompt_template?: string
+          transformation_type?: Database["public"]["Enums"]["valid_transformation"]
+        }
+        Relationships: []
+      }
       enhanced_prompts: {
         Row: {
           created_at: string | null
