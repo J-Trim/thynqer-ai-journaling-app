@@ -49,7 +49,7 @@ export const TransformationManager = ({
   const handleTransform = useCallback(async (type: ValidTransformation) => {
     if (!type || !entryText?.trim()) {
       console.log('Missing required data:', { type, hasText: !!entryText?.trim() });
-      return;
+      return false;
     }
 
     setIsTransforming(true);
@@ -108,6 +108,12 @@ export const TransformationManager = ({
     setActiveGroup(open ? group : null);
   }, [setIsDialogOpen, setActiveGroup]);
 
+  const handleTransformClick = useCallback(() => {
+    if (selectedType) {
+      handleTransform(selectedType);
+    }
+  }, [selectedType, handleTransform]);
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
@@ -127,14 +133,14 @@ export const TransformationManager = ({
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               customPrompts={customPrompts}
-              onTransform={handleTransform}
+              onTransform={handleTransformClick}
               isTransforming={isTransforming}
               isSaving={isSaving}
             >
               <TransformationForm
                 selectedType={selectedType}
                 onTypeChange={setSelectedType}
-                onTransform={handleTransform}
+                onTransform={handleTransformClick}
                 isTransforming={isTransforming}
                 isSaving={isSaving}
                 customPrompts={customPrompts}
