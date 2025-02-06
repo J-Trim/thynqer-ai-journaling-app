@@ -33,7 +33,7 @@ const FormContent: React.FC<FormContentProps> = ({
   } = useFormState();
 
   const handleTagToggle = (tagId: string) => {
-    setSelectedTags(prev => 
+    setSelectedTags((prev: string[]) => 
       prev.includes(tagId)
         ? prev.filter(id => id !== tagId)
         : [...prev, tagId]
