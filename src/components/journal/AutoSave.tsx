@@ -1,11 +1,6 @@
-import { useEffect } from 'react';
-
-interface JournalEntry {
-  id: string;
-  title: string;
-  text: string;
-  audio_url: string | null;
-}
+import { useEffect, useRef } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Save } from "lucide-react";
 
 interface AutoSaveProps {
   content: string;
@@ -14,8 +9,7 @@ interface AutoSaveProps {
   isInitializing: boolean;
   isSaveInProgress: boolean;
   hasUnsavedChanges: boolean;
-  onSave: (isAutoSave: boolean) => Promise<JournalEntry | null>;
-  autoSaveDelay?: number;
+  onSave: (isAutoSave: boolean) => void;
 }
 
 const AutoSave = ({
@@ -26,25 +20,43 @@ const AutoSave = ({
   isSaveInProgress,
   hasUnsavedChanges,
   onSave,
-  autoSaveDelay = 30000 // Increased to 30 seconds
 }: AutoSaveProps) => {
+  const timeoutRef = useRef<number>();
+  const { toast } = useToast();
+
   useEffect(() => {
-    if (isInitializing || isSaveInProgress || !hasUnsavedChanges) return;
+    if (isInitializing || !hasUnsavedChanges) {
+      return;
+    }
 
-    const timeout = setTimeout(async () => {
-      if (content || title || audioUrl) {
-        console.log('Auto-saving journal entry...');
-        const savedEntry = await onSave(true);
-        if (savedEntry) {
-          console.log('Auto-save successful');
-        }
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    // Set a new timeout for 30 seconds
+    timeoutRef.current = window.setTimeout(() => {
+      console.log('AutoSave: Initiating auto-save...');
+      onSave(true);
+      toast({
+        description: "Entry saved automatically",
+      });
+    }, 30000); // Increased to 30 seconds
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
       }
-    }, autoSaveDelay);
+    };
+  }, [content, title, audioUrl, isInitializing, hasUnsavedChanges, onSave]);
 
-    return () => clearTimeout(timeout);
-  }, [content, title, audioUrl, isInitializing, isSaveInProgress, hasUnsavedChanges, onSave, autoSaveDelay]);
-
-  return null;
+  return (
+    <div className="fixed bottom-4 right-4 flex items-center gap-2 text-sm text-muted-foreground">
+      <Save className="h-4 w-4" />
+      {isSaveInProgress ? "Saving..." : "Saved"}
+    </div>
+  );
 };
 
 export default AutoSave;

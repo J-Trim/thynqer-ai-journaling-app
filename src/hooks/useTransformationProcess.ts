@@ -42,7 +42,7 @@ export const useTransformationProcess = ({
       let finalEntryId = entryId;
       
       if (!entryId && onSaveEntry) {
-        console.log('No entry ID found, forcing save before transformation...');
+        console.log('No entry ID found, saving entry first...');
         setIsSaving(true);
         const savedEntry = await onSaveEntry();
         
@@ -65,10 +65,9 @@ export const useTransformationProcess = ({
       const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
       console.log('Custom prompt found:', customPrompt);
       console.log('Selected transformation type:', selectedType);
-      console.log('Starting transformation with entry ID:', finalEntryId);
       console.log('Text to transform:', entryText);
 
-      const { data: transformResponse, error: transformError } = await supabase.functions
+      const { data, error: transformError } = await supabase.functions
         .invoke('transform-text', {
           body: { 
             text: entryText, 
@@ -84,7 +83,7 @@ export const useTransformationProcess = ({
         return false;
       }
 
-      if (!transformResponse?.transformedText) {
+      if (!data?.transformedText) {
         setError('No transformed text received');
         setErrorType('server');
         return false;
@@ -101,7 +100,7 @@ export const useTransformationProcess = ({
         .insert({
           entry_id: finalEntryId,
           user_id: session.user.id,
-          transformed_text: transformResponse.transformedText,
+          transformed_text: data.transformedText,
           transformation_type: selectedType,
         });
 

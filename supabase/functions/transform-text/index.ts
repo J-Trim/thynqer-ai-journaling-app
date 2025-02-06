@@ -18,39 +18,39 @@ const getSystemPrompt = (transformationType: string, customTemplate?: string) =>
   }
 
   const prompts: Record<string, string> = {
-    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights.`,
-    'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Provide ONLY the summary without any additional commentary.',
-    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection. Provide ONLY the emotional analysis without any additional commentary.',
-    'Daily Affirmation': 'Transform the key positive elements into uplifting affirmations. Provide ONLY the affirmations without any additional commentary.',
-    'Action Plan': 'Convert the content into a structured action plan with clear, achievable steps. Provide ONLY the action plan without any additional commentary.',
-    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness. Provide ONLY the reflection without any additional commentary.',
-    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals. Provide ONLY the goals without any additional commentary.',
-    'Short Paraphrase': 'Provide a concise paraphrase of the main content. Provide ONLY the paraphrase without any additional commentary.',
-    'Motivational Snippet': 'Transform this content into a short, powerful motivational message that inspires action and positive change.',
-    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth and learning opportunities.',
+    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights. Focus on key themes, patterns, and underlying meanings.`,
+    'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Be concise and direct.',
+    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection focusing on the feelings expressed.',
+    'Daily Affirmation': 'Transform the key positive elements into uplifting, personal affirmations.',
+    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness and acceptance.',
+    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals.',
+    'Short Paraphrase': 'Provide a concise paraphrase that captures the essence of the content.',
+    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth.',
     'Professional': 'Transform this text into professional, business-oriented insights.',
-    'Social Media': 'Transform this content into engaging social media content, maintaining the core message while making it more shareable.'
+    'Social Media': 'Transform this content into engaging social media content while maintaining the core message.'
   };
 
   return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent.';
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    if (!Deno.env.get('DEEPSEEK_API_KEY')) {
+    const apiKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!apiKey) {
       console.error('DEEPSEEK_API_KEY not configured');
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
-    const requestData = await req.json() as TransformRequest;
+    const requestData: TransformRequest = await req.json();
     const { text, transformationType, customTemplate } = requestData;
 
-    if (!text || !transformationType) {
-      console.error('Missing required fields:', { hasText: !!text, hasType: !!transformationType });
+    if (!text?.trim() || !transformationType) {
+      console.error('Missing required fields:', { hasText: !!text?.trim(), hasType: !!transformationType });
       throw new Error('Missing required fields');
     }
 
@@ -67,7 +67,7 @@ serve(async (req) => {
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
