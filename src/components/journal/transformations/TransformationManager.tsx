@@ -108,9 +108,13 @@ export const TransformationManager = ({
     setActiveGroup(open ? group : null);
   }, [setIsDialogOpen, setActiveGroup]);
 
-  const handleTransformClick = useCallback((type: ValidTransformation) => {
-    return handleTransform(type);
-  }, [handleTransform]);
+  // Create a wrapper function that matches the expected signature
+  const handleTransformWrapper = useCallback(() => {
+    if (selectedType) {
+      return handleTransform(selectedType);
+    }
+    return Promise.resolve(false);
+  }, [handleTransform, selectedType]);
 
   return (
     <div className="space-y-6">
@@ -131,14 +135,14 @@ export const TransformationManager = ({
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               customPrompts={customPrompts}
-              onTransform={handleTransformClick}
+              onTransform={handleTransformWrapper}
               isTransforming={isTransforming}
               isSaving={isSaving}
             >
               <TransformationForm
                 selectedType={selectedType}
                 onTypeChange={setSelectedType}
-                onTransform={handleTransformClick}
+                onTransform={handleTransform}
                 isTransforming={isTransforming}
                 isSaving={isSaving}
                 customPrompts={customPrompts}
