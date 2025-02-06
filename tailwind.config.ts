@@ -32,6 +32,7 @@ export default {
           DEFAULT: "#3BB873",
           hover: "#35A367",
           light: "#48C285",
+          focus: "#2D8A56", // Darker shade for focus states
         },
         secondary: {
           DEFAULT: "#F2F4F5",
@@ -40,6 +41,7 @@ export default {
         accent: {
           DEFAULT: "#3BB873",
           hover: "#35A367",
+          focus: "#2D8A56", // Darker shade for focus states
         },
         text: {
           DEFAULT: "#1A1A1A",
@@ -70,6 +72,7 @@ export default {
         neumorph: '8px 8px 16px var(--shadow-base), -8px -8px 16px var(--shadow-highlight)',
         'neumorph-hover': '6px 6px 12px var(--shadow-base), -6px -6px 12px var(--shadow-highlight)',
         'neumorph-active': 'inset 4px 4px 8px var(--shadow-base), inset -4px -4px 8px var(--shadow-highlight)',
+        'neumorph-focus': '0 0 0 2px var(--background), 0 0 0 4px var(--ring)',
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -116,4 +119,3 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-
