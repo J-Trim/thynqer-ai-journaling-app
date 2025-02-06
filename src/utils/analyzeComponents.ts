@@ -1,7 +1,6 @@
 import { analyzeComponent } from './analysis/analyzeComponent';
 import { audioPlayerComponent, audioHandlerComponent } from './analysis/components';
 
-// Trigger the analysis
 export const runComponentAnalysis = async () => {
   try {
     console.log('Starting component analysis...');
