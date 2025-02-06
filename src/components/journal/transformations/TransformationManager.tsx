@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { TransformationButton } from "./TransformationButton";
@@ -42,7 +42,11 @@ export const TransformationManager = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const handleTransform = async (type: ValidTransformation) => {
+  // Memoize the transformation types to prevent unnecessary re-renders
+  const transformationTypes = useMemo(() => TRANSFORMATION_TYPES, []);
+
+  // Memoize the handle transform callback
+  const handleTransform = useCallback(async (type: ValidTransformation) => {
     if (!type || !entryText?.trim()) {
       console.log('Missing required data:', { type, hasText: !!entryText?.trim() });
       return;
@@ -82,6 +86,7 @@ export const TransformationManager = ({
 
       setIsDialogOpen(false);
       setActiveGroup(null);
+      return true;
     } catch (err) {
       console.error('Error in transformation process:', err);
       setError(err instanceof Error ? err.message : 'Failed to transform text');
@@ -90,27 +95,31 @@ export const TransformationManager = ({
         description: "Failed to transform text. Please try again.",
         variant: "destructive",
       });
+      return false;
     } finally {
       setIsTransforming(false);
       setIsSaving(false);
     }
-  };
+  }, [entryId, entryText, onSaveEntry, queryClient, toast, setIsDialogOpen, setActiveGroup, setError, setIsTransforming, setIsSaving, customPrompts]);
+
+  // Memoize the dialog open change handler
+  const handleDialogOpenChange = useCallback((open: boolean, group: string) => {
+    setIsDialogOpen(open);
+    setActiveGroup(open ? group : null);
+  }, [setIsDialogOpen, setActiveGroup]);
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
       
       <div className="flex justify-center gap-8 mb-8">
-        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon }]) => (
+        {Object.entries(transformationTypes).map(([group, { icon: Icon }]) => (
           <TransformationButton
             key={group}
             group={group}
             Icon={Icon}
             isDialogOpen={isDialogOpen && activeGroup === group}
-            onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              setActiveGroup(open ? group : null);
-            }}
+            onOpenChange={(open) => handleDialogOpenChange(open, group)}
           >
             <TransformationDialog
               group={group}
@@ -118,14 +127,14 @@ export const TransformationManager = ({
               selectedType={selectedType}
               onTypeChange={setSelectedType}
               customPrompts={customPrompts}
-              onTransform={() => selectedType && handleTransform(selectedType)}
+              onTransform={handleTransform}
               isTransforming={isTransforming}
               isSaving={isSaving}
             >
               <TransformationForm
                 selectedType={selectedType}
                 onTypeChange={setSelectedType}
-                onTransform={() => selectedType && handleTransform(selectedType)}
+                onTransform={handleTransform}
                 isTransforming={isTransforming}
                 isSaving={isSaving}
                 customPrompts={customPrompts}

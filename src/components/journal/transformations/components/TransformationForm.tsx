@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Database } from "@/integrations/supabase/types";
@@ -8,14 +8,14 @@ type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 interface TransformationFormProps {
   selectedType: ValidTransformation | "";
   onTypeChange: (type: ValidTransformation | "") => void;
-  onTransform: () => void;
+  onTransform: (type: ValidTransformation) => Promise<boolean>;
   isTransforming: boolean;
   isSaving: boolean;
   customPrompts: Array<{ prompt_name: string; prompt_template: string; }>;
   activeGroup: string | null;
 }
 
-export const TransformationForm = ({
+export const TransformationForm = memo(({
   selectedType,
   onTypeChange,
   onTransform,
@@ -24,6 +24,12 @@ export const TransformationForm = ({
   customPrompts,
   activeGroup
 }: TransformationFormProps) => {
+  const handleTransform = () => {
+    if (selectedType) {
+      onTransform(selectedType);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Select value={selectedType} onValueChange={(value: ValidTransformation) => onTypeChange(value)}>
@@ -46,7 +52,7 @@ export const TransformationForm = ({
 
       {selectedType && (
         <Button 
-          onClick={onTransform} 
+          onClick={handleTransform} 
           disabled={isTransforming || !selectedType || isSaving}
           className="w-full"
           aria-label={isTransforming ? "Transforming..." : "Transform text"}
@@ -56,4 +62,8 @@ export const TransformationForm = ({
       )}
     </div>
   );
-};
+});
+
+TransformationForm.displayName = 'TransformationForm';
+
+export default TransformationForm;
