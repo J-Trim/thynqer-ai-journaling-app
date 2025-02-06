@@ -23,18 +23,25 @@ export const analyzeCode = async (code: string) => {
 
 export const getLatestAnalysis = async (componentName: string) => {
   try {
+    console.log('Fetching latest analysis for:', componentName);
+    
     const { data, error } = await supabase
       .from('code_analysis')
-      .select('*')
+      .select()
       .eq('component_name', componentName)
       .order('analyzed_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching analysis:', error);
+      throw error;
+    }
+    
+    console.log('Retrieved analysis:', data);
     return data;
   } catch (error) {
-    console.error('Error fetching analysis:', error);
+    console.error('Error in getLatestAnalysis:', error);
     throw error;
   }
 };

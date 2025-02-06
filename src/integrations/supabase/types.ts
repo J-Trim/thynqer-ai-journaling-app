@@ -9,6 +9,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      code_analysis: {
+        Row: {
+          analysis_result: Json
+          analyzed_at: string | null
+          component_name: string
+          id: string
+        }
+        Insert: {
+          analysis_result: Json
+          analyzed_at?: string | null
+          component_name: string
+          id?: string
+        }
+        Update: {
+          analysis_result?: Json
+          analyzed_at?: string | null
+          component_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
       custom_prompts: {
         Row: {
           id: string
