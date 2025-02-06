@@ -1,6 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,41 +8,170 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { componentName, code } = await req.json();
-    console.log(`Analyzing component ${componentName}...`);
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('Missing OpenAI API key');
+    }
 
-    const prompt = `Analyze this React component named ${componentName}:
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase credentials');
+    }
 
-${code}
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-Provide a detailed analysis focusing on:
-1. Component structure and organization
-2. Performance considerations
-3. TypeScript usage and type safety
-4. State management
-5. Error handling
-6. UI/UX patterns
-7. Accessibility
-8. Testing considerations
+    const component = `
+    import React, { useState, useEffect, useRef } from "react";
+    import { Card, CardContent } from "@/components/ui/card";
+    import AudioPlayer from "./journal/AudioPlayer";
+    import EntryHeader from "./journal/entry/EntryHeader";
+    import DeleteDialog from "./journal/entry/DeleteDialog";
+    import { useJournalDelete } from "@/hooks/useJournalDelete";
 
-Format your response as a JSON object with these fields:
-- complexity: Assess code complexity and maintainability
-- performance: Identify potential performance issues or optimizations
-- bestPractices: Evaluate adherence to React best practices
-- improvements: Suggest specific improvements
+    interface JournalEntryProps {
+      id: string;
+      title: string;
+      date: string;
+      preview: string;
+      audioUrl?: string | null;
+      hasBeenEdited?: boolean;
+      onClick?: () => void;
+      onDelete?: () => void;
+    }
 
-Keep each field's content clear and actionable.`;
+    const JournalEntry = React.memo(({ 
+      id, 
+      title, 
+      date, 
+      preview, 
+      audioUrl,
+      hasBeenEdited, 
+      onClick, 
+      onDelete 
+    }: JournalEntryProps) => {
+      const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+      const { showDeleteDialog, setShowDeleteDialog, handleDelete } = useJournalDelete(onDelete);
+      const cardRef = useRef<HTMLDivElement>(null);
+      const resizeObserver = useRef<ResizeObserver | null>(null);
 
-    console.log('Sending analysis request to GPT-4O...');
-    const openAiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      useEffect(() => {
+        if (cardRef.current) {
+          resizeObserver.current = new ResizeObserver((entries) => {
+            console.log(\`Entry \${id} resized:\`, entries[0].contentRect);
+          });
+
+          resizeObserver.current.observe(cardRef.current);
+        }
+
+        return () => {
+          if (resizeObserver.current) {
+            resizeObserver.current.disconnect();
+            resizeObserver.current = null;
+          }
+        };
+      }, [id]);
+
+      console.log(\`JournalEntry \${id} rendered with:\`, {
+        title,
+        preview,
+        audioUrl,
+        hasBeenEdited,
+        previewLength: preview?.length || 0,
+        isPreviewEmpty: !preview || preview.trim() === ''
+      });
+
+      const handleDeleteClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setShowDeleteDialog(true);
+      };
+
+      const handleAudioClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log(\`Audio button clicked for entry \${id}:\`, {
+          audioUrl,
+          currentShowAudioPlayer: showAudioPlayer,
+          willShow: !showAudioPlayer
+        });
+        setShowAudioPlayer(!showAudioPlayer);
+      };
+
+      const confirmDelete = async () => {
+        await handleDelete(id);
+      };
+
+      const displayPreview = preview?.trim() 
+        ? preview 
+        : "No content available";
+
+      return (
+        <>
+          <Card 
+            ref={cardRef}
+            className="hover:shadow-md transition-shadow duration-200 cursor-pointer bg-white relative"
+            onClick={onClick}
+            role="article"
+            aria-label={\`Journal entry: \${title || "Untitled Entry"}\`}
+          >
+            <EntryHeader
+              title={title}
+              date={date}
+              hasBeenEdited={hasBeenEdited}
+              hasAudio={!!audioUrl}
+              onAudioClick={handleAudioClick}
+              onDeleteClick={handleDeleteClick}
+            />
+            <CardContent>
+              <p className="text-text-muted line-clamp-2">{displayPreview}</p>
+              {showAudioPlayer && audioUrl && (
+                <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                  <AudioPlayer audioUrl={audioUrl} />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <DeleteDialog
+            isOpen={showDeleteDialog}
+            onClose={() => setShowDeleteDialog(false)}
+            onConfirm={confirmDelete}
+          />
+        </>
+      );
+    });
+
+    JournalEntry.displayName = "JournalEntry";
+
+    export default JournalEntry;
+    `;
+
+    const prompt = `Analyze this React JournalEntry component and provide detailed feedback in JSON format. Focus on:
+1. Code complexity and potential simplifications
+2. Performance optimizations
+3. React best practices and potential improvements
+4. Accessibility considerations
+5. State management
+6. Error handling
+7. Component organization
+
+Format your response as a JSON object with these exact keys:
+{
+  "complexity": string,
+  "performance": string,
+  "bestPractices": string,
+  "improvements": string[]
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -50,44 +179,38 @@ Keep each field's content clear and actionable.`;
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert React code analyzer focusing on TypeScript, performance, and best practices. Provide detailed, actionable feedback.' 
+            content: 'You are an expert React developer analyzing code for improvements. Provide detailed, actionable feedback.' 
           },
-          { role: 'user', content: prompt }
+          { 
+            role: 'user', 
+            content: prompt + "\n\nComponent code:\n" + component
+          }
         ],
-        response_format: { type: "json_object" }
       }),
     });
 
-    if (!openAiResponse.ok) {
-      console.error('OpenAI API error:', await openAiResponse.text());
-      throw new Error(`OpenAI API error: ${openAiResponse.statusText}`);
+    if (!response.ok) {
+      throw new Error('OpenAI API error: ' + await response.text());
     }
 
-    const data = await openAiResponse.json();
-    console.log('Received analysis from GPT-4O:', data);
+    const data = await response.json();
+    const analysis = data.choices[0].message.content;
     
-    const analysis = JSON.parse(data.choices[0].message.content);
+    console.log('Analysis received:', analysis);
 
     // Store the analysis in the database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseServiceRole);
-
-    console.log('Storing analysis in database...');
-    const { error: insertError } = await supabase
+    const { error: dbError } = await supabase
       .from('code_analysis')
-      .insert([{
-        component_name: componentName,
-        analysis_result: analysis,
-      }]);
+      .insert({
+        component_name: 'JournalEntry',
+        analysis_result: JSON.parse(analysis)
+      });
 
-    if (insertError) {
-      console.error('Error storing analysis:', insertError);
-      throw insertError;
+    if (dbError) {
+      throw new Error('Database error: ' + dbError.message);
     }
 
-    console.log('Analysis stored successfully');
-    return new Response(JSON.stringify({ analysis }), {
+    return new Response(analysis, {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
