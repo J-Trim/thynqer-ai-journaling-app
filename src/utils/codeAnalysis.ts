@@ -1,29 +1,29 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const analyzeCode = async (code: string) => {
+export const analyzeCode = async (code: string, componentName: string) => {
   try {
-    console.log('Sending code for analysis...');
+    console.log(`Starting code analysis for ${componentName}...`);
     
     const { data, error } = await supabase.functions.invoke('analyze-code', {
-      body: { code }
+      body: { code, componentName }
     });
 
     if (error) {
-      console.error('Error analyzing code:', error);
+      console.error('Analysis error:', error);
       throw error;
     }
 
-    console.log('Analysis results:', data);
-    return data.analysis;
+    console.log('Analysis completed:', data);
+    return data;
   } catch (error) {
-    console.error('Failed to analyze code:', error);
+    console.error('Error analyzing code:', error);
     throw error;
   }
 };
 
 export const getLatestAnalysis = async (componentName: string) => {
   try {
-    console.log('Fetching latest analysis for:', componentName);
+    console.log(`Fetching latest analysis for ${componentName}...`);
     
     const { data, error } = await supabase
       .from('code_analysis')
@@ -37,11 +37,11 @@ export const getLatestAnalysis = async (componentName: string) => {
       console.error('Error fetching analysis:', error);
       throw error;
     }
-    
-    console.log('Retrieved analysis:', data);
+
+    console.log('Latest analysis:', data);
     return data;
   } catch (error) {
-    console.error('Error in getLatestAnalysis:', error);
+    console.error('Error getting latest analysis:', error);
     throw error;
   }
 };
