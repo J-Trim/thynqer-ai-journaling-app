@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export const analyzeCode = async (code: string, componentName: string) => {
   try {
     console.log(`Starting code analysis for ${componentName}...`);
@@ -13,24 +11,10 @@ Provide a structured analysis with specific recommendations.`;
 
     const userPrompt = `Component name: ${componentName}\n\nCode:\n${code}`;
 
-    // Store analysis in database
-    const { data: analysisData, error: insertError } = await supabase
-      .from('code_analysis')
-      .insert({
-        component_name: componentName,
-        analysis_result: { systemPrompt, userPrompt },
-        analyzed_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error storing analysis:', insertError);
-      throw insertError;
-    }
-
-    console.log('Analysis completed and stored:', analysisData);
-    return analysisData;
+    // Use GPT-4o directly for analysis
+    const analysis = await gpt4o.complete(systemPrompt, userPrompt);
+    console.log('Analysis completed:', analysis);
+    return analysis;
   } catch (error) {
     console.error('Error analyzing code:', error);
     throw error;
