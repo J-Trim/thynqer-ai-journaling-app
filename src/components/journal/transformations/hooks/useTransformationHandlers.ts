@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -58,31 +59,35 @@ export const useTransformationHandlers = ({
       }
 
       const customPrompt = customPrompts.find(p => p.prompt_name === type);
-      const url = 'https://zacanxuybdaejwjagwwe.functions.supabase.co/transform-text';
       
-      console.log('Sending transformation request with:', {
+      console.log('Starting transformation with:', {
         type,
         textLength: entryText.length,
         hasCustomPrompt: !!customPrompt
       });
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+      const { data, error: functionError } = await supabase.functions.invoke('transform-text', {
+        body: { 
           text: entryText,
           transformationType: type,
           customTemplate: customPrompt?.prompt_template 
-        })
+        }
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to transform text');
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw functionError;
       }
 
-      const data = await response.json();
-      console.log('Transformation completed with response:', data);
+      if (!data?.transformedText) {
+        console.error('No transformed text in response:', data);
+        throw new Error('No transformed text received');
+      }
+
+      console.log('Transformation successful:', {
+        responseLength: data.transformedText.length,
+        type
+      });
 
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       
