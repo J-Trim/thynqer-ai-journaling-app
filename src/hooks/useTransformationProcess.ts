@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/client";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -54,12 +54,6 @@ export const useTransformationProcess = ({
         setIsSaving(false);
       }
 
-      if (!finalEntryId) {
-        setError('No entry ID available');
-        setErrorType('validation');
-        return false;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -72,6 +66,7 @@ export const useTransformationProcess = ({
       console.log('Custom prompt found:', customPrompt);
       console.log('Selected transformation type:', selectedType);
       console.log('Starting transformation with entry ID:', finalEntryId);
+      console.log('Text to transform:', entryText);
 
       const { data: transformResponse, error: transformError } = await supabase.functions
         .invoke('transform-text', {
