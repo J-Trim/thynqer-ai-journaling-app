@@ -1,6 +1,13 @@
+import JournalEntry from "@/components/JournalEntry";
+import JournalEntryForm from "@/components/JournalEntryForm";
+
 export const analyzeJournalComponents = async () => {
   try {
     console.log('Starting code analysis...');
+    
+    // Get the component source code using toString()
+    const journalEntryCode = JournalEntry.toString();
+    const journalEntryFormCode = JournalEntryForm.toString();
     
     // Analyze JournalEntry component
     const journalEntryAnalysis = await (window as any).gpt4o.complete(
@@ -13,7 +20,7 @@ export const analyzeJournalComponents = async () => {
       `Component: JournalEntry
       
       Code:
-      ${document.querySelector('[data-file="src/components/JournalEntry.tsx"]')?.textContent || ''}`
+      ${journalEntryCode}`
     );
     
     console.log('JournalEntry Analysis:', journalEntryAnalysis);
@@ -29,7 +36,7 @@ export const analyzeJournalComponents = async () => {
       `Component: JournalEntryForm
       
       Code:
-      ${document.querySelector('[data-file="src/components/JournalEntryForm.tsx"]')?.textContent || ''}`
+      ${journalEntryFormCode}`
     );
     
     console.log('JournalEntryForm Analysis:', journalEntryFormAnalysis);
