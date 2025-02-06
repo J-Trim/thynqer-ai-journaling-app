@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 export interface OfflineEntry {
   tempId: string;
@@ -26,6 +25,7 @@ export const saveOffline = async (entry: Omit<OfflineEntry, 'tempId' | 'synced' 
   existingEntries.push(offlineEntry);
   localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(existingEntries));
   
+  console.log('Entry saved offline:', offlineEntry);
   return tempId;
 };
 
@@ -38,10 +38,16 @@ export const removeOfflineEntry = async (tempId: string) => {
   const entries = await getOfflineEntries();
   const filteredEntries = entries.filter(entry => entry.tempId !== tempId);
   localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(filteredEntries));
+  console.log('Removed offline entry:', tempId);
 };
 
 export const syncOfflineEntries = async () => {
-  const { toast } = useToast();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    console.log('No session found, cannot sync offline entries');
+    return;
+  }
+
   const entries = await getOfflineEntries();
   const unsyncedEntries = entries.filter(entry => !entry.synced);
 
@@ -59,6 +65,7 @@ export const syncOfflineEntries = async () => {
 
         if (uploadError) throw uploadError;
         finalAudioUrl = audioFileName;
+        console.log('Audio file uploaded:', audioFileName);
       }
 
       // Then create the journal entry
@@ -68,7 +75,8 @@ export const syncOfflineEntries = async () => {
           title: entry.title,
           text: entry.text,
           audio_url: finalAudioUrl,
-          created_at: entry.created_at
+          created_at: entry.created_at,
+          user_id: session.user.id
         }])
         .select()
         .single();
@@ -80,11 +88,6 @@ export const syncOfflineEntries = async () => {
       console.log(`Successfully synced entry ${entry.tempId}`);
     } catch (error) {
       console.error('Error syncing offline entry:', error);
-      toast({
-        title: "Sync Error",
-        description: "Failed to sync some offline entries. Will retry later.",
-        variant: "destructive",
-      });
     }
   }
 };
