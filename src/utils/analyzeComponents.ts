@@ -4,23 +4,23 @@ interface ComponentAnalysis {
   complexity: string;
   performance: string;
   bestPractices: string;
-  improvements: string;
+  improvements: string[];
 }
 
 export const analyzeComponent = async (componentName: string, code: string) => {
   console.log(`Starting analysis for ${componentName}...`);
   
   try {
-    const { data, error } = await supabase.functions.invoke('analyze-code', {
+    const { data, error: analysisError } = await supabase.functions.invoke('analyze-code', {
       body: { 
         componentName,
         code 
       }
     });
 
-    if (error) {
-      console.error(`Error analyzing ${componentName}:`, error);
-      throw error;
+    if (analysisError) {
+      console.error(`Error analyzing ${componentName}:`, analysisError);
+      throw analysisError;
     }
 
     console.log(`Analysis completed for ${componentName}:`, data);
@@ -35,20 +35,6 @@ export const analyzeComponent = async (componentName: string, code: string) => {
 const audioPlayerComponent = {
   name: 'AudioPlayer',
   code: `
-    import React, { useRef, useEffect, useState } from 'react';
-    import { supabase } from '@/integrations/supabase/client';
-    import { useAudioProgress } from '@/hooks/useAudioProgress';
-    import { useAudioVolume } from '@/hooks/useAudioVolume';
-    import { useAudioPlayback } from '@/hooks/useAudioPlayback';
-    import { getMimeType } from '@/utils/audio';
-    import AudioControls from './audio/AudioControls';
-    import AudioProgress from './audio/AudioProgress';
-    import { Alert, AlertDescription } from "@/components/ui/alert";
-
-    interface AudioPlayerProps {
-      audioUrl: string;
-    }
-
     const AudioPlayer = ({ audioUrl }: AudioPlayerProps) => {
       const [error, setError] = useState<string | null>(null);
       const [isLoading, setIsLoading] = useState(true);
@@ -89,47 +75,28 @@ const audioPlayerComponent = {
             setError(null);
             
             if (!audioUrl) {
-              console.error('No audio URL provided');
-              setError('No audio URL provided');
-              return;
+              throw new Error('No audio URL provided');
             }
 
             const filename = audioUrl.split('/').pop()?.split('?')[0];
             if (!filename) {
-              console.error('Invalid audio URL format:', audioUrl);
-              setError('Invalid audio URL format');
-              return;
+              throw new Error('Invalid audio URL format');
             }
 
-            console.log('Starting audio download for:', filename);
-            
             const { data: audioData, error: downloadError } = await supabase.storage
               .from('audio_files')
               .download(filename);
 
-            if (downloadError) {
-              console.error('Error downloading audio:', downloadError);
-              setError('Error downloading audio: ${downloadError.message}');
-              return;
-            }
-
-            if (!audioData) {
-              console.error('No audio data received from storage');
-              setError('No audio data received');
-              return;
+            if (downloadError || !audioData) {
+              throw new Error(downloadError?.message || 'No audio data received');
             }
 
             const mimeType = getMimeType(filename);
             const audioBlob = new Blob([audioData], { type: mimeType });
-            console.log('Created audio blob with type:', mimeType);
-
-            // Calculate duration using Web Audio API
             const audioContext = new AudioContext();
             const arrayBuffer = await audioBlob.arrayBuffer();
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            const calculatedDuration = audioBuffer.duration;
-            setTotalDuration(calculatedDuration);
-            console.log('Calculated audio duration:', calculatedDuration);
+            setTotalDuration(audioBuffer.duration);
 
             if (blobUrlRef.current) {
               URL.revokeObjectURL(blobUrlRef.current);
@@ -137,7 +104,6 @@ const audioPlayerComponent = {
 
             const newBlobUrl = URL.createObjectURL(audioBlob);
             blobUrlRef.current = newBlobUrl;
-            console.log('Created blob URL:', newBlobUrl);
 
             if (!audioRef.current) {
               audioRef.current = new Audio();
@@ -147,95 +113,41 @@ const audioPlayerComponent = {
             audio.src = newBlobUrl;
             audio.muted = isMuted;
 
-            const handleLoadedMetadata = () => {
-              console.log('Audio metadata loaded. Duration:', audio.duration);
-              if (isFinite(audio.duration)) {
-                setDuration(audio.duration);
-              }
-            };
-
-            audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.load();
-            
-            await new Promise((resolve, reject) => {
+            await new Promise<void>((resolve, reject) => {
               const handleCanPlay = () => {
-                console.log('Audio can play. Duration:', audio.duration);
                 audio.removeEventListener('canplay', handleCanPlay);
-                resolve(true);
+                resolve();
               };
 
               const handleError = (e: Event) => {
-                console.error('Error loading audio:', e);
                 audio.removeEventListener('error', handleError);
                 reject(new Error('Failed to load audio'));
               };
 
               audio.addEventListener('canplay', handleCanPlay);
               audio.addEventListener('error', handleError);
+              audio.load();
             });
 
             setError(null);
-            setIsLoading(false);
-            
-          } catch (error: any) {
-            console.error('Error in audio setup:', error);
-            setError('Error setting up audio: ${error.message}');
+          } catch (err: any) {
+            setError(err.message);
+          } finally {
             setIsLoading(false);
           }
         };
 
         initializeAudio();
-
-        return () => {
-          if (blobUrlRef.current) {
-            URL.revokeObjectURL(blobUrlRef.current);
-            blobUrlRef.current = null;
-          }
-          if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
-          }
-        };
+        return () => cleanup();
       }, [audioUrl, isMuted]);
-
-      if (isLoading) {
-        return <div className="text-muted-foreground">Loading audio...</div>;
-      }
-
-      if (error) {
-        return (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        );
-      }
 
       return (
         <div className="p-4 bg-secondary rounded-lg space-y-4">
-          <div className="flex items-center gap-4">
-            <AudioControls
-              isPlaying={isPlaying}
-              isMuted={isMuted}
-              volume={volume}
-              onPlayPause={togglePlay}
-              onMuteToggle={toggleMute}
-              onVolumeChange={handleVolumeChange}
-              hasEnded={hasEnded}
-              showVolumeSlider={showVolumeSlider}
-              setShowVolumeSlider={setShowVolumeSlider}
-            />
-            <AudioProgress
-              progress={progress}
-              duration={totalDuration || duration}
-              currentTime={currentTime}
-              onProgressChange={(values) => handleProgressChange(values[0])}
-            />
-          </div>
+          <AudioControls {...controlProps} />
+          <AudioProgress {...progressProps} />
         </div>
       );
     };
-
-    export default AudioPlayer;
   `
 };
 
@@ -243,20 +155,6 @@ const audioPlayerComponent = {
 const audioHandlerComponent = {
   name: 'AudioHandler',
   code: `
-    import { useState } from "react";
-    import AudioRecorder from "@/components/AudioRecorder";
-    import { supabase } from "@/integrations/supabase/client";
-
-    interface AudioHandlerProps {
-      onAudioSaved: (audioUrl: string) => void;
-      onTranscriptionComplete: (text: string) => void;
-      isRecording?: boolean;
-      isPaused?: boolean;
-      isProcessing?: boolean;
-      onToggleRecording?: () => void;
-      onStopRecording?: () => void;
-    }
-
     const AudioHandler = ({ 
       onAudioSaved, 
       onTranscriptionComplete,
@@ -271,26 +169,16 @@ const audioHandlerComponent = {
       const handleAudioSaved = async (audioFileName: string) => {
         try {
           setIsTranscribing(true);
-          console.log('Starting audio transcription process for:', audioFileName);
-          
-          // Save the audio URL first
           onAudioSaved(audioFileName);
           
-          console.log('Invoking transcribe-audio function...');
           const { data, error } = await supabase.functions.invoke('transcribe-audio', {
             body: { audioUrl: audioFileName }
           });
 
-          if (error) {
-            console.error('Transcription error:', error);
-            throw error;
-          }
-
+          if (error) throw error;
           if (data?.text) {
-            console.log('Transcription completed successfully');
             onTranscriptionComplete(data.text);
           } else {
-            console.error('No transcription text received');
             throw new Error('No transcription text received');
           }
         } catch (error) {
@@ -319,8 +207,6 @@ const audioHandlerComponent = {
         </div>
       );
     };
-
-    export default AudioHandler;
   `
 };
 
