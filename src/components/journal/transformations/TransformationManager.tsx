@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { TransformationButton } from "./TransformationButton";
@@ -42,10 +42,6 @@ export const TransformationManager = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Memoize the transformation types to prevent unnecessary re-renders
-  const transformationTypes = useMemo(() => TRANSFORMATION_TYPES, []);
-
-  // Memoize the handle transform callback
   const handleTransform = useCallback(async (type: ValidTransformation) => {
     if (!type || !entryText?.trim()) {
       console.log('Missing required data:', { type, hasText: !!entryText?.trim() });
@@ -102,13 +98,11 @@ export const TransformationManager = ({
     }
   }, [entryId, entryText, onSaveEntry, queryClient, toast, setIsDialogOpen, setActiveGroup, setError, setIsTransforming, setIsSaving, customPrompts]);
 
-  // Memoize the dialog open change handler
   const handleDialogOpenChange = useCallback((open: boolean, group: string) => {
     setIsDialogOpen(open);
     setActiveGroup(open ? group : null);
   }, [setIsDialogOpen, setActiveGroup]);
 
-  // Create a wrapper function that matches the expected signature
   const handleTransformWrapper = useCallback(() => {
     if (selectedType) {
       return handleTransform(selectedType);
@@ -121,7 +115,7 @@ export const TransformationManager = ({
       <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
       
       <div className="flex justify-center gap-8 mb-8">
-        {Object.entries(transformationTypes).map(([group, { icon: Icon }]) => (
+        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon }]) => (
           <TransformationButton
             key={group}
             group={group}
