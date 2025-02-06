@@ -17,6 +17,8 @@ interface UseTransformationHandlersProps {
   setError: (error: string | null) => void;
   setIsTransforming: (transforming: boolean) => void;
   setIsSaving: (saving: boolean) => void;
+  setLastTransformation: (text: string | null) => void;
+  setLastTransformationType: (type: string | null) => void;
 }
 
 export const useTransformationHandlers = ({
@@ -29,6 +31,8 @@ export const useTransformationHandlers = ({
   setError,
   setIsTransforming,
   setIsSaving,
+  setLastTransformation,
+  setLastTransformationType,
 }: UseTransformationHandlersProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -89,6 +93,9 @@ export const useTransformationHandlers = ({
         type
       });
 
+      setLastTransformation(data.transformedText);
+      setLastTransformationType(type);
+
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       
       toast({
@@ -111,7 +118,7 @@ export const useTransformationHandlers = ({
       setIsTransforming(false);
       setIsSaving(false);
     }
-  }, [entryId, entryText, onSaveEntry, queryClient, toast, setIsDialogOpen, setActiveGroup, setError, setIsTransforming, setIsSaving, customPrompts]);
+  }, [entryId, entryText, onSaveEntry, queryClient, toast, setIsDialogOpen, setActiveGroup, setError, setIsTransforming, setIsSaving, customPrompts, setLastTransformation, setLastTransformationType]);
 
   const handleDialogOpenChange = useCallback((open: boolean, group: string) => {
     setIsDialogOpen(open);
