@@ -6,68 +6,47 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface TransformRequest {
-  text: string;
-  transformationType: string;
-  customTemplate?: string;
-}
-
-const getSystemPrompt = (transformationType: string, customTemplate?: string) => {
-  if (customTemplate) {
-    return `${customTemplate}\n\nIMPORTANT: Provide ONLY the transformed text without any additional commentary, explanations, or conversation.`;
-  }
-
-  const prompts: Record<string, string> = {
-    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights. Focus on key themes, patterns, and underlying meanings.`,
-    'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Be concise and direct.',
-    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection focusing on the feelings expressed.',
-    'Daily Affirmation': 'Transform the key positive elements into uplifting, personal affirmations.',
-    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness and acceptance.',
-    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals.',
-    'Short Paraphrase': 'Provide a concise paraphrase that captures the essence of the content.',
-    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth.',
-    'Professional': 'Transform this text into professional, business-oriented insights.',
-    'Social Media': 'Transform this content into engaging social media content while maintaining the core message.'
-  };
-
-  return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent.';
-}
-
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const apiKey = Deno.env.get('DEEPSEEK_API_KEY');
-    if (!apiKey) {
+    console.log('Starting transformation request...');
+    
+    const { text, transformationType, customTemplate } = await req.json();
+    
+    console.log('Received request with:', {
+      hasText: !!text,
+      transformationType,
+      hasCustomTemplate: !!customTemplate
+    });
+
+    if (!text?.trim()) {
+      console.error('Missing text in request');
+      throw new Error('Text is required');
+    }
+
+    if (!transformationType) {
+      console.error('Missing transformation type');
+      throw new Error('Transformation type is required');
+    }
+
+    const deepSeekKey = Deno.env.get('DEEPSEEK_API_KEY');
+    if (!deepSeekKey) {
       console.error('DEEPSEEK_API_KEY not configured');
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
-    const requestData: TransformRequest = await req.json();
-    const { text, transformationType, customTemplate } = requestData;
-
-    if (!text?.trim() || !transformationType) {
-      console.error('Missing required fields:', { hasText: !!text?.trim(), hasType: !!transformationType });
-      throw new Error('Missing required fields');
-    }
-
-    console.log(`Processing transformation request:`, {
-      type: transformationType,
-      textLength: text.length,
-      hasCustomTemplate: !!customTemplate
-    });
-    
-    const basePrompt = getSystemPrompt(transformationType, customTemplate);
-    console.log('Using base prompt:', basePrompt);
+    const basePrompt = customTemplate || getSystemPrompt(transformationType);
+    console.log('Using transformation type:', transformationType);
     
     console.log('Sending request to DeepSeek API...');
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${deepSeekKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -128,3 +107,20 @@ serve(async (req) => {
     );
   }
 });
+
+const getSystemPrompt = (transformationType: string) => {
+  const prompts: Record<string, string> = {
+    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights. Focus on key themes, patterns, and underlying meanings.`,
+    'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Be concise and direct.',
+    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection focusing on the feelings expressed.',
+    'Daily Affirmation': 'Transform the key positive elements into uplifting, personal affirmations.',
+    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness and acceptance.',
+    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals.',
+    'Short Paraphrase': 'Provide a concise paraphrase that captures the essence of the content.',
+    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth.',
+    'Professional': 'Transform this text into professional, business-oriented insights.',
+    'Social Media': 'Transform this content into engaging social media content while maintaining the core message.'
+  };
+
+  return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent.';
+}

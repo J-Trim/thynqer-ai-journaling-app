@@ -2,6 +2,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Database } from "@/integrations/supabase/types";
 import { useTransformationReducer } from "./transformations/useTransformationReducer";
+import { supabase } from "@/integrations/supabase/client";
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -55,23 +56,48 @@ export const useTransformationProcess = ({
       }
 
       const customPrompt = customPrompts.find(p => p.prompt_name === type);
-      const url = 'https://zacanxuybdaejwjagwwe.functions.supabase.co/transform-text';
       
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          transformationType: type,
-          customTemplate: customPrompt?.prompt_template 
-        })
+      console.log('Calling transform-text function with:', {
+        transformationType: type,
+        textLength: entryText.length,
+        hasCustomTemplate: !!customPrompt?.prompt_template
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to transform text');
+      const { data, error: functionError } = await supabase.functions.invoke('transform-text', {
+        body: { 
+          text: entryText,
+          transformationType: type,
+          customTemplate: customPrompt?.prompt_template 
+        }
+      });
+
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw functionError;
       }
 
-      console.log('Transformation completed successfully');
+      if (!data?.transformedText) {
+        console.error('No transformed text in response:', data);
+        throw new Error('No transformed text received');
+      }
+
+      console.log('Transformation successful, saving to database...');
+
+      const { error: saveError } = await supabase
+        .from('summaries')
+        .insert({
+          entry_id: finalEntryId,
+          user_id: (await supabase.auth.getSession()).data.session?.user.id,
+          transformed_text: data.transformedText,
+          transformation_type: type
+        });
+
+      if (saveError) {
+        console.error('Error saving transformation:', saveError);
+        throw saveError;
+      }
+
+      console.log('Transformation completed and saved successfully');
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       
       toast({
