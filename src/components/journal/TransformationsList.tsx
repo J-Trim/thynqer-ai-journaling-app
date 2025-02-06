@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,11 +94,11 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     },
   });
 
-  const copyToClipboard = async (text: string, type: string) => {
+  const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
       toast({
-        description: `${type} copied to clipboard`,
+        description: "Transformation copied to clipboard",
       });
     } catch (error) {
       console.error('Error copying to clipboard:', error);
@@ -143,7 +144,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
         <TransformationItem
           key={transform.id}
           id={transform.id}
-          type={transform.transformation_type}
+          type="Custom"
           text={transform.transformed_text}
           isOpen={openStates[transform.id]}
           onToggle={() => {
@@ -152,7 +153,7 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
               [transform.id]: !prev[transform.id]
             }));
           }}
-          onCopy={() => copyToClipboard(transform.transformed_text, transform.transformation_type)}
+          onCopy={() => copyToClipboard(transform.transformed_text)}
           onDelete={() => handleDelete(transform.id)}
         />
       ))}

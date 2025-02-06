@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,7 @@ export const useJournalSave = ({
 }: SaveHookProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
+  const [lastSaveTimestamp, setLastSaveTimestamp] = useState<number>(0);
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -54,19 +56,26 @@ export const useJournalSave = ({
         }
       });
 
-      // Pass undefined as argument since mutationFn doesn't require variables
       await mutation.execute(undefined);
     }
   };
 
   const saveEntry = async (isAutoSave = false) => {
+    const currentTime = Date.now();
+    // Prevent rapid consecutive saves (within 2 seconds)
+    if (currentTime - lastSaveTimestamp < 2000) {
+      console.log('Save prevented - too soon after last save');
+      return null;
+    }
+
     if (isSaveInProgress) {
-      console.log('Save prevented - save in progress');
+      console.log('Save prevented - save already in progress');
       return null;
     }
 
     try {
       setIsSaveInProgress(true);
+      setLastSaveTimestamp(currentTime);
       if (!isAutoSave) setIsSaving(true);
 
       const { data: { session } } = await supabase.auth.getSession();
