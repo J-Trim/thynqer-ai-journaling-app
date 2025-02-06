@@ -1,12 +1,16 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { TransformationButton } from "./TransformationButton";
 import { TransformationDialog } from "./TransformationDialog";
-import { TransformationResult } from "./TransformationResult";
+import { TransformationError } from "./TransformationError";
+import { TransformationForm } from "./TransformationForm";
 import { useTransformationState } from "@/hooks/useTransformationState";
 import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
+import { transformationService } from "@/services/transformationService";
+import { Database } from "@/integrations/supabase/types";
+
+type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
 interface TransformationManagerProps {
   entryId: string;
@@ -20,20 +24,13 @@ export const TransformationManager = ({
   onSaveEntry
 }: TransformationManagerProps) => {
   const {
-    selectedType,
-    setSelectedType,
     isTransforming,
     setIsTransforming,
     isSaving,
     setIsSaving,
     error,
     setError,
-    lastTransformation,
-    setLastTransformation,
-    lastTransformationType,
-    setLastTransformationType,
     customPrompts,
-    setCustomPrompts,
     isDialogOpen,
     setIsDialogOpen,
     activeGroup,
@@ -43,39 +40,14 @@ export const TransformationManager = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const fetchCustomPrompts = async () => {
-    try {
-      console.log('Fetching custom prompts...');
-      const { data: prompts, error } = await supabase
-        .from('custom_prompts')
-        .select('prompt_name, prompt_template');
-
-      if (error) throw error;
-      if (prompts) {
-        console.log('Custom prompts fetched:', prompts);
-        setCustomPrompts(prompts);
-      }
-    } catch (err) {
-      console.error('Error in fetchCustomPrompts:', err);
-      toast({
-        title: "Error",
-        description: "Failed to fetch custom prompts",
-        variant: "destructive",
-      });
-    }
-  };
-
-  useEffect(() => {
-    fetchCustomPrompts();
-  }, []);
-
   useEffect(() => {
     if (isDialogOpen && activeGroup === "Custom") {
-      fetchCustomPrompts();
+      // Fetch custom prompts when dialog opens
+      console.log('Fetching custom prompts for Custom group');
     }
   }, [isDialogOpen, activeGroup]);
 
-  const handleTransform = async () => {
+  const handleTransform = async (selectedType: ValidTransformation) => {
     if (!selectedType || !entryText?.trim()) {
       console.log('Missing required data:', { selectedType, hasText: !!entryText?.trim() });
       return;
@@ -100,53 +72,19 @@ export const TransformationManager = ({
         setIsSaving(false);
       }
 
-      if (!finalEntryId) {
-        throw new Error('No entry ID available');
-      }
+      const result = await transformationService.transformText(
+        finalEntryId,
+        selectedType,
+        customPrompts
+      );
 
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error('Authentication required');
-      }
-
-      const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
-      console.log('Custom prompt found:', customPrompt);
-      console.log('Selected transformation type:', selectedType);
-      console.log('Starting transformation with text:', entryText);
-
-      const { data: transformResponse, error: transformError } = await supabase.functions
-        .invoke('transform-text', {
-          body: { 
-            text: entryText, 
-            transformationType: selectedType,
-            customTemplate: customPrompt?.prompt_template 
-          }
-        });
-
-      if (transformError) throw transformError;
-
-      if (!transformResponse?.transformedText) {
-        throw new Error('No transformed text received');
-      }
-
-      console.log('Transform successful, saving to database...');
-      const { error: saveError } = await supabase
-        .from('summaries')
-        .insert({
-          entry_id: finalEntryId,
-          user_id: session.user.id,
-          transformed_text: transformResponse.transformedText,
-          transformation_type: selectedType,
-        });
-
-      if (saveError) throw saveError;
-
-      console.log('Transformation saved successfully');
-      setLastTransformation(transformResponse.transformedText);
-      setLastTransformationType(selectedType);
+      console.log('Transformation completed successfully');
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
-      setSelectedType("");
+      
+      toast({
+        description: "Transformation completed successfully",
+      });
+
       setIsDialogOpen(false);
       setActiveGroup(null);
     } catch (err) {
@@ -168,7 +106,7 @@ export const TransformationManager = ({
       <h2 className="text-xl font-semibold text-center mb-6">Transformation Station</h2>
       
       <div className="flex justify-center gap-8 mb-8">
-        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon, items }]) => (
+        {Object.entries(TRANSFORMATION_TYPES).map(([group, { icon: Icon }]) => (
           <TransformationButton
             key={group}
             group={group}
@@ -181,24 +119,21 @@ export const TransformationManager = ({
           >
             <TransformationDialog
               group={group}
-              items={items}
-              selectedType={selectedType}
-              onTypeChange={setSelectedType}
-              customPrompts={customPrompts}
-              onPromptSave={fetchCustomPrompts}
-              onTransform={handleTransform}
-              isTransforming={isTransforming}
-              isSaving={isSaving}
-            />
+              items={TRANSFORMATION_TYPES[group]?.items || []}
+            >
+              <TransformationForm
+                onTransform={handleTransform}
+                isTransforming={isTransforming}
+                isSaving={isSaving}
+                customPrompts={customPrompts}
+                activeGroup={activeGroup}
+              />
+            </TransformationDialog>
           </TransformationButton>
         ))}
       </div>
 
-      <TransformationResult
-        error={error}
-        lastTransformation={lastTransformation}
-        lastTransformationType={lastTransformationType}
-      />
+      <TransformationError error={error} />
     </div>
   );
 };
