@@ -108,7 +108,7 @@ export const TransformationManager = ({
     setActiveGroup(open ? group : null);
   }, [setIsDialogOpen, setActiveGroup]);
 
-  const handleTransformClick = useCallback(async (type: ValidTransformation) => {
+  const handleTransformClick = useCallback((type: ValidTransformation) => {
     return handleTransform(type);
   }, [handleTransform]);
 
