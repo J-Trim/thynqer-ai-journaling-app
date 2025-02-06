@@ -29,7 +29,7 @@ export const getLatestAnalysis = async (componentName: string) => {
       .eq('component_name', componentName)
       .order('analyzed_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     return data;
