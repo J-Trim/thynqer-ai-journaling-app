@@ -19,3 +19,26 @@ export const analyzeCode = async (code: string): Promise<string> => {
     throw err;
   }
 };
+
+export const analyzeFiles = async (files: { name: string; content: string }[]): Promise<{ name: string; analysis: string }[]> => {
+  const results = [];
+  
+  for (const file of files) {
+    try {
+      console.log(`Analyzing ${file.name}...`);
+      const analysis = await analyzeCode(file.content);
+      results.push({
+        name: file.name,
+        analysis
+      });
+    } catch (error) {
+      console.error(`Error analyzing ${file.name}:`, error);
+      results.push({
+        name: file.name,
+        analysis: `Error analyzing file: ${error.message}`
+      });
+    }
+  }
+  
+  return results;
+};
