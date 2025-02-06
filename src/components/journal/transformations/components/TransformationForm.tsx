@@ -1,8 +1,10 @@
-import React, { memo } from 'react';
+
+import { memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Database } from "@/integrations/supabase/types";
 import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
+import { ErrorBoundary } from 'react-error-boundary';
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -16,7 +18,7 @@ interface TransformationFormProps {
   activeGroup: string | null;
 }
 
-export const TransformationForm = memo(({
+const TransformationFormContent = ({
   selectedType,
   onTypeChange,
   onTransform,
@@ -26,7 +28,6 @@ export const TransformationForm = memo(({
   activeGroup
 }: TransformationFormProps) => {
   console.log('Rendering TransformationForm with activeGroup:', activeGroup);
-  console.log('Current transformation types:', TRANSFORMATION_TYPES[activeGroup || ""]?.items || []);
 
   const handleTransform = () => {
     if (selectedType) {
@@ -35,6 +36,10 @@ export const TransformationForm = memo(({
   };
 
   const getTransformationItems = () => {
+    if (!activeGroup) {
+      return [];
+    }
+    
     if (activeGroup === "Custom") {
       return customPrompts.map(prompt => ({
         value: prompt.prompt_name,
@@ -42,18 +47,27 @@ export const TransformationForm = memo(({
       }));
     }
     
-    return (TRANSFORMATION_TYPES[activeGroup || ""]?.items || []).map(item => ({
+    const items = TRANSFORMATION_TYPES[activeGroup]?.items || [];
+    console.log('Available transformation items for group:', activeGroup, items);
+    
+    return items.map(item => ({
       value: item,
       label: item
     }));
   };
 
   const items = getTransformationItems();
-  console.log('Available transformation items:', items);
+
+  if (!activeGroup) {
+    return null;
+  }
 
   return (
     <div className="space-y-4">
-      <Select value={selectedType} onValueChange={(value: ValidTransformation) => onTypeChange(value)}>
+      <Select 
+        value={selectedType} 
+        onValueChange={(value: ValidTransformation) => onTypeChange(value)}
+      >
         <SelectTrigger className="w-full bg-background">
           <SelectValue placeholder={`Choose ${activeGroup} Type`} />
         </SelectTrigger>
@@ -79,6 +93,19 @@ export const TransformationForm = memo(({
         </Button>
       )}
     </div>
+  );
+};
+
+export const TransformationForm = memo((props: TransformationFormProps) => {
+  return (
+    <ErrorBoundary
+      fallback={<div>Something went wrong with the transformation form.</div>}
+      onError={(error) => {
+        console.error('TransformationForm Error:', error);
+      }}
+    >
+      <TransformationFormContent {...props} />
+    </ErrorBoundary>
   );
 });
 
