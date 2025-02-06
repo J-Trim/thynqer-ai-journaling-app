@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import AudioPlayer from "./journal/AudioPlayer";
 import EntryHeader from "./journal/entry/EntryHeader";
@@ -28,13 +28,36 @@ const JournalEntry = React.memo(({
 }: JournalEntryProps) => {
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const { showDeleteDialog, setShowDeleteDialog, handleDelete } = useJournalDelete(onDelete);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const resizeObserver = useRef<ResizeObserver | null>(null);
+
+  useEffect(() => {
+    // Create ResizeObserver
+    if (cardRef.current) {
+      resizeObserver.current = new ResizeObserver((entries) => {
+        // Handle resize if needed
+        console.log(`Entry ${id} resized:`, entries[0].contentRect);
+      });
+
+      // Start observing
+      resizeObserver.current.observe(cardRef.current);
+    }
+
+    // Cleanup function
+    return () => {
+      if (resizeObserver.current) {
+        resizeObserver.current.disconnect();
+        resizeObserver.current = null;
+      }
+    };
+  }, [id]);
 
   console.log(`JournalEntry ${id} rendered with:`, {
     title,
     preview,
     audioUrl,
     hasBeenEdited,
-    previewLength: preview?.length,
+    previewLength: preview?.length || 0,
     isPreviewEmpty: !preview || preview.trim() === ''
   });
 
@@ -65,6 +88,7 @@ const JournalEntry = React.memo(({
   return (
     <>
       <Card 
+        ref={cardRef}
         className="hover:shadow-md transition-shadow duration-200 cursor-pointer bg-white relative"
         onClick={onClick}
         role="article"
