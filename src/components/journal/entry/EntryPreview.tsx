@@ -4,7 +4,7 @@ import { CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Tag } from "lucide-react";
 
 interface EntryPreviewProps {
   preview: string;
@@ -67,8 +67,9 @@ const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreview
             <Badge 
               key={tag.id} 
               variant="outline" 
-              className="text-xs"
+              className="text-xs flex items-center gap-1"
             >
+              <Tag className="h-3 w-3" />
               {tag.name}
             </Badge>
           ))}
