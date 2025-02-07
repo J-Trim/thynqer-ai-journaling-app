@@ -11,8 +11,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' &&
-    componentTagger(),
+    mode === 'development' && componentTagger(),
   ].filter(Boolean),
   resolve: {
     alias: {
@@ -20,11 +19,14 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    minify: 'terser',
+    sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['@/components/ui'],
         },
       },
     },

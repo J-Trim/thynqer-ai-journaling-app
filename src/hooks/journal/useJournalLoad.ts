@@ -25,7 +25,6 @@ export const useJournalLoad = ({ id, onLoadComplete }: UseJournalLoadProps) => {
       }
 
       try {
-        console.log('Loading entry:', id);
         const { data: entry, error } = await supabase
           .from('journal_entries')
           .select('*')
@@ -35,7 +34,6 @@ export const useJournalLoad = ({ id, onLoadComplete }: UseJournalLoadProps) => {
         if (error) throw error;
 
         if (entry) {
-          console.log('Entry loaded:', entry);
           const [mainContent, transcribed] = entry.text ? 
             entry.text.split("\n\n---\nTranscribed Audio:\n") : 
             ["", ""];
@@ -48,7 +46,6 @@ export const useJournalLoad = ({ id, onLoadComplete }: UseJournalLoadProps) => {
           });
         }
       } catch (error) {
-        console.error('Error loading entry:', error);
         toast({
           title: "Error",
           description: "Failed to load journal entry",

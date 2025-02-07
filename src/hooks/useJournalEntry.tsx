@@ -53,7 +53,6 @@ export const useJournalEntry = (id?: string) => {
 
   const saveEntry = async (isAutoSave = false, force = false) => {
     if (!force && (isInitializing || isSaveInProgress || (!isAutoSave && saveAttempted))) {
-      console.log('Save prevented - initialization or save in progress');
       return null;
     }
     
@@ -65,10 +64,8 @@ export const useJournalEntry = (id?: string) => {
       }
       
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      console.log('Current session:', session ? 'Active' : 'None');
 
       if (sessionError || !session) {
-        console.error('Session error:', sessionError);
         toast({
           title: "Authentication Error",
           description: "Please log in again to save your entry",
@@ -90,8 +87,6 @@ export const useJournalEntry = (id?: string) => {
         has_been_edited: hasBeenSavedBefore,
       };
 
-      console.log(`${hasBeenSavedBefore ? 'Updating' : 'Creating new'} entry:`, entryData);
-
       let savedEntry;
       
       if (hasBeenSavedBefore && entryId) {
@@ -104,7 +99,6 @@ export const useJournalEntry = (id?: string) => {
           
         if (saveError) throw saveError;
         savedEntry = data;
-        console.log('Entry updated successfully:', savedEntry);
       } else {
         const { data, error: saveError } = await supabase
           .from("journal_entries")
@@ -114,7 +108,6 @@ export const useJournalEntry = (id?: string) => {
           
         if (saveError) throw saveError;
         savedEntry = data;
-        console.log('New entry created successfully:', savedEntry);
         setHasBeenSavedBefore(true);
         setEntryId(savedEntry.id);
       }
@@ -135,7 +128,6 @@ export const useJournalEntry = (id?: string) => {
 
       return savedEntry;
     } catch (error) {
-      console.error("Error saving entry:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to save journal entry",
