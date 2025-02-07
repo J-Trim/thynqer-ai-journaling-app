@@ -8,6 +8,7 @@ import EntryPreview from "./journal/entry/EntryPreview";
 import DeleteDialog from "./journal/entry/DeleteDialog";
 import { useJournalDelete } from "@/hooks/useJournalDelete";
 import { useEntryAudio } from "./journal/entry/useEntryAudio";
+import { useToast } from "@/hooks/use-toast";
 
 interface JournalEntryProps {
   id: string;
@@ -32,8 +33,19 @@ const JournalEntry = React.memo(({
   onClick, 
   onDelete 
 }: JournalEntryProps) => {
+  const { toast } = useToast();
   const { showDeleteDialog, setShowDeleteDialog, handleDelete } = useJournalDelete(onDelete);
-  const { showAudioPlayer, handleAudioClick } = useEntryAudio(audioUrl);
+  const { showAudioPlayer, handleAudioClick, error: audioError } = useEntryAudio(audioUrl);
+
+  React.useEffect(() => {
+    if (audioError) {
+      toast({
+        title: "Audio Error",
+        description: "Failed to load audio file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [audioError, toast]);
 
   const getMoodIcon = () => {
     if (!mood) return null;
@@ -43,7 +55,15 @@ const JournalEntry = React.memo(({
   };
 
   const confirmDelete = async () => {
-    await handleDelete(id);
+    try {
+      await handleDelete(id);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete entry. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const audioPlayer = showAudioPlayer && audioUrl ? (

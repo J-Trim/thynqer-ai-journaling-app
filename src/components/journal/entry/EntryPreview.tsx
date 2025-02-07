@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertCircle, Tag } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface EntryPreviewProps {
   preview: string;
@@ -13,31 +14,55 @@ interface EntryPreviewProps {
 }
 
 const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreviewProps) => {
-  const { data: tags, isError } = useQuery({
+  const { toast } = useToast();
+
+  const { data: tags, isError, error } = useQuery({
     queryKey: ['entry-tags', entryId],
     queryFn: async () => {
       if (!entryId) return [];
       
-      const { data: entryTags, error } = await supabase
-        .from('entry_tags')
-        .select(`
-          tag_id,
-          tags:tags(name)
-        `)
-        .eq('entry_id', entryId);
+      try {
+        const { data: entryTags, error } = await supabase
+          .from('entry_tags')
+          .select(`
+            tag_id,
+            tags:tags(name)
+          `)
+          .eq('entry_id', entryId);
 
-      if (error) throw error;
-      
-      return entryTags
-        .filter(tag => tag.tag_id && tag.tags?.name)
-        .map(tag => ({
-          id: tag.tag_id,
-          name: tag.tags.name
-        }));
+        if (error) throw error;
+        
+        if (!Array.isArray(entryTags)) {
+          throw new Error('Invalid response format for tags');
+        }
+
+        return entryTags
+          .filter(tag => tag.tag_id && tag.tags?.name)
+          .map(tag => ({
+            id: tag.tag_id,
+            name: tag.tags.name
+          }));
+      } catch (err) {
+        console.error('Error fetching tags:', err);
+        toast({
+          title: "Error",
+          description: "Failed to load tags. Please refresh the page.",
+          variant: "destructive",
+        });
+        throw err;
+      }
     },
     enabled: !!entryId,
     retry: 2,
     staleTime: 30000,
+    onError: (err) => {
+      console.error('Query error:', err);
+      toast({
+        title: "Error",
+        description: "Failed to load tags. Please refresh the page.",
+        variant: "destructive",
+      });
+    }
   });
 
   const displayPreview = preview?.trim() 
