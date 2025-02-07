@@ -1,16 +1,11 @@
-import { useState, useEffect, useContext } from "react";
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { UnsavedChangesContext } from "@/contexts/UnsavedChangesContext";
-
-interface JournalEntry {
-  id: string;
-  title: string;
-  text: string;
-  audio_url: string | null;
-}
+import { useJournalLoad } from "./journal/useJournalLoad";
+import { useUnsavedChanges } from "./journal/useUnsavedChanges";
 
 export const useJournalEntry = (id?: string) => {
   const [title, setTitle] = useState("");
@@ -18,84 +13,43 @@ export const useJournalEntry = (id?: string) => {
   const [transcribedAudio, setTranscribedAudio] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
   const [isSaveInProgress, setIsSaveInProgress] = useState(false);
   const [saveAttempted, setSaveAttempted] = useState(false);
-  const [hasBeenSavedBefore, setHasBeenSavedBefore] = useState(!!id); // Track if entry has been saved before
-  const [entryId, setEntryId] = useState<string | undefined>(id); // Track the entry ID
+  const [hasBeenSavedBefore, setHasBeenSavedBefore] = useState(!!id);
+  const [entryId, setEntryId] = useState<string | undefined>(id);
   const [initialContent, setInitialContent] = useState({ 
     title: "", 
     content: "", 
-    audioUrl: null,
+    audioUrl: null as string | null,
     transcribedAudio: "" 
   });
 
-  const { hasUnsavedChanges, setHasUnsavedChanges } = useContext(UnsavedChangesContext);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const hasActualChanges = () => {
-    return title !== initialContent.title || 
-           content !== initialContent.content || 
-           audioUrl !== initialContent.audioUrl;
-  };
-
-  useEffect(() => {
-    if (!isInitializing) {
-      setHasUnsavedChanges(hasActualChanges());
+  const { isInitializing } = useJournalLoad({
+    id,
+    onLoadComplete: (data) => {
+      setTitle(data.title);
+      setContent(data.content);
+      setTranscribedAudio(data.transcribedAudio);
+      setAudioUrl(data.audioUrl);
+      setInitialContent({
+        title: data.title,
+        content: data.content,
+        audioUrl: data.audioUrl,
+        transcribedAudio: data.transcribedAudio
+      });
     }
-  }, [title, content, audioUrl, isInitializing, setHasUnsavedChanges]);
+  });
 
-  useEffect(() => {
-    const loadEntry = async () => {
-      if (!id) {
-        setIsInitializing(false);
-        return;
-      }
-
-      try {
-        console.log('Loading entry:', id);
-        const { data: entry, error } = await supabase
-          .from('journal_entries')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-
-        if (entry) {
-          console.log('Entry loaded:', entry);
-          const [mainContent, transcribed] = entry.text ? 
-            entry.text.split("\n\n---\nTranscribed Audio:\n") : 
-            ["", ""];
-
-          setTitle(entry.title || '');
-          setContent(mainContent || '');
-          setTranscribedAudio(transcribed || '');
-          setAudioUrl(entry.audio_url);
-          setInitialContent({
-            title: entry.title || '',
-            content: mainContent || '',
-            audioUrl: entry.audio_url,
-            transcribedAudio: transcribed || ''
-          });
-          setHasBeenSavedBefore(true);
-          setEntryId(entry.id);
-        }
-      } catch (error) {
-        console.error('Error loading entry:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load journal entry",
-          variant: "destructive",
-        });
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
-    loadEntry();
-  }, [id, toast]);
+  useUnsavedChanges({
+    title,
+    content,
+    audioUrl,
+    initialContent,
+    isInitializing
+  });
 
   const saveEntry = async (isAutoSave = false, force = false) => {
     if (!force && (isInitializing || isSaveInProgress || (!isAutoSave && saveAttempted))) {
@@ -124,11 +78,9 @@ export const useJournalEntry = (id?: string) => {
         return null;
       }
 
-      let finalContent = content;
-      
       const fullText = transcribedAudio 
-        ? `${finalContent}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
-        : finalContent;
+        ? `${content}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
+        : content;
 
       const entryData = {
         user_id: session.user.id,
@@ -143,7 +95,6 @@ export const useJournalEntry = (id?: string) => {
       let savedEntry;
       
       if (hasBeenSavedBefore && entryId) {
-        // Update existing entry
         const { data, error: saveError } = await supabase
           .from("journal_entries")
           .update(entryData)
@@ -155,7 +106,6 @@ export const useJournalEntry = (id?: string) => {
         savedEntry = data;
         console.log('Entry updated successfully:', savedEntry);
       } else {
-        // Create new entry
         const { data, error: saveError } = await supabase
           .from("journal_entries")
           .insert([entryData])
@@ -171,13 +121,11 @@ export const useJournalEntry = (id?: string) => {
 
       setInitialContent({
         title: entryData.title,
-        content: finalContent,
+        content,
         audioUrl: entryData.audio_url,
-        transcribedAudio: transcribedAudio
+        transcribedAudio
       });
-      
-      setHasUnsavedChanges(false);
-      
+
       if (!isAutoSave) {
         toast({
           title: "Success",
@@ -185,7 +133,7 @@ export const useJournalEntry = (id?: string) => {
         });
       }
 
-      return savedEntry as JournalEntry;
+      return savedEntry;
     } catch (error) {
       console.error("Error saving entry:", error);
       toast({
@@ -201,7 +149,7 @@ export const useJournalEntry = (id?: string) => {
   };
 
   const handleNavigateAway = async () => {
-    if (hasUnsavedChanges) {
+    if (hasActualChanges()) {
       const confirmed = window.confirm("You have unsaved changes. Do you want to save before leaving?");
       if (confirmed) {
         await saveEntry(false);
@@ -222,7 +170,6 @@ export const useJournalEntry = (id?: string) => {
     isSaving,
     isInitializing,
     isSaveInProgress,
-    hasUnsavedChanges,
     saveEntry,
     handleNavigateAway
   };
