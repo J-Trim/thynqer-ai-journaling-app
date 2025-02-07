@@ -24,3 +24,4 @@ export function logError(context: string, error: any, metadata: Record<string, a
 
   console.error(JSON.stringify(errorLog));
 }
+

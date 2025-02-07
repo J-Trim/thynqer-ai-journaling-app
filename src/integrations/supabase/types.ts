@@ -293,6 +293,42 @@ export type Database = {
         }
         Relationships: []
       }
+      transcription_queue: {
+        Row: {
+          audio_url: string
+          completed_at: string | null
+          created_at: string | null
+          error: string | null
+          id: string
+          result: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_url: string
+          completed_at?: string | null
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          result?: string | null
+          status: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          audio_url?: string
+          completed_at?: string | null
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          result?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
