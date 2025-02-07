@@ -29,15 +29,42 @@ export const transformationService = {
     }
 
     const customPrompt = customPrompts.find(p => p.prompt_name === selectedType);
-    const { data, error } = await supabase.functions.invoke('transform-text', {
-      body: { 
-        text: entryText,
-        transformationType: selectedType,
-        customTemplate: customPrompt?.prompt_template 
-      }
-    });
+    
+    try {
+      console.log('Calling transform-text function...');
+      const { data, error } = await supabase.functions.invoke('transform-text', {
+        body: { 
+          text: entryText,
+          transformationType: selectedType,
+          customTemplate: customPrompt?.prompt_template 
+        }
+      });
 
-    if (error) throw error;
-    return data;
+      if (error) {
+        console.error('Transform function error:', error);
+        throw error;
+      }
+
+      // Save the transformation to summaries table
+      if (data?.transformedText) {
+        console.log('Saving transformation to summaries...');
+        const { error: saveError } = await supabase
+          .from('summaries')
+          .insert({
+            entry_id: entryId,
+            user_id: session.user.id,
+            transformed_text: data.transformedText,
+          });
+
+        if (saveError) {
+          console.error('Error saving transformation:', saveError);
+        }
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Transformation error:', error);
+      throw error;
+    }
   }
 };

@@ -1,5 +1,7 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0"
+import { createHash } from "https://deno.land/std@0.168.0/hash/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,8 +41,53 @@ serve(async (req: Request) => {
       throw new Error('DEEPSEEK_API_KEY is not configured')
     }
 
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Create a hash of the input text for cache lookup
+    const inputHash = createHash('md5')
+      .update(text + (customTemplate || ''))
+      .toString();
+
+    // Check cache first
+    console.log('Checking cache for transformation...');
+    const { data: cacheHit } = await supabase
+      .from('summary_cache')
+      .select('cached_result')
+      .eq('input_hash', inputHash)
+      .eq('transformation_type', transformationType)
+      .single();
+
+    if (cacheHit) {
+      console.log('Cache hit found, returning cached result');
+      return new Response(
+        JSON.stringify({ transformedText: cacheHit.cached_result }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // If no cache hit, proceed with transformation
+    console.log('No cache hit found, proceeding with DeepSeek transformation');
+
     const basePrompt = customTemplate || getSystemPrompt(transformationType);
-    console.log('Using transformation type:', transformationType);
+    const enhancedPrompt = `
+      You are a thoughtful AI assistant analyzing journal entries.
+      
+      INSTRUCTIONS:
+      ${basePrompt}
+      
+      Please provide:
+      1. A clear summary of the key themes and insights
+      2. The overall emotional sentiment (positive, neutral, or negative)
+      3. A thoughtful follow-up question to promote deeper reflection
+      
+      Format your response with clear sections.
+      
+      TEXT TO ANALYZE:
+      ${text}
+    `;
     
     console.log('Sending request to DeepSeek API...');
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
@@ -54,11 +101,7 @@ serve(async (req: Request) => {
         messages: [
           { 
             role: 'system', 
-            content: `You are a direct and efficient text transformer. ${basePrompt}`
-          },
-          { 
-            role: 'user', 
-            content: text 
+            content: enhancedPrompt
           }
         ],
         temperature: 0.7,
@@ -85,6 +128,24 @@ serve(async (req: Request) => {
     }
 
     const transformedText = data.choices[0].message.content;
+    
+    // Cache the result
+    console.log('Caching transformation result...');
+    const { error: cacheError } = await supabase
+      .from('summary_cache')
+      .insert({
+        input_text: text,
+        transformation_type: transformationType,
+        prompt_template: customTemplate || basePrompt,
+        cached_result: transformedText,
+        input_hash: inputHash
+      });
+
+    if (cacheError) {
+      console.error('Error caching result:', cacheError);
+      // Don't throw here, we still want to return the transformation
+    }
+
     console.log('Successfully transformed text, length:', transformedText.length);
 
     return new Response(
@@ -110,16 +171,34 @@ serve(async (req: Request) => {
 
 const getSystemPrompt = (transformationType: string) => {
   const prompts: Record<string, string> = {
-    'Psychoanalysis': `You are a skilled psychoanalyst trained in multiple therapeutic approaches. Analyze this text through various therapeutic lenses to provide deep psychological insights. Focus on key themes, patterns, and underlying meanings.`,
-    'Quick Summary': 'Provide a brief, clear summary of the main points and insights. Be concise and direct.',
-    'Emotional Check-In': 'Analyze the emotional content and provide an empathetic reflection focusing on the feelings expressed.',
-    'Daily Affirmation': 'Transform the key positive elements into uplifting, personal affirmations.',
-    'Mindfulness Reflection': 'Transform this into a mindful reflection focusing on present-moment awareness and acceptance.',
-    'Goal Setting': 'Extract and structure the future-oriented elements into clear, achievable goals.',
-    'Short Paraphrase': 'Provide a concise paraphrase that captures the essence of the content.',
-    'Personal Growth': 'Analyze this text through a personal development lens, identifying key areas for growth.',
-    'Professional': 'Transform this text into professional, business-oriented insights.',
-    'Social Media': 'Transform this content into engaging social media content while maintaining the core message.'
+    'Psychoanalysis': `Analyze this text through various therapeutic lenses to provide deep psychological insights. Focus on:
+      - Key emotional patterns and themes
+      - Underlying motivations and beliefs
+      - Potential areas for growth and self-awareness`,
+    'Quick Summary': `Provide a clear, concise summary that captures:
+      - Main points and key insights
+      - Important details and context
+      - Core message or takeaway`,
+    'Emotional Check-In': `Analyze the emotional content by:
+      - Identifying primary and secondary emotions
+      - Noting emotional patterns or shifts
+      - Suggesting potential emotional triggers`,
+    'Daily Affirmation': `Transform key positive elements into:
+      - Personalized, powerful affirmations
+      - Growth-oriented statements
+      - Confidence-building messages`,
+    'Mindfulness Reflection': `Create a mindful reflection focusing on:
+      - Present-moment awareness
+      - Non-judgmental observations
+      - Mindful insights and learnings`,
+    'Goal Setting': `Extract and structure future-oriented elements into:
+      - Clear, achievable goals
+      - Action steps
+      - Success metrics`,
+    'Short Paraphrase': `Provide a concise paraphrase that:
+      - Maintains core meaning
+      - Highlights key points
+      - Uses clear, direct language`
   };
 
   return prompts[transformationType] || 'Transform this text while maintaining its core meaning and intent.';

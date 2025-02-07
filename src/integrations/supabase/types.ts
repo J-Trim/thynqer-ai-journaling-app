@@ -275,6 +275,39 @@ export type Database = {
           },
         ]
       }
+      summary_cache: {
+        Row: {
+          cached_result: string
+          created_at: string | null
+          id: string
+          input_hash: string
+          input_text: string
+          last_accessed: string | null
+          prompt_template: string
+          transformation_type: string
+        }
+        Insert: {
+          cached_result: string
+          created_at?: string | null
+          id?: string
+          input_hash: string
+          input_text: string
+          last_accessed?: string | null
+          prompt_template: string
+          transformation_type: string
+        }
+        Update: {
+          cached_result?: string
+          created_at?: string | null
+          id?: string
+          input_hash?: string
+          input_text?: string
+          last_accessed?: string | null
+          prompt_template?: string
+          transformation_type?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           id: string
@@ -335,6 +368,10 @@ export type Database = {
     }
     Functions: {
       cleanup_old_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_summary_cache: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
