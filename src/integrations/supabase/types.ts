@@ -132,6 +132,7 @@ export type Database = {
           created_at: string | null
           has_been_edited: boolean | null
           id: string
+          mood: number | null
           text: string | null
           title: string | null
           updated_at: string | null
@@ -142,6 +143,7 @@ export type Database = {
           created_at?: string | null
           has_been_edited?: boolean | null
           id?: string
+          mood?: number | null
           text?: string | null
           title?: string | null
           updated_at?: string | null
@@ -152,6 +154,7 @@ export type Database = {
           created_at?: string | null
           has_been_edited?: boolean | null
           id?: string
+          mood?: number | null
           text?: string | null
           title?: string | null
           updated_at?: string | null
