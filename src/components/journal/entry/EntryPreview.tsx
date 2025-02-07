@@ -44,26 +44,24 @@ const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreview
           }));
       } catch (err) {
         console.error('Error fetching tags:', err);
-        toast({
-          title: "Error",
-          description: "Failed to load tags. Please refresh the page.",
-          variant: "destructive",
-        });
         throw err;
       }
     },
     enabled: !!entryId,
     retry: 2,
-    staleTime: 30000,
-    onError: (err) => {
-      console.error('Query error:', err);
+    staleTime: 30000
+  });
+
+  // Use the error from useQuery to show toast
+  React.useEffect(() => {
+    if (isError && error) {
       toast({
         title: "Error",
         description: "Failed to load tags. Please refresh the page.",
         variant: "destructive",
       });
     }
-  });
+  }, [isError, error, toast]);
 
   const displayPreview = preview?.trim() 
     ? preview 
