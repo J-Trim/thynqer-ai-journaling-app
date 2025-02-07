@@ -8,6 +8,43 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Initialize Stripe client
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+  apiVersion: '2023-10-16',
+});
+
+async function findCustomerByUserId(userId: string) {
+  console.log('Finding Stripe customer for user:', userId);
+  const customers = await stripe.customers.list({
+    limit: 1,
+    metadata: { supabase_user_id: userId }
+  });
+  return customers.data[0] || null;
+}
+
+async function getActiveSubscriptions(customerId: string) {
+  console.log('Checking active subscriptions for customer:', customerId);
+  const subscriptions = await stripe.subscriptions.list({
+    customer: customerId,
+    status: 'active',
+    limit: 1
+  });
+  return subscriptions.data;
+}
+
+async function checkSubscriptionStatus(userId: string): Promise<boolean> {
+  const customer = await findCustomerByUserId(userId);
+  if (!customer) {
+    console.log('No Stripe customer found for user:', userId);
+    return false;
+  }
+
+  const activeSubscriptions = await getActiveSubscriptions(customer.id);
+  const isSubscribed = activeSubscriptions.length > 0;
+  console.log('Subscription status for user:', userId, 'Status:', isSubscribed);
+  return isSubscribed;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -50,31 +87,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Authenticated user:', user.id);
-
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-      apiVersion: '2023-10-16',
-    });
-
-    // Find customer by metadata
-    const customers = await stripe.customers.list({
-      limit: 1,
-      metadata: { supabase_user_id: user.id }
-    });
-
-    let isSubscribed = false;
-
-    if (customers.data.length > 0) {
-      const subscriptions = await stripe.subscriptions.list({
-        customer: customers.data[0].id,
-        status: 'active',
-        limit: 1
-      });
-
-      isSubscribed = subscriptions.data.length > 0;
-    }
-
-    console.log('Subscription status checked for user:', user.id, 'Status:', isSubscribed);
+    const isSubscribed = await checkSubscriptionStatus(user.id);
 
     return new Response(
       JSON.stringify({ isSubscribed }),
