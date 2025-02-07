@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useJournalLoad } from "./journal/useJournalLoad";
 import { useUnsavedChanges } from "./journal/useUnsavedChanges";
+import { useTagManagement } from "./useTagManagement";
 
 export const useJournalEntry = (id?: string) => {
   const [title, setTitle] = useState("");
@@ -27,6 +28,8 @@ export const useJournalEntry = (id?: string) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const { selectedTags, setSelectedTags, handleTagToggle, updateEntryTagsMutation } = useTagManagement(entryId);
+
   const { isInitializing } = useJournalLoad({
     id,
     onLoadComplete: (data) => {
@@ -34,6 +37,7 @@ export const useJournalEntry = (id?: string) => {
       setContent(data.content);
       setTranscribedAudio(data.transcribedAudio);
       setAudioUrl(data.audioUrl);
+      setSelectedTags(data.tagIds);
       setInitialContent({
         title: data.title,
         content: data.content,
@@ -112,6 +116,14 @@ export const useJournalEntry = (id?: string) => {
         setEntryId(savedEntry.id);
       }
 
+      // Update tags
+      if (savedEntry?.id) {
+        await updateEntryTagsMutation.mutateAsync({
+          entryId: savedEntry.id,
+          tagIds: selectedTags
+        });
+      }
+
       setInitialContent({
         title: entryData.title,
         content,
@@ -163,6 +175,8 @@ export const useJournalEntry = (id?: string) => {
     isInitializing,
     isSaveInProgress,
     saveEntry,
-    handleNavigateAway
+    handleNavigateAway,
+    selectedTags,
+    handleTagToggle
   };
 };

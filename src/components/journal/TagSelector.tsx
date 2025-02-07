@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +12,10 @@ import { Card, CardContent } from "@/components/ui/card";
 interface TagSelectorProps {
   selectedTags: string[];
   onTagToggle: (tagId: string) => void;
+  readOnly?: boolean;
 }
 
-const TagSelector = ({ selectedTags, onTagToggle }: TagSelectorProps) => {
+const TagSelector = ({ selectedTags, onTagToggle, readOnly = false }: TagSelectorProps) => {
   const navigate = useNavigate();
   const [showTags, setShowTags] = useState(false);
   
@@ -41,30 +43,32 @@ const TagSelector = ({ selectedTags, onTagToggle }: TagSelectorProps) => {
       <Button
         variant="outline"
         size="sm"
-        onClick={() => setShowTags(!showTags)}
+        onClick={() => !readOnly && setShowTags(!showTags)}
         className="w-full flex items-center justify-between"
       >
         <span>
           Tags {selectedCount > 0 && `(${selectedCount} selected)`}
         </span>
-        {showTags ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        {!readOnly && (showTags ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
       </Button>
 
-      {showTags && (
+      {(showTags || readOnly) && (
         <Card className="bg-muted animate-fade-in">
           <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium">Manage Tags</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/tags")}
-                className="text-xs"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Manage Tags
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium">Manage Tags</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/tags")}
+                  className="text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Manage Tags
+                </Button>
+              </div>
+            )}
 
             {isLoading ? (
               <div className="animate-pulse text-muted-foreground">Loading tags...</div>
@@ -77,8 +81,8 @@ const TagSelector = ({ selectedTags, onTagToggle }: TagSelectorProps) => {
                         <Badge
                           key={tag.id}
                           variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                          className="cursor-pointer"
-                          onClick={() => onTagToggle(tag.id)}
+                          className={readOnly ? undefined : "cursor-pointer"}
+                          onClick={() => !readOnly && onTagToggle(tag.id)}
                         >
                           {tag.name}
                         </Badge>
