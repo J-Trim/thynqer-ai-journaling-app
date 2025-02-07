@@ -12,14 +12,18 @@ import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-const FormContent: React.FC<{
+interface FormContentProps {
   onSave: () => Promise<{ id: string }>;
   onCancel: () => void;
   isSaving: boolean;
-}> = ({
+  isExistingEntry?: boolean;
+}
+
+const FormContent: React.FC<FormContentProps> = ({
   onSave,
   onCancel,
   isSaving,
+  isExistingEntry = false,
 }) => {
   const {
     title,
@@ -118,6 +122,7 @@ const FormContent: React.FC<{
         recordingTime={recordingTime}
         onToggleRecording={toggleRecording}
         onStopRecording={stopRecording}
+        isExistingEntry={isExistingEntry}
       />
       
       <MoodSelector value={mood} onChange={setMood} />
@@ -164,3 +169,4 @@ const FormContent: React.FC<{
 };
 
 export default FormContent;
+

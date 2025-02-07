@@ -134,6 +134,7 @@ export type Database = {
           id: string
           mood: number | null
           mood_timestamp: string | null
+          tags: Json | null
           text: string | null
           title: string | null
           updated_at: string | null
@@ -146,6 +147,7 @@ export type Database = {
           id?: string
           mood?: number | null
           mood_timestamp?: string | null
+          tags?: Json | null
           text?: string | null
           title?: string | null
           updated_at?: string | null
@@ -158,6 +160,7 @@ export type Database = {
           id?: string
           mood?: number | null
           mood_timestamp?: string | null
+          tags?: Json | null
           text?: string | null
           title?: string | null
           updated_at?: string | null
