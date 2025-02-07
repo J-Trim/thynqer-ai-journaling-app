@@ -3,8 +3,16 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
 
+interface SubscriptionInfo {
+  isSubscribed: boolean;
+  tier?: string;
+  features?: string[];
+  expiresAt?: string;
+}
+
 export const usePremiumStatus = () => {
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -28,6 +36,7 @@ export const usePremiumStatus = () => {
         if (error) throw error;
         
         setIsPremium(data?.isSubscribed || false);
+        setSubscriptionInfo(data || null);
       } catch (error) {
         console.error('Error checking premium status:', error);
         toast({
@@ -43,5 +52,11 @@ export const usePremiumStatus = () => {
     checkPremiumStatus();
   }, []);
 
-  return { isPremium, isLoading };
+  return { 
+    isPremium, 
+    isLoading,
+    subscriptionTier: subscriptionInfo?.tier,
+    subscriptionFeatures: subscriptionInfo?.features,
+    subscriptionExpiresAt: subscriptionInfo?.expiresAt,
+  };
 };

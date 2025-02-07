@@ -13,6 +13,13 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
 });
 
+interface SubscriptionInfo {
+  isSubscribed: boolean;
+  tier?: string;
+  features?: string[];
+  expiresAt?: string;
+}
+
 async function findCustomerByUserId(userId: string) {
   console.log('Finding Stripe customer for user:', userId);
   const customers = await stripe.customers.list({
@@ -27,22 +34,39 @@ async function getActiveSubscriptions(customerId: string) {
   const subscriptions = await stripe.subscriptions.list({
     customer: customerId,
     status: 'active',
-    limit: 1
+    expand: ['data.items.price.product'] // Include product details
   });
   return subscriptions.data;
 }
 
-async function checkSubscriptionStatus(userId: string): Promise<boolean> {
+async function checkSubscriptionStatus(userId: string): Promise<SubscriptionInfo> {
   const customer = await findCustomerByUserId(userId);
   if (!customer) {
     console.log('No Stripe customer found for user:', userId);
-    return false;
+    return { isSubscribed: false };
   }
 
   const activeSubscriptions = await getActiveSubscriptions(customer.id);
-  const isSubscribed = activeSubscriptions.length > 0;
-  console.log('Subscription status for user:', userId, 'Status:', isSubscribed);
-  return isSubscribed;
+  if (activeSubscriptions.length === 0) {
+    return { isSubscribed: false };
+  }
+
+  // Get the "highest" tier subscription
+  // You can modify this logic based on your product hierarchy
+  const subscription = activeSubscriptions[0];
+  const product = subscription.items.data[0].price.product as Stripe.Product;
+  
+  const subscriptionInfo: SubscriptionInfo = {
+    isSubscribed: true,
+    tier: product.metadata.tier || 'basic',
+    features: product.metadata.features ? JSON.parse(product.metadata.features) : undefined,
+    expiresAt: subscription.current_period_end ? 
+      new Date(subscription.current_period_end * 1000).toISOString() : 
+      undefined
+  };
+
+  console.log('Subscription info for user:', userId, subscriptionInfo);
+  return subscriptionInfo;
 }
 
 serve(async (req) => {
@@ -87,10 +111,10 @@ serve(async (req) => {
       );
     }
 
-    const isSubscribed = await checkSubscriptionStatus(user.id);
+    const subscriptionInfo = await checkSubscriptionStatus(user.id);
 
     return new Response(
-      JSON.stringify({ isSubscribed }),
+      JSON.stringify(subscriptionInfo),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
