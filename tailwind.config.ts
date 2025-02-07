@@ -32,7 +32,7 @@ export default {
           DEFAULT: "#3BB873",
           hover: "#35A367",
           light: "#48C285",
-          focus: "#2D8A56", // Darker shade for focus states
+          focus: "#2D8A56",
         },
         secondary: {
           DEFAULT: "#F2F4F5",
@@ -41,7 +41,7 @@ export default {
         accent: {
           DEFAULT: "#3BB873",
           hover: "#35A367",
-          focus: "#2D8A56", // Darker shade for focus states
+          focus: "#2D8A56",
         },
         text: {
           DEFAULT: "#1A1A1A",
