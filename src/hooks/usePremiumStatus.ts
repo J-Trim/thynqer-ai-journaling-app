@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from './use-toast';
@@ -18,7 +19,10 @@ export const usePremiumStatus = () => {
         }
 
         const { data, error } = await supabase.functions.invoke('check-subscription', {
-          body: { userId: session.user.id }
+          body: {},
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
         });
 
         if (error) throw error;
