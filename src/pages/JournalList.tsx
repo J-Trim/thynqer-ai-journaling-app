@@ -1,20 +1,25 @@
+
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, BookOpen, Tags } from "lucide-react";
+import { PlusCircle, BookOpen, Tags, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import JournalEntry from "@/components/JournalEntry";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useInView } from "react-intersection-observer";
+
+const ENTRIES_PER_PAGE = 10;
 
 const JournalList = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>("");
   const queryClient = useQueryClient();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const { ref, inView } = useInView();
 
   const { data: tags } = useQuery({
     queryKey: ['tags'],
@@ -29,11 +34,18 @@ const JournalList = () => {
     }
   });
 
-  const { data: entries, isLoading } = useQuery({
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError
+  } = useInfiniteQuery({
     queryKey: ['journal-entries', selectedTags],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       try {
-        console.log('Starting journal entries fetch...');
+        console.log('Fetching page:', pageParam);
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
@@ -41,32 +53,29 @@ const JournalList = () => {
           throw new Error('Not authenticated');
         }
 
-        console.log('Authenticated user ID:', session.user.id);
-        
-        // First, get all entries for the user
-        const { data: entriesData, error: entriesError } = await supabase
+        const start = pageParam * ENTRIES_PER_PAGE;
+        const end = start + ENTRIES_PER_PAGE - 1;
+
+        // First, get paginated entries for the user
+        const { data: entriesData, error: entriesError, count } = await supabase
           .from('journal_entries')
-          .select('*')
+          .select('*', { count: 'exact' })
           .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .range(start, end);
 
         if (entriesError) {
           console.error('Error fetching entries:', entriesError);
           throw entriesError;
         }
 
-        console.log('Retrieved entries:', entriesData);
-
-        if (!entriesData || entriesData.length === 0) {
-          console.log('No entries found for user');
-          return [];
-        }
+        console.log(`Retrieved ${entriesData?.length} entries for page ${pageParam}`);
 
         // If tags are selected, filter entries that have those tags
         if (selectedTags.length > 0) {
           const { data: taggedEntries, error: tagError } = await supabase
             .from('entry_tags')
-            .select('entry_id, tag_id')
+            .select('entry_id')
             .in('tag_id', selectedTags);
 
           if (tagError) {
@@ -74,26 +83,42 @@ const JournalList = () => {
             throw tagError;
           }
 
-          console.log('Tagged entries:', taggedEntries);
+          const taggedEntryIds = new Set(taggedEntries.map(te => te.entry_id));
+          const filteredEntries = entriesData?.filter(entry => taggedEntryIds.has(entry.id)) || [];
 
-          // Filter entries that have the selected tags
-          const filteredEntries = entriesData.filter(entry =>
-            taggedEntries.some(tag => tag.entry_id === entry.id)
-          );
-
-          console.log('Filtered entries by tags:', filteredEntries);
-          return filteredEntries;
+          return {
+            entries: filteredEntries,
+            count,
+            pageParam,
+          };
         }
 
-        return entriesData;
+        return {
+          entries: entriesData || [],
+          count,
+          pageParam,
+        };
       } catch (error) {
         console.error('Error in journal entries query:', error);
         throw error;
       }
     },
-    retry: 1,
-    refetchOnWindowFocus: false
+    getNextPageParam: (lastPage, pages) => {
+      if (!lastPage.count) return undefined;
+      const morePages = pages.length * ENTRIES_PER_PAGE < lastPage.count;
+      if (!morePages) return undefined;
+      return pages.length;
+    },
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    cacheTime: 1000 * 60 * 30, // Keep unused data in cache for 30 minutes
   });
+
+  // Load more entries when the user scrolls near the bottom
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   useEffect(() => {
     const getUser = async () => {
@@ -131,6 +156,24 @@ const JournalList = () => {
       </div>
     );
   }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto p-4 md:p-8">
+          <div className="max-w-4xl mx-auto space-y-8">
+            <div className="text-center text-destructive">
+              Error loading journal entries. Please try again later.
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const allEntries = data?.pages.flatMap(page => page.entries) || [];
+  const isEmpty = allEntries.length === 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -180,20 +223,7 @@ const JournalList = () => {
           )}
 
           <div className="grid gap-4 mt-8">
-            {entries && entries.length > 0 ? (
-              entries.map((entry) => (
-                <JournalEntry
-                  key={entry.id}
-                  id={entry.id}
-                  title={entry.title || "Untitled Entry"}
-                  date={format(new Date(entry.created_at), 'PPP')}
-                  preview={entry.text || "No content"}
-                  hasBeenEdited={entry.has_been_edited}
-                  onClick={() => navigate(`/journal/edit/${entry.id}`)}
-                  onDelete={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
-                />
-              ))
-            ) : (
+            {isEmpty ? (
               <div className="text-center py-12 bg-muted/20 rounded-lg">
                 <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/50" />
                 <p className="mt-4 text-lg text-muted-foreground">
@@ -207,6 +237,30 @@ const JournalList = () => {
                     : "Click the button above to create your first entry"}
                 </p>
               </div>
+            ) : (
+              <>
+                {allEntries.map((entry) => (
+                  <JournalEntry
+                    key={entry.id}
+                    id={entry.id}
+                    title={entry.title || "Untitled Entry"}
+                    date={format(new Date(entry.created_at), 'PPP')}
+                    preview={entry.text || "No content"}
+                    audioUrl={entry.audio_url}
+                    hasBeenEdited={entry.has_been_edited}
+                    onClick={() => navigate(`/journal/edit/${entry.id}`)}
+                    onDelete={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
+                  />
+                ))}
+                {/* Infinite scroll trigger */}
+                <div ref={ref} className="h-4 w-full">
+                  {isFetchingNextPage && (
+                    <div className="flex justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
