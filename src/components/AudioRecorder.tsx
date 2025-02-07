@@ -1,3 +1,4 @@
+
 import { useAudioRecording } from "@/hooks/useAudioRecording";
 import AudioRecorderControls from "@/components/journal/audio/AudioRecorderControls";
 import AudioRecorderTimer from "@/components/journal/audio/AudioRecorderTimer";
@@ -9,6 +10,7 @@ interface AudioRecorderProps {
   isProcessing?: boolean;
   onToggleRecording?: () => void;
   onStopRecording?: () => void;
+  isDisabled?: boolean;
 }
 
 const AudioRecorder = ({ 
@@ -17,7 +19,8 @@ const AudioRecorder = ({
   isPaused: externalIsPaused,
   isProcessing: externalIsProcessing,
   onToggleRecording: externalToggleRecording,
-  onStopRecording: externalStopRecording
+  onStopRecording: externalStopRecording,
+  isDisabled = false
 }: AudioRecorderProps) => {
   const {
     isRecording,
@@ -33,7 +36,7 @@ const AudioRecorder = ({
   });
 
   return (
-    <div className="flex flex-col items-center space-y-4 p-6 bg-secondary rounded-lg shadow-sm animate-fade-in">
+    <div className={`flex flex-col items-center space-y-4 p-6 bg-secondary rounded-lg shadow-sm animate-fade-in ${isDisabled ? 'opacity-50' : ''}`}>
       <AudioRecorderTimer recordingTime={recordingTime} />
       <AudioRecorderControls
         isRecording={externalIsRecording !== undefined ? externalIsRecording : isRecording}
@@ -41,6 +44,7 @@ const AudioRecorder = ({
         isProcessing={externalIsProcessing !== undefined ? externalIsProcessing : isProcessing}
         onToggleRecording={externalToggleRecording || toggleRecording}
         onStopRecording={externalStopRecording || stopRecording}
+        isDisabled={isDisabled}
       />
       {isProcessing && (
         <div className="text-sm text-muted-foreground animate-pulse">

@@ -8,6 +8,7 @@ interface AudioRecorderControlsProps {
   isProcessing: boolean;
   onToggleRecording: () => void;
   onStopRecording: () => void;
+  isDisabled?: boolean;
 }
 
 const AudioRecorderControls = ({
@@ -15,7 +16,8 @@ const AudioRecorderControls = ({
   isPaused,
   isProcessing,
   onToggleRecording,
-  onStopRecording
+  onStopRecording,
+  isDisabled = false
 }: AudioRecorderControlsProps) => {
   return (
     <div className="flex flex-col items-center gap-4">
@@ -23,7 +25,7 @@ const AudioRecorderControls = ({
         <Button
           size="icon"
           onClick={onToggleRecording}
-          disabled={isProcessing}
+          disabled={isProcessing || isDisabled}
           variant="ghost"
           className={`h-12 w-12 rounded-full hover:bg-secondary/80 relative z-10 ${
             isRecording 
@@ -31,7 +33,7 @@ const AudioRecorderControls = ({
                 ? "text-primary hover:text-primary-hover"
                 : "text-accent hover:text-accent-hover"
               : "text-primary hover:text-primary-hover"
-          }`}
+          } ${isDisabled ? 'cursor-not-allowed opacity-50' : ''}`}
         >
           {isRecording && !isPaused ? (
             <Pause className="h-6 w-6" />
@@ -39,11 +41,11 @@ const AudioRecorderControls = ({
             <Mic className="h-6 w-6" />
           )}
         </Button>
-        {isRecording && !isPaused && (
+        {isRecording && !isPaused && !isDisabled && (
           <div className="absolute inset-0 animate-pulse bg-accent/20 rounded-full" />
         )}
       </div>
-      {isRecording && (
+      {isRecording && !isDisabled && (
         <Button
           size="icon"
           onClick={onStopRecording}

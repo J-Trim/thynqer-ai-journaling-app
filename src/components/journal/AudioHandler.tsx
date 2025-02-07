@@ -4,6 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip } from "@/components/ui/tooltip";
+import { TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AudioHandlerProps {
   onAudioSaved: (audioUrl: string) => void;
@@ -13,6 +15,7 @@ interface AudioHandlerProps {
   isProcessing?: boolean;
   onToggleRecording?: () => void;
   onStopRecording?: () => void;
+  isExistingEntry?: boolean;
 }
 
 const AudioHandler = ({ 
@@ -22,7 +25,8 @@ const AudioHandler = ({
   isPaused,
   isProcessing,
   onToggleRecording,
-  onStopRecording
+  onStopRecording,
+  isExistingEntry = false
 }: AudioHandlerProps) => {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -94,20 +98,38 @@ const AudioHandler = ({
     }
   };
 
+  const recorder = (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={isExistingEntry ? "opacity-50 cursor-not-allowed" : ""}>
+            <AudioRecorder 
+              onAudioSaved={handleAudioSaved}
+              isRecording={isRecording}
+              isPaused={isPaused}
+              isProcessing={isProcessing}
+              onToggleRecording={isExistingEntry ? undefined : onToggleRecording}
+              onStopRecording={isExistingEntry ? undefined : onStopRecording}
+              isDisabled={isExistingEntry}
+            />
+          </div>
+        </TooltipTrigger>
+        {isExistingEntry && (
+          <TooltipContent>
+            <p>Audio recording is only available when creating a new entry</p>
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
+  );
+
   return (
     <div 
       className="relative"
       role="region"
       aria-label="Audio recording controls"
     >
-      <AudioRecorder 
-        onAudioSaved={handleAudioSaved}
-        isRecording={isRecording}
-        isPaused={isPaused}
-        isProcessing={isProcessing}
-        onToggleRecording={onToggleRecording}
-        onStopRecording={onStopRecording}
-      />
+      {recorder}
       {isTranscribing && (
         <div 
           className="mt-4 space-y-2"

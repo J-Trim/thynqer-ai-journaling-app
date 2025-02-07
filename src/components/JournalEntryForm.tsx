@@ -11,6 +11,7 @@ import FormContent from "./journal/form/FormContent";
 import AudioTranscriptionHandler from "./journal/form/AudioTranscriptionHandler";
 
 const JournalEntryContent = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const {
     title,
@@ -57,6 +58,7 @@ const JournalEntryContent = () => {
         onSave={saveEntry}
         onCancel={handleCancel}
         isSaving={isSaving}
+        isExistingEntry={!!id}
       />
 
       <AudioTranscriptionHandler
