@@ -27,6 +27,13 @@ interface PageData {
   pageParam: number;
 }
 
+interface QueryContext {
+  pageParam?: number;
+  queryKey: unknown[];
+  signal?: AbortSignal;
+  meta?: Record<string, unknown>;
+}
+
 export const useJournalList = () => {
   const [userName, setUserName] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -47,7 +54,7 @@ export const useJournalList = () => {
   });
 
   // Memoize the fetch function
-  const fetchEntries = useCallback(async (context: { pageParam?: number }) => {
+  const fetchEntries = useCallback(async (context: QueryContext): Promise<PageData> => {
     try {
       const pageParam = context.pageParam ?? 0;
       console.log('Fetching page:', pageParam);
