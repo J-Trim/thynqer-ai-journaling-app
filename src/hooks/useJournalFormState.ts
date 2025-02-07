@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useJournalFormState = (id?: string, initialData?: any) => {
   const [title, setTitle] = useState(initialData?.title || "");
@@ -86,6 +87,7 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
     setLastSavedId,
     mood,
     setMood,
-    resetForm, // Expose resetForm function
+    resetForm,
   };
 };
+

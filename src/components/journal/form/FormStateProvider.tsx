@@ -23,6 +23,7 @@ interface FormStateContextType {
   setLastSavedId: (value: string | null) => void;
   mood: number | null;
   setMood: (value: number) => void;
+  resetForm: () => void;  // Add the resetForm function type
 }
 
 const FormStateContext = createContext<FormStateContextType | undefined>(undefined);
@@ -54,3 +55,4 @@ export const useFormState = () => {
   }
   return context;
 };
+
