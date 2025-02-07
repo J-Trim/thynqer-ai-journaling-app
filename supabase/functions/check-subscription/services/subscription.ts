@@ -2,6 +2,7 @@
 import { SubscriptionInfo } from '../types.ts';
 import { logError } from '../utils/logger.ts';
 import { findCustomerByUserId, getActiveSubscriptions } from './stripe.ts';
+import { getSubscriptionFromCache, updateSubscriptionCache } from './cache.ts';
 
 async function getTierInformation(supabaseClient: any, stripeProductId: string) {
   try {
@@ -25,19 +26,31 @@ async function getTierInformation(supabaseClient: any, stripeProductId: string) 
 
 export async function checkSubscriptionStatus(userId: string, supabaseClient: any): Promise<SubscriptionInfo> {
   try {
+    // Check cache first
+    const cachedSubscription = await getSubscriptionFromCache(supabaseClient, userId);
+    if (cachedSubscription) {
+      console.log('Returning cached subscription info for user:', userId);
+      return cachedSubscription;
+    }
+
+    // If not in cache, check Stripe
     const customer = await findCustomerByUserId(userId);
     if (!customer) {
       console.log('No Stripe customer found for user:', userId);
-      return { isSubscribed: false };
+      const subscriptionInfo = { isSubscribed: false };
+      await updateSubscriptionCache(supabaseClient, userId, subscriptionInfo);
+      return subscriptionInfo;
     }
 
     const activeSubscriptions = await getActiveSubscriptions(customer.id);
     if (activeSubscriptions.length === 0) {
-      return { isSubscribed: false };
+      const subscriptionInfo = { isSubscribed: false };
+      await updateSubscriptionCache(supabaseClient, userId, subscriptionInfo);
+      return subscriptionInfo;
     }
 
     // Get the subscription with the most features/highest tier
-    const subscription = activeSubscriptions[0]; // We can enhance this logic later
+    const subscription = activeSubscriptions[0];
     const product = subscription.items.data[0].price.product as Stripe.Product;
     
     // Fetch tier information from our database
@@ -52,6 +65,9 @@ export async function checkSubscriptionStatus(userId: string, supabaseClient: an
         undefined,
       productId: product.id
     };
+
+    // Update cache with fresh data
+    await updateSubscriptionCache(supabaseClient, userId, subscriptionInfo);
 
     // Log only non-sensitive information
     console.log('Subscription info for user:', userId, {

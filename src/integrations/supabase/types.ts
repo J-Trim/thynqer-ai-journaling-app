@@ -159,6 +159,63 @@ export type Database = {
         }
         Relationships: []
       }
+      request_rate_limits: {
+        Row: {
+          endpoint: string
+          first_request_at: string | null
+          id: string
+          request_count: number | null
+          user_id: string
+        }
+        Insert: {
+          endpoint: string
+          first_request_at?: string | null
+          id?: string
+          request_count?: number | null
+          user_id: string
+        }
+        Update: {
+          endpoint?: string
+          first_request_at?: string | null
+          id?: string
+          request_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      subscription_status_cache: {
+        Row: {
+          expires_at: string | null
+          features: Json | null
+          id: string
+          is_subscribed: boolean
+          last_checked: string
+          product_id: string | null
+          tier: string | null
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          features?: Json | null
+          id?: string
+          is_subscribed: boolean
+          last_checked?: string
+          product_id?: string | null
+          tier?: string | null
+          user_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          features?: Json | null
+          id?: string
+          is_subscribed?: boolean
+          last_checked?: string
+          product_id?: string | null
+          tier?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       subscription_tiers: {
         Row: {
           created_at: string | null
@@ -241,7 +298,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_old_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       valid_transformation:

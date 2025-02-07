@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 import { logError } from "./utils/logger.ts";
 import { checkSubscriptionStatus } from "./services/subscription.ts";
+import { checkRateLimit } from "./services/rateLimit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,6 +53,15 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+
+    // Check rate limit
+    const isWithinLimit = await checkRateLimit(supabaseClient, user.id, 'check-subscription');
+    if (!isWithinLimit) {
+      return new Response(
+        JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
       );
     }
 
