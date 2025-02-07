@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,7 +46,8 @@ const TagSelector = ({ selectedTags, onTagToggle, readOnly = false }: TagSelecto
         onClick={() => !readOnly && setShowTags(!showTags)}
         className="w-full flex items-center justify-between"
       >
-        <span>
+        <span className="flex items-center">
+          <Tag className="h-4 w-4 mr-2" />
           Tags {selectedCount > 0 && `(${selectedCount} selected)`}
         </span>
         {!readOnly && (showTags ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
@@ -81,9 +82,10 @@ const TagSelector = ({ selectedTags, onTagToggle, readOnly = false }: TagSelecto
                         <Badge
                           key={tag.id}
                           variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                          className={readOnly ? undefined : "cursor-pointer"}
+                          className={`flex items-center gap-1 ${readOnly ? '' : 'cursor-pointer hover:bg-muted-foreground/10'}`}
                           onClick={() => !readOnly && onTagToggle(tag.id)}
                         >
+                          <Tag className="h-3 w-3" />
                           {tag.name}
                         </Badge>
                       ))}
