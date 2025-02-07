@@ -41,7 +41,8 @@ const FormContent: React.FC<FormContentProps> = ({
     showTags,
     lastSavedId,
     mood,
-    setMood
+    setMood,
+    resetForm
   } = useFormState();
 
   const { toast } = useToast();
@@ -111,6 +112,13 @@ const FormContent: React.FC<FormContentProps> = ({
     );
   };
 
+  const handleSave = async () => {
+    const result = await onSave();
+    if (result) {
+      resetForm(); // Reset form state after successful save
+    }
+  };
+
   return (
     <div className="space-y-4">
       <JournalFormHeader 
@@ -169,4 +177,3 @@ const FormContent: React.FC<FormContentProps> = ({
 };
 
 export default FormContent;
-

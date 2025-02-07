@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useJournalFormState = (id?: string, initialData?: any) => {
   const [title, setTitle] = useState(initialData?.title || "");
@@ -12,7 +13,23 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
   const [transformationEnabled, setTransformationEnabled] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(id || null);
   const [mood, setMood] = useState<number | null>(initialData?.mood || null);
+  const queryClient = useQueryClient();
 
+  // Reset form state
+  const resetForm = () => {
+    setTitle("");
+    setContent("");
+    setTranscribedAudio("");
+    setAudioUrl(null);
+    setIsTranscriptionPending(false);
+    setSelectedTags([]);
+    setShowTags(false);
+    setTransformationEnabled(false);
+    setLastSavedId(null);
+    setMood(null);
+  };
+
+  // Load initial data when editing an existing entry
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || "");
@@ -20,8 +37,33 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
       setAudioUrl(initialData.audio_url || null);
       setMood(initialData.mood || null);
       setLastSavedId(id || null);
+
+      // If there are initial tags, set them
+      if (initialData.tagIds) {
+        setSelectedTags(initialData.tagIds);
+      }
     }
   }, [initialData, id]);
+
+  // Prefetch related data when an entry is loaded
+  useEffect(() => {
+    if (id) {
+      // Prefetch tags data
+      queryClient.prefetchQuery({
+        queryKey: ['entry-tags', id],
+        queryFn: async () => {
+          const { data: entryTags } = await supabase
+            .from('entry_tags')
+            .select(`
+              tag_id,
+              tags:tags(name)
+            `)
+            .eq('entry_id', id);
+          return entryTags || [];
+        }
+      });
+    }
+  }, [id, queryClient]);
 
   return {
     title,
@@ -44,5 +86,6 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
     setLastSavedId,
     mood,
     setMood,
+    resetForm, // Expose resetForm function
   };
 };

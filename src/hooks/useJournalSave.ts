@@ -62,7 +62,6 @@ export const useJournalSave = ({
 
   const saveEntry = async (isAutoSave = false) => {
     const currentTime = Date.now();
-    // Prevent rapid consecutive saves (within 2 seconds)
     if (currentTime - lastSaveTimestamp < 2000) {
       console.log('Save prevented - too soon after last save');
       return null;
@@ -126,6 +125,10 @@ export const useJournalSave = ({
       }
 
       await updateEntryTags(savedEntry.id);
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['entry-tags', savedEntry.id] });
 
       if (!isAutoSave) {
         toast({
