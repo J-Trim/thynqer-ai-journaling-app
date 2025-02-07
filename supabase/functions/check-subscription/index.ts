@@ -114,7 +114,14 @@ async function checkSubscriptionStatus(userId: string, supabaseClient: any): Pro
       productId: product.id
     };
 
-    console.log('Subscription info for user:', userId, subscriptionInfo);
+    // Log only non-sensitive information
+    console.log('Subscription info for user:', userId, {
+      isSubscribed: subscriptionInfo.isSubscribed,
+      tier: subscriptionInfo.tier,
+      featureCount: subscriptionInfo.features?.length || 0,
+      expiresAt: subscriptionInfo.expiresAt
+    });
+
     return subscriptionInfo;
   } catch (error) {
     logError('checkSubscriptionStatus', error, { userId });
