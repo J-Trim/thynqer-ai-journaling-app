@@ -8,6 +8,8 @@ import EntryPreview from "./journal/entry/EntryPreview";
 import DeleteDialog from "./journal/entry/DeleteDialog";
 import { useJournalDelete } from "@/hooks/useJournalDelete";
 import { useEntryAudio } from "./journal/entry/useEntryAudio";
+import TagSelector from "./journal/TagSelector";
+import { useTagManagement } from "@/hooks/useTagManagement";
 
 interface JournalEntryProps {
   id: string;
@@ -34,6 +36,7 @@ const JournalEntry = React.memo(({
 }: JournalEntryProps) => {
   const { showDeleteDialog, setShowDeleteDialog, handleDelete } = useJournalDelete(onDelete);
   const { showAudioPlayer, handleAudioClick } = useEntryAudio(audioUrl);
+  const { selectedTags, handleTagToggle } = useTagManagement(id);
 
   const getMoodIcon = () => {
     if (!mood) return null;
@@ -65,6 +68,13 @@ const JournalEntry = React.memo(({
           }}
           moodIcon={getMoodIcon()}
         />
+        <div className="px-6 py-2">
+          <TagSelector
+            selectedTags={selectedTags}
+            onTagToggle={handleTagToggle}
+            readOnly
+          />
+        </div>
         <EntryPreview preview={preview} audioPlayer={audioPlayer} />
       </EntryCard>
 
