@@ -27,14 +27,6 @@ interface PageData {
   pageParam: number;
 }
 
-interface QueryContext {
-  pageParam: number | undefined;
-  queryKey: unknown[];
-  signal?: AbortSignal;
-  meta?: Record<string, unknown>;
-  direction?: 'forward' | 'backward';
-}
-
 export const useJournalList = () => {
   const [userName, setUserName] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -55,8 +47,9 @@ export const useJournalList = () => {
   });
 
   // Memoize the fetch function
-  const fetchEntries = useCallback(async ({ pageParam = 0 }: { pageParam?: number }): Promise<PageData> => {
+  const fetchEntries = useCallback(async (context: { pageParam?: number }) => {
     try {
+      const pageParam = context.pageParam ?? 0;
       console.log('Fetching page:', pageParam);
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -119,15 +112,15 @@ export const useJournalList = () => {
     isFetchingNextPage,
     isLoading,
     isError
-  } = useInfiniteQuery<PageData, Error>({
+  } = useInfiniteQuery({
     queryKey: ['journal-entries', selectedTags],
     queryFn: fetchEntries,
     initialPageParam: 0,
-    getNextPageParam: (lastPage, pages) => {
+    getNextPageParam: (lastPage) => {
       if (!lastPage.count) return undefined;
-      const morePages = pages.length * ENTRIES_PER_PAGE < lastPage.count;
-      if (!morePages) return undefined;
-      return pages.length;
+      const nextPage = lastPage.pageParam + 1;
+      const morePages = nextPage * ENTRIES_PER_PAGE < lastPage.count;
+      return morePages ? nextPage : undefined;
     },
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
