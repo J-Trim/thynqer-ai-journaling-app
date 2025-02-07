@@ -1,4 +1,5 @@
 
+import { lazy, Suspense } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 import { useEffect } from "react";
@@ -7,12 +8,15 @@ import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import Header from "@/components/Header";
-import JournalEntry from "@/components/JournalEntry";
-import JournalHeader from "@/components/journal/list/JournalHeader";
-import TagFilter from "@/components/journal/list/TagFilter";
-import EmptyState from "@/components/journal/list/EmptyState";
-import MoodChart from "@/components/journal/list/MoodChart";
+import LoadingState from "@/components/journal/LoadingState";
 import { useJournalList } from "@/hooks/useJournalList";
+
+// Lazy load components
+const JournalEntry = lazy(() => import("@/components/JournalEntry"));
+const JournalHeader = lazy(() => import("@/components/journal/list/JournalHeader"));
+const TagFilter = lazy(() => import("@/components/journal/list/TagFilter"));
+const EmptyState = lazy(() => import("@/components/journal/list/EmptyState"));
+const MoodChart = lazy(() => import("@/components/journal/list/MoodChart"));
 
 const JournalList = () => {
   const navigate = useNavigate();
@@ -43,11 +47,7 @@ const JournalList = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto p-4 md:p-8">
-          <div className="max-w-4xl mx-auto space-y-8">
-            <div className="text-center">
-              <div className="animate-pulse text-muted-foreground">Loading...</div>
-            </div>
-          </div>
+          <LoadingState />
         </main>
       </div>
     );
@@ -82,47 +82,49 @@ const JournalList = () => {
       <Header />
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          <JournalHeader userName={userName} />
+          <Suspense fallback={<LoadingState />}>
+            <JournalHeader userName={userName} />
 
-          {!isEmpty && entriesWithMood.length > 0 && (
-            <MoodChart entries={entriesWithMood} />
-          )}
-
-          <TagFilter 
-            tags={tags || []}
-            selectedTags={selectedTags}
-            onTagToggle={handleTagToggle}
-          />
-
-          <div className="grid gap-4 mt-8">
-            {isEmpty ? (
-              <EmptyState hasTagFilter={selectedTags.length > 0} />
-            ) : (
-              <>
-                {allEntries.map((entry) => (
-                  <JournalEntry
-                    key={entry.id}
-                    id={entry.id}
-                    title={entry.title || "Untitled Entry"}
-                    date={format(new Date(entry.created_at), 'PPP')}
-                    preview={entry.text || "No content"}
-                    audioUrl={entry.audio_url}
-                    hasBeenEdited={entry.has_been_edited}
-                    mood={entry.mood}
-                    onClick={() => navigate(`/journal/edit/${entry.id}`)}
-                    onDelete={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
-                  />
-                ))}
-                <div ref={ref} className="h-4 w-full">
-                  {isFetchingNextPage && (
-                    <div className="flex justify-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </>
+            {!isEmpty && entriesWithMood.length > 0 && (
+              <MoodChart entries={entriesWithMood} />
             )}
-          </div>
+
+            <TagFilter 
+              tags={tags || []}
+              selectedTags={selectedTags}
+              onTagToggle={handleTagToggle}
+            />
+
+            <div className="grid gap-4 mt-8">
+              {isEmpty ? (
+                <EmptyState hasTagFilter={selectedTags.length > 0} />
+              ) : (
+                <>
+                  {allEntries.map((entry) => (
+                    <JournalEntry
+                      key={entry.id}
+                      id={entry.id}
+                      title={entry.title || "Untitled Entry"}
+                      date={format(new Date(entry.created_at), 'PPP')}
+                      preview={entry.text || "No content"}
+                      audioUrl={entry.audio_url}
+                      hasBeenEdited={entry.has_been_edited}
+                      mood={entry.mood}
+                      onClick={() => navigate(`/journal/edit/${entry.id}`)}
+                      onDelete={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
+                    />
+                  ))}
+                  <div ref={ref} className="h-4 w-full">
+                    {isFetchingNextPage && (
+                      <div className="flex justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </Suspense>
         </div>
       </main>
     </div>

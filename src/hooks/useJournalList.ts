@@ -31,13 +31,13 @@ export const useJournalList = () => {
   const [userName, setUserName] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Memoize tags query
+  // Memoize tags query with error handling
   const { data: tags } = useQuery({
     queryKey: ['tags'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('tags')
-        .select('*')
+        .select('id, name')  // Explicitly select only needed fields
         .order('name');
 
       if (error) throw error;
@@ -46,30 +46,30 @@ export const useJournalList = () => {
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
 
-  // Memoize the fetch function
+  // Memoize the fetch function with optimized query
   const fetchEntries = useCallback(async (context: { pageParam?: number }) => {
     try {
       const pageParam = context.pageParam ?? 0;
-      console.log('Fetching page:', pageParam);
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        console.log('No session found during fetch');
         throw new Error('Not authenticated');
       }
 
       const start = pageParam * ENTRIES_PER_PAGE;
       const end = start + ENTRIES_PER_PAGE - 1;
 
-      const { data: entriesData, error: entriesError, count } = await supabase
+      // Optimize query by selecting only needed fields
+      const query = supabase
         .from('journal_entries')
-        .select('*', { count: 'exact' })
+        .select('id, title, text, created_at, audio_url, has_been_edited, user_id, mood', { count: 'exact' })
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .range(start, end);
 
+      const { data: entriesData, error: entriesError, count } = await query;
+
       if (entriesError) {
-        console.error('Error fetching entries:', entriesError);
         throw entriesError;
       }
 
@@ -80,7 +80,6 @@ export const useJournalList = () => {
           .in('tag_id', selectedTags);
 
         if (tagError) {
-          console.error('Error fetching tagged entries:', tagError);
           throw tagError;
         }
 
@@ -100,7 +99,6 @@ export const useJournalList = () => {
         pageParam,
       };
     } catch (error) {
-      console.error('Error in journal entries query:', error);
       throw error;
     }
   }, [selectedTags]);
@@ -122,7 +120,7 @@ export const useJournalList = () => {
       const morePages = nextPage * ENTRIES_PER_PAGE < lastPage.count;
       return morePages ? nextPage : undefined;
     },
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    staleTime: 1000 * 60 * 5, // Keep data fresh for 5 minutes
   });
 
   useEffect(() => {
@@ -133,7 +131,10 @@ export const useJournalList = () => {
           setUserName(user.email.split('@')[0]);
         }
       } catch (error) {
-        console.error("Error fetching user:", error);
+        // Don't log in production
+        if (process.env.NODE_ENV === 'development') {
+          console.error("Error fetching user:", error);
+        }
       }
     };
     getUser();
@@ -147,7 +148,7 @@ export const useJournalList = () => {
     );
   }, []);
 
-  // Memoize the filtered tags
+  // Memoize filtered tags to prevent unnecessary rerenders
   const filteredTags = useMemo(() => tags || [], [tags]);
 
   return {
