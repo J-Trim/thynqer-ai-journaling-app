@@ -65,13 +65,34 @@ export class TranscriptionQueue {
             .update({ status: 'processing' })
             .eq('id', job.id);
 
-          // Process transcription (implement actual transcription logic here)
-          // ... transcription logic ...
+          // Process transcription with language hint
+          const formData = new FormData();
+          formData.append('file', new Blob([job.audio_url]), 'audio.mp3');
+          formData.append('model', 'whisper-1');
+          formData.append('language', 'en'); // Add language hint
+
+          const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+            },
+            body: formData
+          });
+
+          if (!response.ok) {
+            throw new Error(`OpenAI API error: ${await response.text()}`);
+          }
+
+          const result = await response.json();
 
           await this.supabase
             .from('transcription_queue')
-            .update({ status: 'completed' })
+            .update({ 
+              status: 'completed',
+              result: result.text 
+            })
             .eq('id', job.id);
+
         } catch (error) {
           logError('processJob', error, { jobId: job.id });
           await this.supabase
@@ -99,4 +120,3 @@ export class TranscriptionQueue {
 }
 
 export const queue = new TranscriptionQueue();
-
