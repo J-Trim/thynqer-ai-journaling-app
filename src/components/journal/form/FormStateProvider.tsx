@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext } from 'react';
 import { useJournalFormState } from '@/hooks/useJournalFormState';
 
@@ -20,6 +21,8 @@ interface FormStateContextType {
   setTransformationEnabled: (value: boolean) => void;
   lastSavedId: string | null;
   setLastSavedId: (value: string | null) => void;
+  mood: number | null;
+  setMood: (value: number) => void;
 }
 
 const FormStateContext = createContext<FormStateContextType | undefined>(undefined);

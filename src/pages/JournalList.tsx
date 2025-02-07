@@ -11,6 +11,7 @@ import JournalEntry from "@/components/JournalEntry";
 import JournalHeader from "@/components/journal/list/JournalHeader";
 import TagFilter from "@/components/journal/list/TagFilter";
 import EmptyState from "@/components/journal/list/EmptyState";
+import MoodChart from "@/components/journal/list/MoodChart";
 import { useJournalList } from "@/hooks/useJournalList";
 
 const JournalList = () => {
@@ -77,6 +78,8 @@ const JournalList = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <JournalHeader userName={userName} />
 
+          {!isEmpty && <MoodChart entries={allEntries} />}
+
           <TagFilter 
             tags={tags || []}
             selectedTags={selectedTags}
@@ -97,6 +100,7 @@ const JournalList = () => {
                     preview={entry.text || "No content"}
                     audioUrl={entry.audio_url}
                     hasBeenEdited={entry.has_been_edited}
+                    mood={entry.mood}
                     onClick={() => navigate(`/journal/edit/${entry.id}`)}
                     onDelete={() => queryClient.invalidateQueries({ queryKey: ['journal-entries'] })}
                   />

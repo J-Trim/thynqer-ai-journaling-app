@@ -1,4 +1,6 @@
+
 import React from "react";
+import { Smile, Meh, Frown } from "lucide-react";
 import AudioPlayer from "./journal/AudioPlayer";
 import EntryCard from "./journal/entry/EntryCard";
 import EntryHeader from "./journal/entry/EntryHeader";
@@ -14,6 +16,7 @@ interface JournalEntryProps {
   preview: string;
   audioUrl?: string | null;
   hasBeenEdited?: boolean;
+  mood?: number | null;
   onClick?: () => void;
   onDelete?: () => void;
 }
@@ -24,21 +27,20 @@ const JournalEntry = React.memo(({
   date, 
   preview, 
   audioUrl,
-  hasBeenEdited, 
+  hasBeenEdited,
+  mood,
   onClick, 
   onDelete 
 }: JournalEntryProps) => {
   const { showDeleteDialog, setShowDeleteDialog, handleDelete } = useJournalDelete(onDelete);
   const { showAudioPlayer, handleAudioClick } = useEntryAudio(audioUrl);
 
-  console.log(`JournalEntry ${id} rendered with:`, {
-    title,
-    preview,
-    audioUrl,
-    hasBeenEdited,
-    previewLength: preview?.length || 0,
-    isPreviewEmpty: !preview || preview.trim() === ''
-  });
+  const getMoodIcon = () => {
+    if (!mood) return null;
+    if (mood <= 2) return <Frown className="w-5 h-5 text-red-500" />;
+    if (mood <= 4) return <Meh className="w-5 h-5 text-yellow-500" />;
+    return <Smile className="w-5 h-5 text-green-500" />;
+  };
 
   const confirmDelete = async () => {
     await handleDelete(id);
@@ -61,6 +63,7 @@ const JournalEntry = React.memo(({
             e.stopPropagation();
             setShowDeleteDialog(true);
           }}
+          moodIcon={getMoodIcon()}
         />
         <EntryPreview preview={preview} audioPlayer={audioPlayer} />
       </EntryCard>

@@ -5,6 +5,7 @@ import JournalFormHeader from './JournalFormHeader';
 import JournalFormContent from './JournalFormContent';
 import AudioPlayer from '../AudioPlayer';
 import TagSelector from '../TagSelector';
+import MoodSelector from './MoodSelector';
 import { TransformationManager } from '../transformations/TransformationManager';
 import SaveControls from './SaveControls';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
@@ -34,7 +35,9 @@ const FormContent: React.FC<{
     selectedTags,
     setSelectedTags,
     showTags,
-    lastSavedId
+    lastSavedId,
+    mood,
+    setMood
   } = useFormState();
 
   const { toast } = useToast();
@@ -116,6 +119,8 @@ const FormContent: React.FC<{
         onToggleRecording={toggleRecording}
         onStopRecording={stopRecording}
       />
+      
+      <MoodSelector value={mood} onChange={setMood} />
       
       <JournalFormContent
         content={content}

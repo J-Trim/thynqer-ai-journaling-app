@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 
 export const useJournalFormState = (id?: string, initialData?: any) => {
@@ -10,12 +11,14 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
   const [showTags, setShowTags] = useState(false);
   const [transformationEnabled, setTransformationEnabled] = useState(false);
   const [lastSavedId, setLastSavedId] = useState<string | null>(id || null);
+  const [mood, setMood] = useState<number | null>(initialData?.mood || null);
 
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || "");
       setContent(initialData.text || "");
       setAudioUrl(initialData.audio_url || null);
+      setMood(initialData.mood || null);
       setLastSavedId(id || null);
     }
   }, [initialData, id]);
@@ -39,5 +42,7 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
     setTransformationEnabled,
     lastSavedId,
     setLastSavedId,
+    mood,
+    setMood,
   };
 };
