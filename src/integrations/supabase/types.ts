@@ -371,6 +371,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ui_versions: {
+        Row: {
+          deployed_at: string | null
+          description: string | null
+          id: number
+          version: string
+        }
+        Insert: {
+          deployed_at?: string | null
+          description?: string | null
+          id?: number
+          version: string
+        }
+        Update: {
+          deployed_at?: string | null
+          description?: string | null
+          id?: number
+          version?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -381,6 +402,10 @@ export type Database = {
         Returns: undefined
       }
       cleanup_summary_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      update_css_variables: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
