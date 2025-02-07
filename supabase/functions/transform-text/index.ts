@@ -1,7 +1,8 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0"
-import { createHash } from "https://deno.land/std@0.168.0/hash/mod.ts"
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import { encodeHex } from "https://deno.land/std@0.168.0/encoding/hex.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,9 +48,10 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Create a hash of the input text for cache lookup
-    const inputHash = createHash('md5')
-      .update(text + (customTemplate || ''))
-      .toString();
+    const textEncoder = new TextEncoder();
+    const hashData = textEncoder.encode(text + (customTemplate || ''));
+    const hashBuffer = await crypto.subtle.digest('SHA-256', hashData);
+    const inputHash = encodeHex(new Uint8Array(hashBuffer));
 
     // Check cache first
     console.log('Checking cache for transformation...');
