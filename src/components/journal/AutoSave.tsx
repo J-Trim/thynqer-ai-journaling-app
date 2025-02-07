@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Save } from "lucide-react";
 
@@ -22,29 +23,38 @@ const AutoSave = ({
   onSave,
 }: AutoSaveProps) => {
   const timeoutRef = useRef<number>();
-  const lastSaveRef = useRef<string>(''); // Track last saved content
+  const lastSaveRef = useRef<string>('');
+  const [showSaveIndicator, setShowSaveIndicator] = useState(false);
   const { toast } = useToast();
+
+  // Hide save indicator after a delay
+  useEffect(() => {
+    if (isSaveInProgress) {
+      setShowSaveIndicator(true);
+    } else if (showSaveIndicator) {
+      const timer = setTimeout(() => {
+        setShowSaveIndicator(false);
+      }, 2000); // Hide after 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [isSaveInProgress, showSaveIndicator]);
 
   useEffect(() => {
     if (isInitializing || !hasUnsavedChanges) {
       return;
     }
 
-    // Create a hash of current content to compare
     const currentContentHash = `${title}-${content}-${audioUrl}`;
 
-    // Don't save if content hasn't changed since last save
     if (currentContentHash === lastSaveRef.current) {
       console.log('AutoSave: Content unchanged since last save, skipping...');
       return;
     }
 
-    // Clear any existing timeout
     if (timeoutRef.current) {
       window.clearTimeout(timeoutRef.current);
     }
 
-    // Set a new timeout for 30 seconds
     timeoutRef.current = window.setTimeout(() => {
       console.log('AutoSave: Initiating auto-save...', {
         contentLength: content?.length || 0,
@@ -60,7 +70,6 @@ const AutoSave = ({
       });
     }, 30000);
 
-    // Cleanup on unmount or when dependencies change
     return () => {
       if (timeoutRef.current) {
         window.clearTimeout(timeoutRef.current);
@@ -68,8 +77,12 @@ const AutoSave = ({
     };
   }, [content, title, audioUrl, isInitializing, hasUnsavedChanges, onSave]);
 
+  if (!showSaveIndicator) {
+    return null;
+  }
+
   return (
-    <div className="fixed bottom-4 right-4 flex items-center gap-2 text-sm text-muted-foreground">
+    <div className="fixed bottom-4 right-4 flex items-center gap-2 text-sm text-muted-foreground animate-in fade-in duration-300">
       <Save className="h-4 w-4" />
       {isSaveInProgress ? "Saving..." : "Saved"}
     </div>
