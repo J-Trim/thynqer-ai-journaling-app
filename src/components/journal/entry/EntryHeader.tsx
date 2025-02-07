@@ -1,3 +1,4 @@
+
 import React from "react";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,7 @@ interface EntryHeaderProps {
   date: string;
   hasBeenEdited?: boolean;
   hasAudio?: boolean;
+  moodIcon?: React.ReactNode;
   onAudioClick: (e: React.MouseEvent) => void;
   onDeleteClick: (e: React.MouseEvent) => void;
 }
@@ -18,15 +20,19 @@ const EntryHeader = React.memo(({
   date, 
   hasBeenEdited, 
   hasAudio,
+  moodIcon,
   onAudioClick,
   onDeleteClick 
 }: EntryHeaderProps) => {
   return (
     <CardHeader className="pb-2">
       <div className="flex items-center justify-between">
-        <CardTitle className="text-lg font-medium text-text">
-          {title || "Untitled Entry"}
-        </CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-lg font-medium text-text">
+            {title || "Untitled Entry"}
+          </CardTitle>
+          {moodIcon}
+        </div>
         <div className="flex items-center gap-2">
           {hasBeenEdited && (
             <Badge variant="secondary" className="ml-2">

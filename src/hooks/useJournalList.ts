@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +12,7 @@ interface JournalEntry {
   audio_url: string | null;
   has_been_edited: boolean;
   user_id: string;
+  mood: number | null;
 }
 
 interface Tag {

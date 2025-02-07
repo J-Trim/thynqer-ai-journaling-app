@@ -71,6 +71,12 @@ const JournalList = () => {
   const allEntries = data?.pages.flatMap(page => page.entries) || [];
   const isEmpty = allEntries.length === 0;
 
+  // Filter out entries without mood for the chart
+  const entriesWithMood = allEntries.filter(entry => entry.mood !== null) as Array<{
+    mood: number;
+    created_at: string;
+  }>;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -78,7 +84,9 @@ const JournalList = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           <JournalHeader userName={userName} />
 
-          {!isEmpty && <MoodChart entries={allEntries} />}
+          {!isEmpty && entriesWithMood.length > 0 && (
+            <MoodChart entries={entriesWithMood} />
+          )}
 
           <TagFilter 
             tags={tags || []}
