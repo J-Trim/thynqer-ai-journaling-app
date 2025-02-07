@@ -27,6 +27,9 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           ui: ['@/components/ui'],
+          journal: ['@/components/journal'],
+          utils: ['@/utils'],
+          query: ['@tanstack/react-query']
         },
       },
     },
