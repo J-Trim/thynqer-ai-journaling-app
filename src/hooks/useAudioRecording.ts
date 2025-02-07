@@ -1,5 +1,5 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeFileName } from "@/utils/audio";
@@ -10,11 +10,34 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const mediaStream = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
   const audioChunks = useRef<Blob[]>([]);
   const { toast } = useToast();
 
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      stopRecording();
+      if (mediaStream.current) {
+        mediaStream.current.getTracks().forEach(track => {
+          track.stop();
+          console.log('Audio track stopped and released');
+        });
+        mediaStream.current = null;
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      audioChunks.current = [];
+    };
+  }, []);
+
   const startTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
     timerRef.current = window.setInterval(() => {
       setRecordingTime((prevTime) => prevTime + 1);
     }, 1000);
@@ -23,6 +46,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
   const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
+      timerRef.current = null;
     }
   };
 
@@ -102,6 +126,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
       }
 
       try {
+        mediaStream.current = stream;
         mediaRecorder.current = new MediaRecorder(stream, {
           mimeType: 'audio/webm;codecs=opus'
         });
@@ -112,7 +137,6 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           }
         };
 
-        // Handle recorder errors
         mediaRecorder.current.onerror = (event) => {
           console.error('MediaRecorder error:', event);
           toast({
@@ -134,6 +158,11 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           description: "Could not start recording. Please check your microphone permissions.",
           variant: "destructive",
         });
+        // Cleanup on error
+        if (mediaStream.current) {
+          mediaStream.current.getTracks().forEach(track => track.stop());
+          mediaStream.current = null;
+        }
       }
     } else {
       if (mediaRecorder.current && isRecording) {
@@ -155,7 +184,13 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
       setIsProcessing(true);
       try {
         mediaRecorder.current.stop();
-        mediaRecorder.current.stream.getTracks().forEach(track => track.stop());
+        if (mediaStream.current) {
+          mediaStream.current.getTracks().forEach(track => {
+            track.stop();
+            console.log('Audio track stopped');
+          });
+          mediaStream.current = null;
+        }
         
         await new Promise<void>((resolve) => {
           if (mediaRecorder.current) {
@@ -182,6 +217,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         stopTimer();
         setRecordingTime(0);
         audioChunks.current = [];
+        mediaRecorder.current = null;
       } catch (error) {
         console.error("Error stopping recording:", error);
         toast({
@@ -204,3 +240,4 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
     stopRecording
   };
 };
+
