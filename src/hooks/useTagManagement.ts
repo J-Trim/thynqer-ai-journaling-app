@@ -1,11 +1,15 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "./use-toast";
 
-export const useTagManagement = (entryId: string | null) => {
+export const useTagManagement = (entryId: string | undefined) => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
+  // Load existing tags for the entry
   const { data: entryTags } = useQuery({
     queryKey: ['entry-tags', entryId],
     queryFn: async () => {
@@ -21,8 +25,16 @@ export const useTagManagement = (entryId: string | null) => {
     enabled: !!entryId
   });
 
+  // Update selectedTags when entryTags loads
+  useEffect(() => {
+    if (entryTags) {
+      setSelectedTags(entryTags);
+    }
+  }, [entryTags]);
+
   const updateEntryTagsMutation = useMutation({
     mutationFn: async ({ entryId, tagIds }: { entryId: string, tagIds: string[] }) => {
+      // Delete existing tags
       const { error: deleteError } = await supabase
         .from('entry_tags')
         .delete()
@@ -30,6 +42,7 @@ export const useTagManagement = (entryId: string | null) => {
 
       if (deleteError) throw deleteError;
 
+      // Insert new tags if there are any
       if (tagIds.length > 0) {
         const { error: insertError } = await supabase
           .from('entry_tags')
@@ -43,6 +56,17 @@ export const useTagManagement = (entryId: string | null) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entry-tags'] });
+      toast({
+        title: "Success",
+        description: "Tags updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to update tags",
+        variant: "destructive",
+      });
     }
   });
 

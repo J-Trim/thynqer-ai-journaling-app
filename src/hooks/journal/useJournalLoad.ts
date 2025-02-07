@@ -26,33 +26,34 @@ export const useJournalLoad = ({ id, onLoadComplete }: UseJournalLoadProps) => {
       }
 
       try {
+        // Load entry with tags in a single query using joins
         const { data: entry, error } = await supabase
           .from('journal_entries')
-          .select('*')
+          .select(`
+            *,
+            entry_tags(tag_id)
+          `)
           .eq('id', id)
           .single();
 
         if (error) throw error;
-
-        // Fetch tags for this entry
-        const { data: entryTags, error: tagsError } = await supabase
-          .from('entry_tags')
-          .select('tag_id')
-          .eq('entry_id', id);
-
-        if (tagsError) throw tagsError;
 
         if (entry) {
           const [mainContent, transcribed] = entry.text ? 
             entry.text.split("\n\n---\nTranscribed Audio:\n") : 
             ["", ""];
 
+          // Extract tag IDs from the joined data
+          const tagIds = entry.entry_tags 
+            ? entry.entry_tags.map(et => et.tag_id) 
+            : [];
+
           onLoadComplete({
             title: entry.title || '',
             content: mainContent || '',
             audioUrl: entry.audio_url,
             transcribedAudio: transcribed || '',
-            tagIds: entryTags?.map(et => et.tag_id) || []
+            tagIds
           });
         }
       } catch (error) {
