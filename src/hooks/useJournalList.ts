@@ -28,10 +28,11 @@ interface PageData {
 }
 
 interface QueryContext {
-  pageParam?: number;
+  pageParam: number | undefined;
   queryKey: unknown[];
   signal?: AbortSignal;
   meta?: Record<string, unknown>;
+  direction?: 'forward' | 'backward';
 }
 
 export const useJournalList = () => {
@@ -54,9 +55,8 @@ export const useJournalList = () => {
   });
 
   // Memoize the fetch function
-  const fetchEntries = useCallback(async (context: QueryContext): Promise<PageData> => {
+  const fetchEntries = useCallback(async ({ pageParam = 0 }: { pageParam?: number }): Promise<PageData> => {
     try {
-      const pageParam = context.pageParam ?? 0;
       console.log('Fetching page:', pageParam);
       const { data: { session } } = await supabase.auth.getSession();
       
