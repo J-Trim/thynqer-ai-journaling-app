@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -36,7 +37,7 @@ const JournalEntryContent = () => {
     onSuccess: () => navigate('/journal')
   });
 
-  const handleCancel = async () => {
+  const handleCancel = () => {
     navigate("/journal");
   };
 
@@ -73,7 +74,6 @@ const JournalEntryForm = () => {
   const { data: existingEntry, isLoading: isLoadingEntry } = useQuery({
     queryKey: ['journal-entry', id],
     queryFn: async () => {
-      console.log('Fetching existing entry:', id);
       if (!id) return null;
 
       const { data, error } = await supabase
@@ -83,11 +83,9 @@ const JournalEntryForm = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching entry:', error);
         throw error;
       }
 
-      console.log('Fetched entry data:', data);
       return data;
     },
     enabled: !!id,
