@@ -1,6 +1,7 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { queue } from './services/transcriptionQueue.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,62 +14,43 @@ serve(async (req) => {
   }
 
   try {
-    const { audioUrl } = await req.json()
+    const { audioUrl, userId } = await req.json();
     
-    if (!audioUrl) {
-      throw new Error('No audio URL provided')
+    if (!audioUrl || !userId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields' }), 
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
-    // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    // Enqueue the transcription job
+    const jobId = await queue.enqueueJob(audioUrl, userId);
 
-    // Download the audio file from storage
-    const { data: audioData, error: downloadError } = await supabase
-      .storage
-      .from('audio_files')
-      .download(audioUrl)
-
-    if (downloadError) {
-      throw new Error(`Error downloading audio: ${downloadError.message}`)
-    }
-
-    // Prepare form data for OpenAI
-    const formData = new FormData()
-    formData.append('file', audioData, 'audio.webm')
-    formData.append('model', 'whisper-1')
-
-    // Send to OpenAI Whisper API
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      },
-      body: formData,
-    })
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${await response.text()}`)
-    }
-
-    const result = await response.json()
-    console.log('Transcription completed:', result)
+    // Start processing in the background
+    EdgeRuntime.waitUntil(queue.processNextBatch());
 
     return new Response(
-      JSON.stringify({ text: result.text }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
-
+      JSON.stringify({ 
+        status: 'queued',
+        jobId,
+        message: 'Transcription job has been queued and will be processed shortly'
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 202 
+      }
+    );
   } catch (error) {
-    console.error('Transcription error:', error)
+    console.error('Error in transcribe-audio:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
+      { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
-    )
+    );
   }
-})
+});
