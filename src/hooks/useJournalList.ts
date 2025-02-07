@@ -53,7 +53,7 @@ export const useJournalList = () => {
   } = useInfiniteQuery<PageData, Error>({
     queryKey: ['journal-entries', selectedTags],
     initialPageParam: 0,
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }) => {
       try {
         console.log('Fetching page:', pageParam);
         const { data: { session } } = await supabase.auth.getSession();
@@ -63,7 +63,7 @@ export const useJournalList = () => {
           throw new Error('Not authenticated');
         }
 
-        const start = pageParam * ENTRIES_PER_PAGE;
+        const start = Number(pageParam) * ENTRIES_PER_PAGE;
         const end = start + ENTRIES_PER_PAGE - 1;
 
         const { data: entriesData, error: entriesError, count } = await supabase
@@ -97,14 +97,14 @@ export const useJournalList = () => {
           return {
             entries: filteredEntries as JournalEntry[],
             count: count || 0,
-            pageParam,
+            pageParam: Number(pageParam),
           };
         }
 
         return {
           entries: entriesData as JournalEntry[] || [],
           count: count || 0,
-          pageParam,
+          pageParam: Number(pageParam),
         };
       } catch (error) {
         console.error('Error in journal entries query:', error);
