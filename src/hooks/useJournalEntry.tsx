@@ -43,7 +43,7 @@ export const useJournalEntry = (id?: string) => {
     }
   });
 
-  useUnsavedChanges({
+  const { hasActualChanges } = useUnsavedChanges({
     title,
     content,
     audioUrl,
