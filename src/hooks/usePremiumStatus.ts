@@ -8,6 +8,7 @@ interface SubscriptionInfo {
   tier?: string;
   features?: string[];
   expiresAt?: string;
+  productId?: string;
 }
 
 export const usePremiumStatus = () => {
@@ -58,5 +59,7 @@ export const usePremiumStatus = () => {
     subscriptionTier: subscriptionInfo?.tier,
     subscriptionFeatures: subscriptionInfo?.features,
     subscriptionExpiresAt: subscriptionInfo?.expiresAt,
+    subscriptionProductId: subscriptionInfo?.productId,
+    hasFeature: (feature: string) => subscriptionInfo?.features?.includes(feature) || false,
   };
 };

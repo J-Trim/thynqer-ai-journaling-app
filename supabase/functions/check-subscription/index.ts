@@ -8,7 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Initialize Stripe client
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
 });
@@ -18,6 +17,7 @@ interface SubscriptionInfo {
   tier?: string;
   features?: string[];
   expiresAt?: string;
+  productId?: string;
 }
 
 async function findCustomerByUserId(userId: string) {
@@ -34,12 +34,27 @@ async function getActiveSubscriptions(customerId: string) {
   const subscriptions = await stripe.subscriptions.list({
     customer: customerId,
     status: 'active',
-    expand: ['data.items.price.product'] // Include product details
+    expand: ['data.items.price.product']
   });
   return subscriptions.data;
 }
 
-async function checkSubscriptionStatus(userId: string): Promise<SubscriptionInfo> {
+async function getTierInformation(supabaseClient: any, stripeProductId: string) {
+  const { data: tierData, error } = await supabaseClient
+    .from('subscription_tiers')
+    .select('*')
+    .eq('stripe_product_id', stripeProductId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching tier information:', error);
+    return null;
+  }
+
+  return tierData;
+}
+
+async function checkSubscriptionStatus(userId: string, supabaseClient: any): Promise<SubscriptionInfo> {
   const customer = await findCustomerByUserId(userId);
   if (!customer) {
     console.log('No Stripe customer found for user:', userId);
@@ -51,18 +66,21 @@ async function checkSubscriptionStatus(userId: string): Promise<SubscriptionInfo
     return { isSubscribed: false };
   }
 
-  // Get the "highest" tier subscription
-  // You can modify this logic based on your product hierarchy
-  const subscription = activeSubscriptions[0];
+  // Get the subscription with the most features/highest tier
+  const subscription = activeSubscriptions[0]; // We can enhance this logic later
   const product = subscription.items.data[0].price.product as Stripe.Product;
+  
+  // Fetch tier information from our database
+  const tierInfo = await getTierInformation(supabaseClient, product.id);
   
   const subscriptionInfo: SubscriptionInfo = {
     isSubscribed: true,
-    tier: product.metadata.tier || 'basic',
-    features: product.metadata.features ? JSON.parse(product.metadata.features) : undefined,
+    tier: tierInfo?.name || product.metadata.tier || 'basic',
+    features: tierInfo?.features || (product.metadata.features ? JSON.parse(product.metadata.features) : []),
     expiresAt: subscription.current_period_end ? 
       new Date(subscription.current_period_end * 1000).toISOString() : 
-      undefined
+      undefined,
+    productId: product.id
   };
 
   console.log('Subscription info for user:', userId, subscriptionInfo);
@@ -70,13 +88,11 @@ async function checkSubscriptionStatus(userId: string): Promise<SubscriptionInfo
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client with service role key
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -89,7 +105,6 @@ serve(async (req) => {
       }
     );
 
-    // Get the authorization header
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       console.error('No authorization header');
@@ -99,7 +114,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify the JWT and get the user
     const jwt = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(jwt);
 
@@ -111,7 +125,7 @@ serve(async (req) => {
       );
     }
 
-    const subscriptionInfo = await checkSubscriptionStatus(user.id);
+    const subscriptionInfo = await checkSubscriptionStatus(user.id, supabaseClient);
 
     return new Response(
       JSON.stringify(subscriptionInfo),

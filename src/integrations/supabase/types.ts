@@ -159,6 +159,33 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_tiers: {
+        Row: {
+          created_at: string | null
+          features: Json
+          id: string
+          name: string
+          stripe_product_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          features?: Json
+          id?: string
+          name: string
+          stripe_product_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          features?: Json
+          id?: string
+          name?: string
+          stripe_product_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       summaries: {
         Row: {
           created_at: string | null
