@@ -133,6 +133,7 @@ export type Database = {
           has_been_edited: boolean | null
           id: string
           mood: number | null
+          mood_timestamp: string | null
           text: string | null
           title: string | null
           updated_at: string | null
@@ -144,6 +145,7 @@ export type Database = {
           has_been_edited?: boolean | null
           id?: string
           mood?: number | null
+          mood_timestamp?: string | null
           text?: string | null
           title?: string | null
           updated_at?: string | null
@@ -155,6 +157,7 @@ export type Database = {
           has_been_edited?: boolean | null
           id?: string
           mood?: number | null
+          mood_timestamp?: string | null
           text?: string | null
           title?: string | null
           updated_at?: string | null
