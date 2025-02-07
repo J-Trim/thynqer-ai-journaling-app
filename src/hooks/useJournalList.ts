@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,6 +31,7 @@ export const useJournalList = () => {
   const [userName, setUserName] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
+  // Memoize tags query
   const { data: tags } = useQuery({
     queryKey: ['tags'],
     queryFn: async () => {
@@ -40,8 +42,67 @@ export const useJournalList = () => {
 
       if (error) throw error;
       return data as Tag[];
-    }
+    },
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
   });
+
+  // Memoize the fetch function
+  const fetchEntries = useCallback(async ({ pageParam = 0 }) => {
+    try {
+      console.log('Fetching page:', pageParam);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log('No session found during fetch');
+        throw new Error('Not authenticated');
+      }
+
+      const start = Number(pageParam) * ENTRIES_PER_PAGE;
+      const end = start + ENTRIES_PER_PAGE - 1;
+
+      const { data: entriesData, error: entriesError, count } = await supabase
+        .from('journal_entries')
+        .select('*', { count: 'exact' })
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .range(start, end);
+
+      if (entriesError) {
+        console.error('Error fetching entries:', entriesError);
+        throw entriesError;
+      }
+
+      if (selectedTags.length > 0) {
+        const { data: taggedEntries, error: tagError } = await supabase
+          .from('entry_tags')
+          .select('entry_id')
+          .in('tag_id', selectedTags);
+
+        if (tagError) {
+          console.error('Error fetching tagged entries:', tagError);
+          throw tagError;
+        }
+
+        const taggedEntryIds = new Set(taggedEntries.map(te => te.entry_id));
+        const filteredEntries = entriesData?.filter(entry => taggedEntryIds.has(entry.id)) || [];
+
+        return {
+          entries: filteredEntries as JournalEntry[],
+          count: count || 0,
+          pageParam: Number(pageParam),
+        };
+      }
+
+      return {
+        entries: entriesData as JournalEntry[] || [],
+        count: count || 0,
+        pageParam: Number(pageParam),
+      };
+    } catch (error) {
+      console.error('Error in journal entries query:', error);
+      throw error;
+    }
+  }, [selectedTags]);
 
   const {
     data,
@@ -52,65 +113,8 @@ export const useJournalList = () => {
     isError
   } = useInfiniteQuery<PageData, Error>({
     queryKey: ['journal-entries', selectedTags],
+    queryFn: fetchEntries,
     initialPageParam: 0,
-    queryFn: async ({ pageParam }) => {
-      try {
-        console.log('Fetching page:', pageParam);
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          console.log('No session found during fetch');
-          throw new Error('Not authenticated');
-        }
-
-        const start = Number(pageParam) * ENTRIES_PER_PAGE;
-        const end = start + ENTRIES_PER_PAGE - 1;
-
-        const { data: entriesData, error: entriesError, count } = await supabase
-          .from('journal_entries')
-          .select('*', { count: 'exact' })
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false })
-          .range(start, end);
-
-        if (entriesError) {
-          console.error('Error fetching entries:', entriesError);
-          throw entriesError;
-        }
-
-        console.log(`Retrieved ${entriesData?.length} entries for page ${pageParam}`);
-
-        if (selectedTags.length > 0) {
-          const { data: taggedEntries, error: tagError } = await supabase
-            .from('entry_tags')
-            .select('entry_id')
-            .in('tag_id', selectedTags);
-
-          if (tagError) {
-            console.error('Error fetching tagged entries:', tagError);
-            throw tagError;
-          }
-
-          const taggedEntryIds = new Set(taggedEntries.map(te => te.entry_id));
-          const filteredEntries = entriesData?.filter(entry => taggedEntryIds.has(entry.id)) || [];
-
-          return {
-            entries: filteredEntries as JournalEntry[],
-            count: count || 0,
-            pageParam: Number(pageParam),
-          };
-        }
-
-        return {
-          entries: entriesData as JournalEntry[] || [],
-          count: count || 0,
-          pageParam: Number(pageParam),
-        };
-      } catch (error) {
-        console.error('Error in journal entries query:', error);
-        throw error;
-      }
-    },
     getNextPageParam: (lastPage, pages) => {
       if (!lastPage.count) return undefined;
       const morePages = pages.length * ENTRIES_PER_PAGE < lastPage.count;
@@ -134,17 +138,20 @@ export const useJournalList = () => {
     getUser();
   }, []);
 
-  const handleTagToggle = (tagId: string) => {
+  const handleTagToggle = useCallback((tagId: string) => {
     setSelectedTags(prev => 
       prev.includes(tagId)
         ? prev.filter(id => id !== tagId)
         : [...prev, tagId]
     );
-  };
+  }, []);
+
+  // Memoize the filtered tags
+  const filteredTags = useMemo(() => tags || [], [tags]);
 
   return {
     userName,
-    tags,
+    tags: filteredTags,
     selectedTags,
     handleTagToggle,
     data,

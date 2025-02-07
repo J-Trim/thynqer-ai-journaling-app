@@ -1,4 +1,5 @@
 
+import { memo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -13,7 +14,7 @@ interface TagFilterProps {
   onTagToggle: (tagId: string) => void;
 }
 
-const TagFilter = ({ tags, selectedTags, onTagToggle }: TagFilterProps) => {
+const TagFilter = memo(({ tags, selectedTags, onTagToggle }: TagFilterProps) => {
   if (!tags || tags.length === 0) return null;
 
   return (
@@ -35,6 +36,8 @@ const TagFilter = ({ tags, selectedTags, onTagToggle }: TagFilterProps) => {
       </ScrollArea>
     </div>
   );
-};
+});
+
+TagFilter.displayName = "TagFilter";
 
 export default TagFilter;

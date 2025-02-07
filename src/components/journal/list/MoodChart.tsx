@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { format } from "date-fns";
 import {
   LineChart,
@@ -18,7 +18,7 @@ interface MoodChartProps {
   }>;
 }
 
-const MoodChart = ({ entries }: MoodChartProps) => {
+const MoodChart = memo(({ entries }: MoodChartProps) => {
   const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
@@ -60,6 +60,8 @@ const MoodChart = ({ entries }: MoodChartProps) => {
       </CardContent>
     </Card>
   );
-};
+});
+
+MoodChart.displayName = "MoodChart";
 
 export default MoodChart;

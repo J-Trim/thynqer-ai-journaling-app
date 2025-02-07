@@ -1,11 +1,12 @@
 
+import { memo } from "react";
 import { BookOpen } from "lucide-react";
 
 interface EmptyStateProps {
   hasTagFilter: boolean;
 }
 
-const EmptyState = ({ hasTagFilter }: EmptyStateProps) => {
+const EmptyState = memo(({ hasTagFilter }: EmptyStateProps) => {
   return (
     <div className="text-center py-12 bg-muted/20 rounded-lg">
       <BookOpen className="mx-auto h-12 w-12 text-muted-foreground/50" />
@@ -21,6 +22,8 @@ const EmptyState = ({ hasTagFilter }: EmptyStateProps) => {
       </p>
     </div>
   );
-};
+});
+
+EmptyState.displayName = "EmptyState";
 
 export default EmptyState;
