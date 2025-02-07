@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,38 +51,57 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
 
   const requestPermissions = async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        } 
+      });
+      
       if ('Notification' in window && Notification.permission !== 'granted') {
         await Notification.requestPermission();
       }
-      return true;
+      
+      return { success: true, stream };
     } catch (error) {
       console.error('Permission error:', error);
-      return false;
+      
+      let errorMessage = 'Could not access microphone.';
+      if (error instanceof DOMException) {
+        switch (error.name) {
+          case 'NotAllowedError':
+            errorMessage = 'Microphone access was denied. Please enable it in your browser settings.';
+            break;
+          case 'NotFoundError':
+            errorMessage = 'No microphone was found on your device.';
+            break;
+          case 'NotReadableError':
+            errorMessage = 'Your microphone is already in use by another application.';
+            break;
+          default:
+            errorMessage = `Microphone error: ${error.message}`;
+        }
+      }
+      
+      return { success: false, error: errorMessage };
     }
   };
 
   const toggleRecording = async () => {
     if (!isRecording) {
-      try {
-        const hasPermissions = await requestPermissions();
-        if (!hasPermissions) {
-          toast({
-            title: "Permission Required",
-            description: "Microphone access is required for recording.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          } 
+      const { success, error, stream } = await requestPermissions();
+      
+      if (!success || !stream) {
+        toast({
+          title: "Microphone Access Error",
+          description: error || "Could not access microphone",
+          variant: "destructive",
         });
-        
+        return;
+      }
+
+      try {
         mediaRecorder.current = new MediaRecorder(stream, {
           mimeType: 'audio/webm;codecs=opus'
         });
@@ -90,6 +110,17 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           if (event.data.size > 0) {
             audioChunks.current.push(event.data);
           }
+        };
+
+        // Handle recorder errors
+        mediaRecorder.current.onerror = (event) => {
+          console.error('MediaRecorder error:', event);
+          toast({
+            title: "Recording Error",
+            description: "An error occurred while recording. Please try again.",
+            variant: "destructive",
+          });
+          stopRecording();
         };
 
         mediaRecorder.current.start();
@@ -135,7 +166,13 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         });
 
         if (audioChunks.current.length > 0) {
+          const maxSize = 100 * 1024 * 1024; // 100MB limit
           const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+          
+          if (audioBlob.size > maxSize) {
+            throw new Error('Recording exceeds maximum size limit of 100MB');
+          }
+
           const fileName = await uploadAudio(audioBlob);
           onAudioSaved(fileName);
         }
@@ -149,7 +186,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         console.error("Error stopping recording:", error);
         toast({
           title: "Error",
-          description: "Failed to save audio recording",
+          description: error instanceof Error ? error.message : "Failed to save audio recording",
           variant: "destructive",
         });
       } finally {
