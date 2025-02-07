@@ -5,6 +5,27 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ENTRIES_PER_PAGE = 10;
 
+interface JournalEntry {
+  id: string;
+  title: string;
+  text: string;
+  created_at: string;
+  audio_url: string | null;
+  has_been_edited: boolean;
+  user_id: string;
+}
+
+interface Tag {
+  id: string;
+  name: string;
+}
+
+interface PageData {
+  entries: JournalEntry[];
+  count: number;
+  pageParam: number;
+}
+
 export const useJournalList = () => {
   const [userName, setUserName] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -18,7 +39,7 @@ export const useJournalList = () => {
         .order('name');
 
       if (error) throw error;
-      return data;
+      return data as Tag[];
     }
   });
 
@@ -29,8 +50,9 @@ export const useJournalList = () => {
     isFetchingNextPage,
     isLoading,
     isError
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<PageData, Error>({
     queryKey: ['journal-entries', selectedTags],
+    initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
       try {
         console.log('Fetching page:', pageParam);
@@ -73,15 +95,15 @@ export const useJournalList = () => {
           const filteredEntries = entriesData?.filter(entry => taggedEntryIds.has(entry.id)) || [];
 
           return {
-            entries: filteredEntries,
-            count,
+            entries: filteredEntries as JournalEntry[],
+            count: count || 0,
             pageParam,
           };
         }
 
         return {
-          entries: entriesData || [],
-          count,
+          entries: entriesData as JournalEntry[] || [],
+          count: count || 0,
           pageParam,
         };
       } catch (error) {
