@@ -20,74 +20,114 @@ interface SubscriptionInfo {
   productId?: string;
 }
 
+function logError(context: string, error: any, metadata: Record<string, any> = {}) {
+  const errorLog = {
+    timestamp: new Date().toISOString(),
+    context,
+    error: {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack,
+    },
+    metadata,
+  };
+  
+  console.error('Subscription Check Error:', JSON.stringify(errorLog, null, 2));
+}
+
 async function findCustomerByUserId(userId: string) {
-  console.log('Finding Stripe customer for user:', userId);
-  const customers = await stripe.customers.list({
-    limit: 1,
-    metadata: { supabase_user_id: userId }
-  });
-  return customers.data[0] || null;
+  try {
+    console.log('Finding Stripe customer for user:', userId);
+    const customers = await stripe.customers.list({
+      limit: 1,
+      metadata: { supabase_user_id: userId }
+    });
+    return customers.data[0] || null;
+  } catch (error) {
+    logError('findCustomerByUserId', error, { userId });
+    throw error;
+  }
 }
 
 async function getActiveSubscriptions(customerId: string) {
-  console.log('Checking active subscriptions for customer:', customerId);
-  const subscriptions = await stripe.subscriptions.list({
-    customer: customerId,
-    status: 'active',
-    expand: ['data.items.price.product']
-  });
-  return subscriptions.data;
+  try {
+    console.log('Checking active subscriptions for customer:', customerId);
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      expand: ['data.items.price.product']
+    });
+    return subscriptions.data;
+  } catch (error) {
+    logError('getActiveSubscriptions', error, { customerId });
+    throw error;
+  }
 }
 
 async function getTierInformation(supabaseClient: any, stripeProductId: string) {
-  const { data: tierData, error } = await supabaseClient
-    .from('subscription_tiers')
-    .select('*')
-    .eq('stripe_product_id', stripeProductId)
-    .single();
+  try {
+    const { data: tierData, error } = await supabaseClient
+      .from('subscription_tiers')
+      .select('*')
+      .eq('stripe_product_id', stripeProductId)
+      .single();
 
-  if (error) {
-    console.error('Error fetching tier information:', error);
-    return null;
+    if (error) {
+      logError('getTierInformation:supabase_query', error, { stripeProductId });
+      return null;
+    }
+
+    return tierData;
+  } catch (error) {
+    logError('getTierInformation', error, { stripeProductId });
+    throw error;
   }
-
-  return tierData;
 }
 
 async function checkSubscriptionStatus(userId: string, supabaseClient: any): Promise<SubscriptionInfo> {
-  const customer = await findCustomerByUserId(userId);
-  if (!customer) {
-    console.log('No Stripe customer found for user:', userId);
-    return { isSubscribed: false };
+  try {
+    const customer = await findCustomerByUserId(userId);
+    if (!customer) {
+      console.log('No Stripe customer found for user:', userId);
+      return { isSubscribed: false };
+    }
+
+    const activeSubscriptions = await getActiveSubscriptions(customer.id);
+    if (activeSubscriptions.length === 0) {
+      return { isSubscribed: false };
+    }
+
+    // Get the subscription with the most features/highest tier
+    const subscription = activeSubscriptions[0]; // We can enhance this logic later
+    const product = subscription.items.data[0].price.product as Stripe.Product;
+    
+    // Fetch tier information from our database
+    const tierInfo = await getTierInformation(supabaseClient, product.id);
+    
+    const subscriptionInfo: SubscriptionInfo = {
+      isSubscribed: true,
+      tier: tierInfo?.name || product.metadata.tier || 'basic',
+      features: tierInfo?.features || (product.metadata.features ? JSON.parse(product.metadata.features) : []),
+      expiresAt: subscription.current_period_end ? 
+        new Date(subscription.current_period_end * 1000).toISOString() : 
+        undefined,
+      productId: product.id
+    };
+
+    console.log('Subscription info for user:', userId, subscriptionInfo);
+    return subscriptionInfo;
+  } catch (error) {
+    logError('checkSubscriptionStatus', error, { userId });
+    throw error;
   }
-
-  const activeSubscriptions = await getActiveSubscriptions(customer.id);
-  if (activeSubscriptions.length === 0) {
-    return { isSubscribed: false };
-  }
-
-  // Get the subscription with the most features/highest tier
-  const subscription = activeSubscriptions[0]; // We can enhance this logic later
-  const product = subscription.items.data[0].price.product as Stripe.Product;
-  
-  // Fetch tier information from our database
-  const tierInfo = await getTierInformation(supabaseClient, product.id);
-  
-  const subscriptionInfo: SubscriptionInfo = {
-    isSubscribed: true,
-    tier: tierInfo?.name || product.metadata.tier || 'basic',
-    features: tierInfo?.features || (product.metadata.features ? JSON.parse(product.metadata.features) : []),
-    expiresAt: subscription.current_period_end ? 
-      new Date(subscription.current_period_end * 1000).toISOString() : 
-      undefined,
-    productId: product.id
-  };
-
-  console.log('Subscription info for user:', userId, subscriptionInfo);
-  return subscriptionInfo;
 }
 
 serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const requestStart = Date.now();
+  
+  console.log(`[${requestId}] Processing subscription check request`);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -107,7 +147,7 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      console.error('No authorization header');
+      logError('authorization', new Error('No authorization header'), { requestId });
       return new Response(
         JSON.stringify({ error: 'No authorization header' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
@@ -118,7 +158,10 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(jwt);
 
     if (authError || !user) {
-      console.error('Invalid token:', authError);
+      logError('authentication', authError || new Error('Invalid token'), { 
+        requestId,
+        authError: authError?.message
+      });
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
@@ -126,6 +169,13 @@ serve(async (req) => {
     }
 
     const subscriptionInfo = await checkSubscriptionStatus(user.id, supabaseClient);
+
+    const requestDuration = Date.now() - requestStart;
+    console.log(`[${requestId}] Request completed in ${requestDuration}ms`, {
+      userId: user.id,
+      isSubscribed: subscriptionInfo.isSubscribed,
+      tier: subscriptionInfo.tier
+    });
 
     return new Response(
       JSON.stringify(subscriptionInfo),
@@ -135,9 +185,14 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error);
+    logError('serve', error, { requestId });
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        requestId, // Include request ID in response for correlation
+        timestamp: new Date().toISOString()
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
