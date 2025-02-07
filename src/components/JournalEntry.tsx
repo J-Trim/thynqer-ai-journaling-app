@@ -65,7 +65,7 @@ const JournalEntry = React.memo(({
           }}
           moodIcon={getMoodIcon()}
         />
-        <EntryPreview preview={preview} audioPlayer={audioPlayer} />
+        <EntryPreview preview={preview} audioPlayer={audioPlayer} entryId={id} />
       </EntryCard>
 
       <DeleteDialog

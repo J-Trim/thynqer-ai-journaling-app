@@ -13,7 +13,7 @@ interface EntryPreviewProps {
 }
 
 const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreviewProps) => {
-  const { data: tags, isError, error } = useQuery({
+  const { data: tags, isError } = useQuery({
     queryKey: ['entry-tags', entryId],
     queryFn: async () => {
       if (!entryId) return [];
@@ -28,12 +28,6 @@ const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreview
 
       if (error) throw error;
       
-      // Validate the response data
-      if (!Array.isArray(entryTags)) {
-        throw new Error('Invalid response format for tags');
-      }
-
-      // Filter out any invalid tag entries
       return entryTags
         .filter(tag => tag.tag_id && tag.tags?.name)
         .map(tag => ({
@@ -42,8 +36,8 @@ const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreview
         }));
     },
     enabled: !!entryId,
-    retry: 2, // Retry failed requests twice
-    staleTime: 30000, // Consider data fresh for 30 seconds
+    retry: 2,
+    staleTime: 30000,
   });
 
   const displayPreview = preview?.trim() 
