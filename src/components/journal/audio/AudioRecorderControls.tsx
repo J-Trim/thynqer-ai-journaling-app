@@ -19,25 +19,30 @@ const AudioRecorderControls = ({
 }: AudioRecorderControlsProps) => {
   return (
     <div className="flex flex-col items-center gap-4">
-      <Button
-        size="icon"
-        onClick={onToggleRecording}
-        disabled={isProcessing}
-        variant="ghost"
-        className={`h-10 w-10 rounded-full hover:bg-secondary/80 ${
-          isRecording 
-            ? isPaused
-              ? "text-primary hover:text-primary-hover"
-              : "text-accent hover:text-accent-hover"
-            : "text-primary hover:text-primary-hover"
-        }`}
-      >
-        {isRecording && !isPaused ? (
-          <Pause className="h-5 w-5" />
-        ) : (
-          <Mic className="h-5 w-5" />
+      <div className="relative">
+        <Button
+          size="icon"
+          onClick={onToggleRecording}
+          disabled={isProcessing}
+          variant="ghost"
+          className={`h-12 w-12 rounded-full hover:bg-secondary/80 relative z-10 ${
+            isRecording 
+              ? isPaused
+                ? "text-primary hover:text-primary-hover"
+                : "text-accent hover:text-accent-hover"
+              : "text-primary hover:text-primary-hover"
+          }`}
+        >
+          {isRecording && !isPaused ? (
+            <Pause className="h-6 w-6" />
+          ) : (
+            <Mic className="h-6 w-6" />
+          )}
+        </Button>
+        {isRecording && !isPaused && (
+          <div className="absolute inset-0 animate-pulse bg-accent/20 rounded-full" />
         )}
-      </Button>
+      </div>
       {isRecording && (
         <Button
           size="icon"
