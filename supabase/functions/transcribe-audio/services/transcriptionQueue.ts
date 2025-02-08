@@ -63,24 +63,33 @@ export class TranscriptionQueue {
             .update({ status: 'processing' })
             .eq('id', job.id);
 
-          // Get the audio file from storage
+          // Get the audio file name from the URL
           const audioFileName = job.audio_url.split('/').pop();
           if (!audioFileName) {
             throw new Error('Invalid audio URL format');
           }
 
-          const { data: audioData, error: downloadError } = await this.supabase
+          // Create a signed URL for the audio file
+          const { data: signedUrlData, error: signedUrlError } = await this.supabase
             .storage
             .from('audio_files')
-            .download(audioFileName);
+            .createSignedUrl(audioFileName, 60); // URL expires in 60 seconds
 
-          if (downloadError) {
-            throw new Error(`Failed to download audio: ${downloadError.message}`);
+          if (signedUrlError || !signedUrlData?.signedUrl) {
+            throw new Error(`Failed to create signed URL: ${signedUrlError?.message || 'No URL generated'}`);
           }
+
+          // Download the audio file using the signed URL
+          const audioResponse = await fetch(signedUrlData.signedUrl);
+          if (!audioResponse.ok) {
+            throw new Error(`Failed to download audio: HTTP ${audioResponse.status}`);
+          }
+
+          const audioBlob = await audioResponse.blob();
 
           // Prepare the form data for Whisper API
           const formData = new FormData();
-          formData.append('file', audioData, 'audio.webm');
+          formData.append('file', audioBlob, 'audio.webm');
           formData.append('model', 'whisper-1');
 
           // Call Whisper API with proper error handling
