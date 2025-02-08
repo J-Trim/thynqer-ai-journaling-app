@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +30,55 @@ const AudioHandler = ({
 }: AudioHandlerProps) => {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [jobId, setJobId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Poll for transcription status when we have a jobId
+  useEffect(() => {
+    if (!jobId || !isTranscribing) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: job, error } = await supabase
+          .from('transcription_queue')
+          .select('status, result, error')
+          .eq('id', jobId)
+          .single();
+
+        if (error) throw error;
+
+        if (job) {
+          if (job.status === 'completed' && job.result) {
+            clearInterval(pollInterval);
+            setIsTranscribing(false);
+            setProgress(100);
+            onTranscriptionComplete(job.result);
+            toast({
+              title: "Success",
+              description: "Audio transcribed successfully",
+            });
+          } else if (job.status === 'failed') {
+            clearInterval(pollInterval);
+            setIsTranscribing(false);
+            throw new Error(job.error || 'Transcription failed');
+          } else if (job.status === 'processing') {
+            setProgress((prev) => Math.min(prev + 10, 90));
+          }
+        }
+      } catch (error) {
+        clearInterval(pollInterval);
+        setIsTranscribing(false);
+        console.error('Polling error:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to check transcription status",
+          variant: "destructive",
+        });
+      }
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [jobId, isTranscribing, onTranscriptionComplete, toast]);
 
   const handleAudioSaved = async (audioFileName: string) => {
     try {
@@ -41,60 +89,33 @@ const AudioHandler = ({
       // Save the audio URL first
       onAudioSaved(audioFileName);
       
-      // Simulate progress while transcribing
-      const progressInterval = setInterval(() => {
-        setProgress(prev => {
-          const nextProgress = Math.min(prev + 10, 90);
-          return nextProgress;
-        });
-      }, 1000);
-      
       console.log('Invoking transcribe-audio function...');
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { audioUrl: audioFileName }
       });
 
-      clearInterval(progressInterval);
-
       if (error) {
-        console.error('Transcription error:', error);
-        toast({
-          title: "Transcription Failed",
-          description: "Could not transcribe audio. Please try again.",
-          variant: "destructive",
-        });
+        console.error('Function invocation error:', error);
         throw error;
       }
 
-      if (data?.text) {
-        setProgress(100);
-        console.log('Transcription completed successfully');
-        onTranscriptionComplete(data.text);
+      if (data?.jobId) {
+        setJobId(data.jobId);
         toast({
-          title: "Success",
-          description: "Audio transcribed successfully",
+          title: "Processing",
+          description: "Audio transcription has started...",
         });
       } else {
-        console.error('No transcription text received');
-        toast({
-          title: "Error",
-          description: "No transcription text received",
-          variant: "destructive",
-        });
-        throw new Error('No transcription text received');
+        throw new Error('No job ID received');
       }
     } catch (error) {
       console.error('Transcription error:', error);
+      setIsTranscribing(false);
       toast({
         title: "Error",
-        description: "Failed to process audio",
+        description: error instanceof Error ? error.message : "Failed to process audio",
         variant: "destructive",
       });
-    } finally {
-      setTimeout(() => {
-        setIsTranscribing(false);
-        setProgress(0);
-      }, 1000);
     }
   };
 

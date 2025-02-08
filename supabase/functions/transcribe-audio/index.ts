@@ -14,9 +14,22 @@ serve(async (req) => {
   }
 
   try {
-    const { audioUrl, userId } = await req.json();
+    const { data: { session }, error: sessionError } = await req.auth();
     
-    if (!audioUrl || !userId) {
+    if (sessionError || !session?.user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - No valid session found' }), 
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const userId = session.user.id;
+    const { audioUrl } = await req.json();
+    
+    if (!audioUrl) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }), 
         { 
@@ -25,6 +38,8 @@ serve(async (req) => {
         }
       );
     }
+
+    console.log('Enqueueing transcription job:', { audioUrl, userId });
 
     // Enqueue the transcription job
     const jobId = await queue.enqueueJob(audioUrl, userId);
