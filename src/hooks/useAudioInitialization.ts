@@ -1,6 +1,8 @@
+
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getMimeType } from '@/utils/audio';
+import { useToast } from '@/hooks/use-toast';
 
 interface UseAudioInitializationProps {
   audioUrl: string;
@@ -17,6 +19,7 @@ export const useAudioInitialization = ({
   const [isLoading, setIsLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const { toast } = useToast();
 
   // Memoize AudioContext creation
   const audioContext = useMemo(() => new AudioContext(), []);
@@ -28,7 +31,7 @@ export const useAudioInitialization = ({
         setError(null);
         
         if (!audioUrl) {
-          console.error('No audio URL provided');
+          console.log('No audio URL provided');
           setError('No audio URL provided');
           return;
         }
@@ -42,15 +45,28 @@ export const useAudioInitialization = ({
 
         console.log('Starting audio download for:', filename);
         
-        const { data: audioData, error: downloadError } = await supabase.storage
+        // First try to get a signed URL for the file
+        const { data: { signedUrl }, error: signedUrlError } = await supabase.storage
           .from('audio_files')
-          .download(filename);
+          .createSignedUrl(filename, 3600); // 1 hour expiry
 
-        if (downloadError) {
-          console.error('Error downloading audio:', downloadError);
-          setError(`Error downloading audio: ${downloadError.message}`);
+        if (signedUrlError) {
+          console.error('Error getting signed URL:', signedUrlError);
+          toast({
+            title: "Error",
+            description: "Could not access audio file. Please try again.",
+            variant: "destructive",
+          });
+          setError(`Error accessing audio: ${signedUrlError.message}`);
           return;
         }
+
+        // Download using the signed URL
+        const response = await fetch(signedUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const audioData = await response.blob();
 
         if (!audioData) {
           console.error('No audio data received from storage');
@@ -107,6 +123,11 @@ export const useAudioInitialization = ({
         
       } catch (error: any) {
         console.error('Error in audio setup:', error);
+        toast({
+          title: "Audio Error",
+          description: error.message || "Failed to load audio file",
+          variant: "destructive",
+        });
         setError(`Error setting up audio: ${error.message}`);
         setIsLoading(false);
       }
@@ -125,7 +146,7 @@ export const useAudioInitialization = ({
       }
       audioContext.close();
     };
-  }, [audioUrl, isMuted, audioContext, onDurationCalculated]);
+  }, [audioUrl, isMuted, audioContext, onDurationCalculated, toast]);
 
   return {
     error,
