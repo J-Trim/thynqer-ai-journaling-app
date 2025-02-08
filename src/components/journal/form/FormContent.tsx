@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useFormState } from './FormStateProvider';
 import JournalFormHeader from './JournalFormHeader';
@@ -147,14 +146,12 @@ const FormContent: React.FC<FormContentProps> = ({
         </div>
       )}
 
-      <div className={`transition-opacity duration-800 ${
-        showTags ? 'opacity-100' : 'opacity-0'
-      }`}>
-        <TagSelector
-          selectedTags={selectedTags}
-          onTagToggle={handleTagToggle}
-        />
-      </div>
+      <TagSelector
+        selectedTags={selectedTags}
+        onTagToggle={handleTagToggle}
+        readOnly={isExistingEntry}
+        className="mt-4"
+      />
 
       {(content || transcribedAudio) && (
         <div className="mt-8">
