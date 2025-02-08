@@ -116,4 +116,3 @@ const EntryPreview = React.memo(({ preview, audioPlayer, entryId }: EntryPreview
 EntryPreview.displayName = "EntryPreview";
 
 export default EntryPreview;
-

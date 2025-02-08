@@ -33,7 +33,7 @@ const TagSelector = ({ selectedTags, onTagToggle, readOnly = false, className = 
     }
   });
 
-  // Show selected tags count
+  // Show selected tags count and names
   const selectedCount = selectedTags.length;
   const selectedTagNames = tags?.filter(tag => selectedTags.includes(tag.id))
     .map(tag => tag.name)
@@ -112,4 +112,3 @@ const TagSelector = ({ selectedTags, onTagToggle, readOnly = false, className = 
 };
 
 export default TagSelector;
-
