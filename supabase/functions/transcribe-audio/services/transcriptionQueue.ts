@@ -78,12 +78,12 @@ export class TranscriptionQueue {
             throw new Error(`Failed to download audio: ${downloadError.message}`);
           }
 
-          // Process transcription with language hint
+          // Prepare the form data for Whisper API
           const formData = new FormData();
           formData.append('file', audioData, 'audio.webm');
           formData.append('model', 'whisper-1');
-          formData.append('language', 'en');
 
+          // Call Whisper API with proper error handling
           const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
             headers: {
@@ -93,11 +93,13 @@ export class TranscriptionQueue {
           });
 
           if (!response.ok) {
-            throw new Error(`OpenAI API error: ${await response.text()}`);
+            const errorText = await response.text();
+            throw new Error(`Whisper API Error: ${errorText}`);
           }
 
           const result = await response.json();
 
+          // Update the job with the transcription result
           await this.supabase
             .from('transcription_queue')
             .update({ 
