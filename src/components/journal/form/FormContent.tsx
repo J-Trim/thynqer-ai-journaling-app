@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFormState } from './FormStateProvider';
 import JournalFormHeader from './JournalFormHeader';
 import JournalFormContent from './JournalFormContent';
@@ -25,6 +26,7 @@ const FormContent: React.FC<FormContentProps> = ({
   isSaving,
   isExistingEntry = false,
 }) => {
+  const navigate = useNavigate();
   const {
     title,
     setTitle,
@@ -113,9 +115,19 @@ const FormContent: React.FC<FormContentProps> = ({
   };
 
   const handleSave = async () => {
-    const result = await onSave();
-    if (result) {
-      resetForm();
+    try {
+      const result = await onSave();
+      if (result) {
+        resetForm();
+        navigate('/journal');
+      }
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save journal entry",
+        variant: "destructive",
+      });
     }
   };
 
@@ -165,8 +177,11 @@ const FormContent: React.FC<FormContentProps> = ({
       )}
 
       <SaveControls
-        onCancel={onCancel}
-        onSave={onSave}
+        onCancel={() => {
+          resetForm();
+          navigate('/journal');
+        }}
+        onSave={handleSave}
         isSaving={isSaving}
         isTranscriptionPending={isTranscriptionPending}
       />
