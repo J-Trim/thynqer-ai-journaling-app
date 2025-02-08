@@ -150,7 +150,7 @@ const FormContent: React.FC<FormContentProps> = ({
       <TagSelector
         selectedTags={selectedTags}
         onTagToggle={handleTagToggle}
-        readOnly={isExistingEntry}
+        readOnly={false}
         className="mt-4"
       />
 
