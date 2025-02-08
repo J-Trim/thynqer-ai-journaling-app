@@ -39,6 +39,12 @@ const TagSelector = ({ selectedTags, onTagToggle, readOnly = false, className = 
     .map(tag => tag.name)
     .join(', ');
 
+  const handleTagClick = (tagId: string) => {
+    if (!readOnly) {
+      onTagToggle(tagId);
+    }
+  };
+
   return (
     <div className={`space-y-2 ${className}`}>
       <Button
@@ -84,8 +90,19 @@ const TagSelector = ({ selectedTags, onTagToggle, readOnly = false, className = 
                         <Badge
                           key={tag.id}
                           variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                          className={`flex items-center gap-1 ${readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted-foreground/10'}`}
-                          onClick={() => !readOnly && onTagToggle(tag.id)}
+                          className={`
+                            flex items-center gap-1 transition-colors
+                            ${readOnly ? 'cursor-default' : 'cursor-pointer hover:bg-muted-foreground/10'}
+                          `}
+                          onClick={() => handleTagClick(tag.id)}
+                          role={!readOnly ? "button" : undefined}
+                          tabIndex={!readOnly ? 0 : undefined}
+                          onKeyDown={(e) => {
+                            if (!readOnly && (e.key === 'Enter' || e.key === ' ')) {
+                              e.preventDefault();
+                              handleTagClick(tag.id);
+                            }
+                          }}
                         >
                           <Tag className="h-3 w-3" />
                           {tag.name}
