@@ -43,7 +43,6 @@ export class TranscriptionQueue {
 
   async processNextBatch(batchSize = 5): Promise<void> {
     try {
-      // Get pending jobs not currently being processed
       const { data: jobs, error } = await this.supabase
         .from('transcription_queue')
         .select('*')
@@ -54,7 +53,6 @@ export class TranscriptionQueue {
       if (error) throw error;
       if (!jobs?.length) return;
 
-      // Process jobs in parallel with rate limiting
       const processJob = async (job: TranscriptionJob) => {
         if (this.processingJobs.has(job.id)) return;
         this.processingJobs.add(job.id);
@@ -65,11 +63,26 @@ export class TranscriptionQueue {
             .update({ status: 'processing' })
             .eq('id', job.id);
 
+          // Get the audio file from storage
+          const audioFileName = job.audio_url.split('/').pop();
+          if (!audioFileName) {
+            throw new Error('Invalid audio URL format');
+          }
+
+          const { data: audioData, error: downloadError } = await this.supabase
+            .storage
+            .from('audio_files')
+            .download(audioFileName);
+
+          if (downloadError) {
+            throw new Error(`Failed to download audio: ${downloadError.message}`);
+          }
+
           // Process transcription with language hint
           const formData = new FormData();
-          formData.append('file', new Blob([job.audio_url]), 'audio.mp3');
+          formData.append('file', audioData, 'audio.webm');
           formData.append('model', 'whisper-1');
-          formData.append('language', 'en'); // Add language hint
+          formData.append('language', 'en');
 
           const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
@@ -120,3 +133,4 @@ export class TranscriptionQueue {
 }
 
 export const queue = new TranscriptionQueue();
+
