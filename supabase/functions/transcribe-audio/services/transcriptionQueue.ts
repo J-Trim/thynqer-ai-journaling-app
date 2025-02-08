@@ -1,6 +1,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { logError } from '../utils/logger.ts';
+import { getMimeType } from '../utils/audio.ts';
 
 interface TranscriptionJob {
   id: string;
@@ -69,6 +70,10 @@ export class TranscriptionQueue {
             throw new Error('Invalid audio URL format');
           }
 
+          // Get the MIME type based on file extension
+          const mimeType = getMimeType(audioFileName);
+          console.log('Detected MIME type:', mimeType);
+
           // Create a signed URL for the audio file
           const { data: signedUrlData, error: signedUrlError } = await this.supabase
             .storage
@@ -85,11 +90,15 @@ export class TranscriptionQueue {
             throw new Error(`Failed to download audio: HTTP ${audioResponse.status}`);
           }
 
-          const audioBlob = await audioResponse.blob();
+          const audioArrayBuffer = await audioResponse.arrayBuffer();
+          
+          // Create a properly typed Blob with the correct MIME type
+          const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
+          console.log('Created audio blob with type:', mimeType);
 
           // Prepare the form data for Whisper API
           const formData = new FormData();
-          formData.append('file', audioBlob, 'audio.webm');
+          formData.append('file', audioBlob, `audio.${audioFileName.split('.').pop()}`);
           formData.append('model', 'whisper-1');
 
           // Call Whisper API with proper error handling
