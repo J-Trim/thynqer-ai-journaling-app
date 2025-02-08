@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { useFormState } from './FormStateProvider';
 import JournalFormHeader from './JournalFormHeader';
 import JournalFormContent from './JournalFormContent';
 import AudioPlayer from '../AudioPlayer';
-import TagSelector from '../TagSelector';
+import TagSelector from '../../TagSelector';
 import MoodSelector from './MoodSelector';
 import { TransformationManager } from '../transformations/TransformationManager';
 import SaveControls from './SaveControls';
@@ -114,7 +115,7 @@ const FormContent: React.FC<FormContentProps> = ({
   const handleSave = async () => {
     const result = await onSave();
     if (result) {
-      resetForm(); // Reset form state after successful save
+      resetForm();
     }
   };
 
