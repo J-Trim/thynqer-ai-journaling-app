@@ -1,10 +1,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
-import { generateInputHash } from "./utils/hash.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { getSystemPrompt, callDeepSeek } from "./services/deepseek.ts";
 import { checkCache, saveToCache } from "./services/cache.ts";
+import { generateInputHash } from "./utils/hash.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -108,3 +108,4 @@ serve(async (req: Request) => {
     );
   }
 });
+

@@ -45,20 +45,24 @@ export const transformationService = {
         throw error;
       }
 
-      // Save the transformation to summaries table
-      if (data?.transformedText) {
-        console.log('Saving transformation to summaries...');
-        const { error: saveError } = await supabase
-          .from('summaries')
-          .insert({
-            entry_id: entryId,
-            user_id: session.user.id,
-            transformed_text: data.transformedText,
-          });
+      if (!data?.transformedText) {
+        throw new Error('No transformed text received from the service');
+      }
 
-        if (saveError) {
-          console.error('Error saving transformation:', saveError);
-        }
+      // Save the transformation to summaries table
+      console.log('Saving transformation to summaries...');
+      const { error: saveError } = await supabase
+        .from('summaries')
+        .insert({
+          entry_id: entryId,
+          user_id: session.user.id,
+          transformed_text: data.transformedText,
+          transformation_type: selectedType
+        });
+
+      if (saveError) {
+        console.error('Error saving transformation:', saveError);
+        throw saveError;
       }
 
       return data;
@@ -68,3 +72,4 @@ export const transformationService = {
     }
   }
 };
+
