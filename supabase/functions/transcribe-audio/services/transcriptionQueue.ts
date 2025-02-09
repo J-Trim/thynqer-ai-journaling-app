@@ -34,12 +34,34 @@ interface WhisperResponse {
 export class TranscriptionQueue {
   private supabase: any;
   private processingJobs = new Set<string>();
+  private readonly MAX_RETRIES = 3;
+  private readonly BASE_DELAY = 1000; // 1 second
   
   constructor() {
     this.supabase = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
+  }
+
+  private isRetriableError(error: any): boolean {
+    if (!error) return false;
+    const message = error.message || '';
+    
+    // Don't retry client errors (4xx) except for rate limits (429)
+    if (message.includes('HTTP 4') && !message.includes('429')) {
+      return false;
+    }
+    
+    // Retry on network errors, rate limits, or server errors
+    return true;
+  }
+
+  private getBackoffDelay(attempt: number): number {
+    // Exponential backoff with jitter
+    const baseDelay = this.BASE_DELAY * Math.pow(2, attempt - 1);
+    const jitter = Math.random() * 0.5 + 0.75; // Random factor between 0.75 and 1.25
+    return Math.floor(baseDelay * jitter);
   }
 
   private async createSignedUrl(audioFileName: string): Promise<string> {
@@ -63,7 +85,7 @@ export class TranscriptionQueue {
     return audioResponse.arrayBuffer();
   }
 
-  private async callWhisperAPI(audioBlob: Blob, fileName: string): Promise<WhisperResponse> {
+  private async callWhisperAPI(audioBlob: Blob, fileName: string, attempt = 1): Promise<WhisperResponse> {
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIKey) {
       throw new Error('OpenAI API key not configured');
@@ -74,7 +96,7 @@ export class TranscriptionQueue {
     formData.append('model', 'whisper-1');
     formData.append('response_format', 'verbose_json');
 
-    console.log('Initiating Whisper API request...');
+    console.log(`Attempt ${attempt}: Initiating Whisper API request...`);
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
@@ -84,12 +106,42 @@ export class TranscriptionQueue {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Whisper API Error - Status: ${response.status}`);
-      throw new Error(`Whisper API Error: ${errorText}`);
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage += `: ${errorData.error.message || errorData.error}`;
+        }
+      } catch {
+        // Ignore JSON parse errors, use generic message
+      }
+      throw new Error(`Whisper API Error: ${errorMessage}`);
     }
 
     return response.json();
+  }
+
+  private async callWhisperWithRetry(audioBlob: Blob, fileName: string): Promise<WhisperResponse> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        return await this.callWhisperAPI(audioBlob, fileName, attempt);
+      } catch (error) {
+        lastError = error;
+        console.error(`Attempt ${attempt} failed:`, error.message);
+
+        if (attempt < this.MAX_RETRIES && this.isRetriableError(error)) {
+          const delay = this.getBackoffDelay(attempt);
+          console.log(`Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        break;
+      }
+    }
+
+    throw lastError || new Error('Transcription failed after all retries');
   }
 
   private processWhisperResponse(response: WhisperResponse) {
@@ -164,9 +216,8 @@ export class TranscriptionQueue {
           const signedUrl = await this.createSignedUrl(audioFileName);
           const audioArrayBuffer = await this.downloadAudio(signedUrl);
           const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
-          console.log('Created audio blob with type:', mimeType);
-
-          const whisperResponse = await this.callWhisperAPI(audioBlob, audioFileName);
+          
+          const whisperResponse = await this.callWhisperWithRetry(audioBlob, audioFileName);
           const processedResponse = this.processWhisperResponse(whisperResponse);
 
           await this.updateJobStatus(job.id, 'completed', processedResponse);
@@ -192,4 +243,3 @@ export class TranscriptionQueue {
 }
 
 export const queue = new TranscriptionQueue();
-
