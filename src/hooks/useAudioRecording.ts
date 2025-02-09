@@ -1,110 +1,52 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeFileName } from "@/utils/audio";
-import { handleError, isPermissionError, isDeviceError } from "@/utils/errorHandler";
+import { handleError } from "@/utils/errorHandler";
+import { useMediaDevices } from './useMediaDevices';
+import { useRecordingTimer } from './useRecordingTimer';
 
 export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
-  const mediaStream = useRef<MediaStream | null>(null);
   const audioChunks = useRef<Blob[]>([]);
-  const timerRef = useRef<number | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    return () => {
-      cleanupResources();
-    };
-  }, []);
+  const { mediaStream, requestMicrophoneAccess, cleanup: cleanupMediaStream } = useMediaDevices();
+  const { recordingTime, startTimer, stopTimer, resetTimer } = useRecordingTimer();
 
-  const cleanupResources = () => {
-    stopRecording();
-    if (mediaStream.current) {
-      mediaStream.current.getTracks().forEach(track => {
-        track.stop();
-        console.log('Audio track stopped and released');
-      });
-      mediaStream.current = null;
+  const cleanupResources = useCallback(() => {
+    if (mediaRecorder.current) {
+      if (mediaRecorder.current.state !== 'inactive') {
+        mediaRecorder.current.stop();
+      }
+      mediaRecorder.current = null;
     }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+
+    cleanupMediaStream();
+    stopTimer();
+
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
     }
+
     audioChunks.current = [];
-  };
+  }, [cleanupMediaStream, stopTimer]);
 
-  const startTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    timerRef.current = window.setInterval(() => {
-      setRecordingTime((prevTime) => prevTime + 1);
-    }, 1000);
-  };
-
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
-
-  const requestPermissions = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        } 
-      });
-      
-      return { success: true, stream };
-    } catch (error) {
-      let errorType: 'permission' | 'device' | 'general' = 'general';
-      let message = 'Could not access microphone.';
-
-      if (isPermissionError(error)) {
-        errorType = 'permission';
-        message = 'Microphone access was denied. Please enable it in your browser settings.';
-      } else if (isDeviceError(error)) {
-        errorType = 'device';
-        message = error instanceof Error && error.name === 'NotFoundError' 
-          ? 'No microphone was found on your device.'
-          : 'Your microphone is already in use by another application.';
-      }
-
-      handleError({
-        type: errorType,
-        message,
-        context: 'MicrophoneAccess',
-        error
-      });
-      
-      return { success: false, error: message };
-    }
-  };
-
-  const toggleRecording = async () => {
+  const toggleRecording = useCallback(async () => {
     if (!isRecording) {
-      const { success, error, stream } = await requestPermissions();
+      const { success, stream, error } = await requestMicrophoneAccess();
       
       if (!success || !stream) {
         return;
       }
 
       try {
-        mediaStream.current = stream;
         mediaRecorder.current = new MediaRecorder(stream, {
           mimeType: 'audio/webm;codecs=opus'
         });
@@ -116,11 +58,12 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         };
 
         mediaRecorder.current.onerror = (event) => {
+          const recordingError = event as MediaRecorderErrorEvent;
           handleError({
             type: 'device',
             message: 'Recording error occurred',
             context: 'MediaRecorder',
-            error: event.error
+            error: recordingError.error
           });
           cleanupResources();
         };
@@ -149,17 +92,14 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         startTimer();
       }
     }
-  };
+  }, [isRecording, isPaused, requestMicrophoneAccess, cleanupResources, startTimer, stopTimer]);
 
-  const stopRecording = async () => {
+  const stopRecording = useCallback(async () => {
     if (mediaRecorder.current && isRecording) {
       setIsProcessing(true);
       try {
         mediaRecorder.current.stop();
-        if (mediaStream.current) {
-          mediaStream.current.getTracks().forEach(track => track.stop());
-          mediaStream.current = null;
-        }
+        cleanupMediaStream();
         
         await new Promise<void>((resolve) => {
           if (mediaRecorder.current) {
@@ -197,8 +137,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
 
         setIsRecording(false);
         setIsPaused(false);
-        stopTimer();
-        setRecordingTime(0);
+        resetTimer();
         audioChunks.current = [];
         mediaRecorder.current = null;
       } catch (error) {
@@ -212,7 +151,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         setIsProcessing(false);
       }
     }
-  };
+  }, [isRecording, cleanupMediaStream, resetTimer]);
 
   return {
     isRecording,
@@ -223,4 +162,3 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
     stopRecording
   };
 };
-
