@@ -19,6 +19,18 @@ interface TranscriptionJob {
   }>;
 }
 
+interface WhisperResponse {
+  text: string;
+  language?: string;
+  duration?: number;
+  segments?: Array<{
+    start: number;
+    end: number;
+    text: string;
+    avg_logprob?: number;
+  }>;
+}
+
 export class TranscriptionQueue {
   private supabase: any;
   private processingJobs = new Set<string>();
@@ -28,6 +40,78 @@ export class TranscriptionQueue {
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     );
+  }
+
+  private async createSignedUrl(audioFileName: string): Promise<string> {
+    const { data: signedUrlData, error: signedUrlError } = await this.supabase
+      .storage
+      .from('audio_files')
+      .createSignedUrl(audioFileName, 60);
+
+    if (signedUrlError || !signedUrlData?.signedUrl) {
+      throw new Error(`Failed to create signed URL: ${signedUrlError?.message || 'No URL generated'}`);
+    }
+
+    return signedUrlData.signedUrl;
+  }
+
+  private async downloadAudio(signedUrl: string): Promise<ArrayBuffer> {
+    const audioResponse = await fetch(signedUrl);
+    if (!audioResponse.ok) {
+      throw new Error(`Failed to download audio: HTTP ${audioResponse.status}`);
+    }
+    return audioResponse.arrayBuffer();
+  }
+
+  private async callWhisperAPI(audioBlob: Blob, fileName: string): Promise<WhisperResponse> {
+    const openAIKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIKey) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, `audio.${fileName.split('.').pop()}`);
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'verbose_json');
+
+    console.log('Initiating Whisper API request...');
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIKey}`,
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Whisper API Error - Status: ${response.status}`);
+      throw new Error(`Whisper API Error: ${errorText}`);
+    }
+
+    return response.json();
+  }
+
+  private processWhisperResponse(response: WhisperResponse) {
+    return {
+      text: response.text,
+      language: response.language,
+      duration: response.duration,
+      segments: response.segments?.map(segment => ({
+        start: segment.start,
+        end: segment.end,
+        text: segment.text.trim(),
+        confidence: segment.avg_logprob ? Math.exp(segment.avg_logprob) : undefined
+      })) || []
+    };
+  }
+
+  private async updateJobStatus(jobId: string, status: TranscriptionJob['status'], data?: Partial<TranscriptionJob>) {
+    const updateData = { status, ...data };
+    await this.supabase
+      .from('transcription_queue')
+      .update(updateData)
+      .eq('id', jobId);
   }
 
   async enqueueJob(audioUrl: string, userId: string): Promise<string> {
@@ -67,103 +151,29 @@ export class TranscriptionQueue {
         this.processingJobs.add(job.id);
 
         try {
-          await this.supabase
-            .from('transcription_queue')
-            .update({ status: 'processing' })
-            .eq('id', job.id);
+          await this.updateJobStatus(job.id, 'processing');
 
-          // Get the audio file name from the URL
           const audioFileName = job.audio_url.split('/').pop();
           if (!audioFileName) {
             throw new Error('Invalid audio URL format');
           }
 
-          // Get the MIME type based on file extension
           const mimeType = getMimeType(audioFileName);
           console.log('Detected MIME type:', mimeType);
 
-          // Create a signed URL for the audio file
-          const { data: signedUrlData, error: signedUrlError } = await this.supabase
-            .storage
-            .from('audio_files')
-            .createSignedUrl(audioFileName, 60);
-
-          if (signedUrlError || !signedUrlData?.signedUrl) {
-            throw new Error(`Failed to create signed URL: ${signedUrlError?.message || 'No URL generated'}`);
-          }
-
-          // Download the audio file using the signed URL
-          const audioResponse = await fetch(signedUrlData.signedUrl);
-          if (!audioResponse.ok) {
-            throw new Error(`Failed to download audio: HTTP ${audioResponse.status}`);
-          }
-
-          const audioArrayBuffer = await audioResponse.arrayBuffer();
-          
-          // Create a properly typed Blob with the correct MIME type
+          const signedUrl = await this.createSignedUrl(audioFileName);
+          const audioArrayBuffer = await this.downloadAudio(signedUrl);
           const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
           console.log('Created audio blob with type:', mimeType);
 
-          // Get the OpenAI API key securely from environment variables
-          const openAIKey = Deno.env.get('OPENAI_API_KEY');
-          if (!openAIKey) {
-            throw new Error('OpenAI API key not configured');
-          }
+          const whisperResponse = await this.callWhisperAPI(audioBlob, audioFileName);
+          const processedResponse = this.processWhisperResponse(whisperResponse);
 
-          // Prepare the form data for Whisper API with verbose JSON format
-          const formData = new FormData();
-          formData.append('file', audioBlob, `audio.${audioFileName.split('.').pop()}`);
-          formData.append('model', 'whisper-1');
-          formData.append('response_format', 'verbose_json');
-
-          // Call Whisper API with proper error handling
-          console.log('Initiating Whisper API request...');
-          const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${openAIKey}`,
-            },
-            body: formData
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            // Log error without including the full request details that might contain the API key
-            console.error(`Whisper API Error - Status: ${response.status}`);
-            throw new Error(`Whisper API Error: ${errorText}`);
-          }
-
-          const result = await response.json();
-
-          // Process and store the enhanced metadata
-          const segments = result.segments?.map((segment: any) => ({
-            start: segment.start,
-            end: segment.end,
-            text: segment.text.trim(),
-            confidence: segment.avg_logprob ? Math.exp(segment.avg_logprob) : undefined
-          })) || [];
-
-          // Update the job with the transcription result and metadata
-          await this.supabase
-            .from('transcription_queue')
-            .update({ 
-              status: 'completed',
-              result: result.text,
-              language: result.language,
-              duration: result.duration,
-              segments: segments
-            })
-            .eq('id', job.id);
+          await this.updateJobStatus(job.id, 'completed', processedResponse);
 
         } catch (error) {
           logError('processJob', error, { jobId: job.id });
-          await this.supabase
-            .from('transcription_queue')
-            .update({ 
-              status: 'failed',
-              error: error.message
-            })
-            .eq('id', job.id);
+          await this.updateJobStatus(job.id, 'failed', { error: error.message });
         } finally {
           this.processingJobs.delete(job.id);
         }
