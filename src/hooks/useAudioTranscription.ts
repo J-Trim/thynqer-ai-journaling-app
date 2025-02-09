@@ -26,30 +26,34 @@ export const useAudioTranscription = () => {
       });
 
       if (error) {
-        console.error('Transcription function error:', error);
-        throw error;
+        console.error('Edge function error:', error);
+        throw new Error(`Transcription failed: ${error.message}`);
       }
 
       if (!data) {
+        console.error('No response data from transcription service');
         throw new Error('No response from transcription service');
       }
 
       console.log('Transcription response:', data);
 
       if (data.error) {
+        console.error('Transcription error from service:', data.error);
         throw new Error(data.error);
       }
 
+      // Check for job ID and poll for results
       if (data.jobId) {
         console.log('Transcription job queued with ID:', data.jobId);
-        // Start polling for the result
+        
+        // Start polling with exponential backoff
         let attempts = 0;
-        const maxAttempts = 30; // 1.5 minutes maximum polling time
-        const pollInterval = 3000; // Poll every 3 seconds
+        const maxAttempts = 30; // 3 minutes maximum polling time
+        const baseInterval = 3000; // Start with 3 second intervals
 
-        const pollForResult = async () => {
+        const pollForResult = async (): Promise<string> => {
           if (attempts >= maxAttempts) {
-            throw new Error('Transcription timed out');
+            throw new Error('Transcription timed out after 3 minutes');
           }
 
           const { data: jobData, error: pollError } = await supabase
@@ -59,19 +63,24 @@ export const useAudioTranscription = () => {
             .single();
 
           if (pollError) {
-            throw pollError;
+            console.error('Poll error:', pollError);
+            throw new Error('Failed to check transcription status');
           }
 
-          console.log('Job status:', jobData?.status);
+          console.log('Job status:', jobData?.status, 'Attempt:', attempts + 1);
 
           if (jobData?.status === 'completed' && jobData.result) {
             return jobData.result;
-          } else if (jobData?.status === 'failed') {
-            throw new Error(jobData.error || 'Transcription failed');
+          } 
+          
+          if (jobData?.status === 'failed') {
+            throw new Error(jobData.error || 'Transcription processing failed');
           }
 
           attempts++;
-          await new Promise(resolve => setTimeout(resolve, pollInterval));
+          // Exponential backoff with a max of 10 seconds
+          const delay = Math.min(baseInterval * Math.pow(1.5, attempts), 10000);
+          await new Promise(resolve => setTimeout(resolve, delay));
           return pollForResult();
         };
 
@@ -80,15 +89,10 @@ export const useAudioTranscription = () => {
         return transcriptionText;
       }
 
-      return null;
+      throw new Error('Invalid response format from transcription service');
     } catch (error) {
       console.error('Transcription error:', error);
-      toast({
-        title: "Transcription Failed",
-        description: error instanceof Error ? error.message : "Failed to transcribe audio",
-        variant: "destructive",
-      });
-      return null;
+      throw error;
     } finally {
       setIsTranscriptionPending(false);
     }
