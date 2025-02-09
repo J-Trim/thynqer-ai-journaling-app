@@ -11,14 +11,8 @@ interface TranscriptionJob {
   user_id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   created_at: string;
-  language?: string;
-  duration?: number;
-  segments?: Array<{
-    start: number;
-    end: number;
-    text: string;
-    confidence?: number;
-  }>;
+  result?: string;
+  error?: string;
 }
 
 export class QueueService {
@@ -37,6 +31,7 @@ export class QueueService {
   }
 
   private async updateJobStatus(jobId: string, status: TranscriptionJob['status'], data?: Partial<TranscriptionJob>) {
+    console.log(`Updating job ${jobId} status to ${status}`, data);
     const updateData = { status, ...data };
     const { error } = await this.supabase
       .from('transcription_queue')
@@ -68,10 +63,61 @@ export class QueueService {
       }
       
       console.log('Job enqueued successfully:', data.id);
+      
+      // Start processing the job immediately
+      EdgeRuntime.waitUntil(this.processJob(data));
+      
       return data.id;
     } catch (error) {
       logError('enqueueJob', error, { audioUrl, userId });
       throw error;
+    }
+  }
+
+  private async processJob(job: TranscriptionJob) {
+    if (this.processingJobs.has(job.id)) {
+      console.log(`Job ${job.id} is already being processed`);
+      return;
+    }
+    
+    this.processingJobs.add(job.id);
+    console.log(`Starting to process job ${job.id}`);
+
+    try {
+      await this.updateJobStatus(job.id, 'processing');
+
+      const audioFileName = job.audio_url;
+      if (!audioFileName) {
+        throw new Error('Invalid audio URL format');
+      }
+
+      console.log('Getting signed URL for:', audioFileName);
+      const signedUrl = await this.storageService.createSignedUrl(audioFileName);
+      
+      console.log('Downloading audio...');
+      const audioArrayBuffer = await this.storageService.downloadAudio(signedUrl);
+      
+      const mimeType = getMimeType(audioFileName);
+      console.log('Creating audio blob with MIME type:', mimeType);
+      const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
+      
+      console.log('Calling Whisper API...');
+      const whisperResponse = await this.whisperService.transcribe(audioBlob, audioFileName);
+      const processedResponse = this.whisperService.processResponse(whisperResponse);
+
+      console.log('Updating job with transcription result...');
+      await this.updateJobStatus(job.id, 'completed', {
+        result: processedResponse.text
+      });
+
+      console.log(`Job ${job.id} completed successfully`);
+
+    } catch (error) {
+      console.error(`Error processing job ${job.id}:`, error);
+      logError('processJob', error, { jobId: job.id });
+      await this.updateJobStatus(job.id, 'failed', { error: error.message });
+    } finally {
+      this.processingJobs.delete(job.id);
     }
   }
 
@@ -97,57 +143,9 @@ export class QueueService {
 
       console.log(`Found ${jobs.length} jobs to process`);
 
-      const processJob = async (job: TranscriptionJob) => {
-        if (this.processingJobs.has(job.id)) {
-          console.log(`Job ${job.id} is already being processed`);
-          return;
-        }
-        
-        this.processingJobs.add(job.id);
-        console.log(`Starting to process job ${job.id}`);
-
-        try {
-          await this.updateJobStatus(job.id, 'processing');
-
-          const audioFileName = job.audio_url;
-          if (!audioFileName) {
-            throw new Error('Invalid audio URL format');
-          }
-
-          console.log('Getting signed URL for:', audioFileName);
-          const signedUrl = await this.storageService.createSignedUrl(audioFileName);
-          
-          console.log('Downloading audio...');
-          const audioArrayBuffer = await this.storageService.downloadAudio(signedUrl);
-          
-          const mimeType = getMimeType(audioFileName);
-          console.log('Creating audio blob with MIME type:', mimeType);
-          const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
-          
-          console.log('Calling Whisper API...');
-          const whisperResponse = await this.whisperService.transcribe(audioBlob, audioFileName);
-          const processedResponse = this.whisperService.processResponse(whisperResponse);
-
-          console.log('Updating job with transcription result...');
-          await this.updateJobStatus(job.id, 'completed', {
-            result: processedResponse.text,
-            language: processedResponse.language
-          });
-
-          console.log(`Job ${job.id} completed successfully`);
-
-        } catch (error) {
-          console.error(`Error processing job ${job.id}:`, error);
-          logError('processJob', error, { jobId: job.id });
-          await this.updateJobStatus(job.id, 'failed', { error: error.message });
-        } finally {
-          this.processingJobs.delete(job.id);
-        }
-      };
-
       // Process jobs with a delay between each to avoid rate limits
       for (const job of jobs) {
-        await processJob(job);
+        await this.processJob(job);
         await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
       }
     } catch (error) {
