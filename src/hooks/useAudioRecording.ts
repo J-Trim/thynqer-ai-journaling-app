@@ -57,7 +57,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           }
         };
 
-        mediaRecorder.current.onerror = (event) => {
+        mediaRecorder.current.onerror = (event: Event) => {
           const error = event instanceof Error ? event : new Error('Recording error occurred');
           handleError({
             type: 'device',
