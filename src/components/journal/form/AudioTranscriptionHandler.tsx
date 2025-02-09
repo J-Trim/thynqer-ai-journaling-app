@@ -1,129 +1,61 @@
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAudioTranscription } from '@/hooks/useAudioTranscription';
 
 interface AudioTranscriptionHandlerProps {
+  audioUrl: string | null;
   onTranscriptionComplete: (text: string) => void;
   onTranscriptionStart: () => void;
   onTranscriptionEnd: () => void;
-  audioUrl: string | null;
 }
 
 const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
+  audioUrl,
   onTranscriptionComplete,
   onTranscriptionStart,
   onTranscriptionEnd,
-  audioUrl
 }) => {
   const { toast } = useToast();
-  const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
+  const { handleAudioTranscription } = useAudioTranscription();
 
-  const handleTranscription = async () => {
-    if (!audioUrl) {
-      console.log('No audio URL provided');
-      return;
-    }
-
-    try {
-      console.log('Starting audio transcription process for:', audioUrl);
-      onTranscriptionStart();
-      setIsTranscriptionPending(true);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('No authenticated session found');
+  useEffect(() => {
+    const transcribeAudio = async () => {
+      if (!audioUrl) {
+        console.log('No audio URL provided');
+        return;
       }
 
-      // Queue the transcription job
-      const { data, error: functionError } = await supabase.functions.invoke('transcribe-audio', {
-        body: { 
-          audioUrl: audioUrl,
-          userId: session.user.id
-        }
-      });
+      try {
+        console.log('Starting transcription for:', audioUrl);
+        onTranscriptionStart();
 
-      if (functionError) {
-        console.error('Error invoking transcribe-audio function:', functionError);
-        throw functionError;
-      }
-
-      if (!data?.jobId) {
-        throw new Error('No job ID received from transcription service');
-      }
-
-      console.log('Transcription job queued with ID:', data.jobId);
-
-      // Start polling for the result
-      const pollInterval = setInterval(async () => {
-        console.log('Polling for transcription result...');
+        const transcriptionText = await handleAudioTranscription(audioUrl);
         
-        const { data: jobData, error: pollError } = await supabase
-          .from('transcription_queue')
-          .select('status, result, error')
-          .eq('id', data.jobId)
-          .single();
-
-        if (pollError) {
-          console.error('Error polling for transcription:', pollError);
-          return;
-        }
-
-        console.log('Current job status:', jobData?.status);
-
-        if (jobData?.status === 'completed' && jobData.result) {
-          clearInterval(pollInterval);
-          console.log('Transcription completed:', jobData.result);
-          onTranscriptionComplete(jobData.result);
-          onTranscriptionEnd();
-          setIsTranscriptionPending(false);
+        if (transcriptionText) {
+          console.log('Transcription completed successfully');
+          onTranscriptionComplete(transcriptionText);
           toast({
             title: "Success",
             description: "Audio transcribed successfully",
           });
-        } else if (jobData?.status === 'failed') {
-          clearInterval(pollInterval);
-          console.error('Transcription failed:', jobData.error);
-          toast({
-            title: "Error",
-            description: jobData.error || "Failed to transcribe audio",
-            variant: "destructive",
-          });
-          setIsTranscriptionPending(false);
-          onTranscriptionEnd();
+        } else {
+          throw new Error('No transcription text received');
         }
-      }, 3000); // Poll every 3 seconds
+      } catch (error) {
+        console.error('Transcription handling error:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to process audio transcription",
+          variant: "destructive",
+        });
+      } finally {
+        onTranscriptionEnd();
+      }
+    };
 
-      // Cleanup polling after 5 minutes (timeout)
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (isTranscriptionPending) {
-          setIsTranscriptionPending(false);
-          onTranscriptionEnd();
-          toast({
-            title: "Timeout",
-            description: "Transcription is taking longer than expected. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }, 300000); // 5 minutes timeout
-
-    } catch (err) {
-      console.error('Transcription error:', err);
-      toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to transcribe audio",
-        variant: "destructive",
-      });
-      setIsTranscriptionPending(false);
-      onTranscriptionEnd();
-    }
-  };
-
-  // Watch for audioUrl changes to start transcription
-  React.useEffect(() => {
     if (audioUrl) {
-      handleTranscription();
+      transcribeAudio();
     }
   }, [audioUrl]);
 
