@@ -36,13 +36,21 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error invoking transcribe-audio function:', error);
+        throw error;
+      }
+
+      console.log('Transcription job response:', data);
+      
       if (!data?.jobId) {
         throw new Error('No job ID received');
       }
 
       // Start polling for the result
       const pollInterval = setInterval(async () => {
+        console.log('Polling for transcription result...');
+        
         const { data: jobData, error: pollError } = await supabase
           .from('transcription_queue')
           .select('status, result, error')
@@ -54,7 +62,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
           return;
         }
 
-        console.log('Polling job status:', jobData?.status);
+        console.log('Current job status:', jobData?.status);
 
         if (jobData?.status === 'completed' && jobData.result) {
           clearInterval(pollInterval);
@@ -93,17 +101,34 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         }
       }, 300000);
 
-    } catch (error) {
-      console.error('Transcription error:', error);
+    } catch (err) {
+      console.error('Transcription error:', err);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to transcribe audio",
+        description: err instanceof Error ? err.message : "Failed to transcribe audio",
         variant: "destructive",
       });
       setIsTranscriptionPending(false);
       onTranscriptionEnd();
     }
   };
+
+  // Listen for audio file name changes in Supabase storage
+  useEffect(() => {
+    const storageChanges = supabase.storage
+      .from('audio_files')
+      .on('INSERT', payload => {
+        console.log('New audio file detected:', payload);
+        if (payload.new) {
+          handleAudioTranscription(payload.new.name);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      storageChanges.unsubscribe();
+    };
+  }, []);
 
   return null;
 };

@@ -14,9 +14,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Received transcribe-audio request');
+    
     const { data: { session }, error: sessionError } = await req.auth();
     
     if (sessionError || !session?.user?.id) {
+      console.error('Authentication error:', sessionError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - No valid session found' }), 
         { 
@@ -30,6 +33,7 @@ serve(async (req) => {
     const { audioUrl } = await req.json();
     
     if (!audioUrl) {
+      console.error('Missing audioUrl in request');
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }), 
         { 
@@ -43,6 +47,7 @@ serve(async (req) => {
 
     // Enqueue the transcription job
     const jobId = await queue.enqueueJob(audioUrl, userId);
+    console.log('Job enqueued with ID:', jobId);
 
     // Start processing in the background
     EdgeRuntime.waitUntil(queue.processNextBatch());
