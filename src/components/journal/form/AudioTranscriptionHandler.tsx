@@ -20,7 +20,10 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
 
   const handleTranscription = async () => {
-    if (!audioUrl) return;
+    if (!audioUrl) {
+      console.log('No audio URL provided');
+      return;
+    }
 
     try {
       console.log('Starting audio transcription process for:', audioUrl);
@@ -33,23 +36,23 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
       }
 
       // Queue the transcription job
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+      const { data, error: functionError } = await supabase.functions.invoke('transcribe-audio', {
         body: { 
           audioUrl: audioUrl,
           userId: session.user.id
         }
       });
 
-      if (error) {
-        console.error('Error invoking transcribe-audio function:', error);
-        throw error;
+      if (functionError) {
+        console.error('Error invoking transcribe-audio function:', functionError);
+        throw functionError;
       }
 
-      console.log('Transcription job response:', data);
-      
       if (!data?.jobId) {
-        throw new Error('No job ID received');
+        throw new Error('No job ID received from transcription service');
       }
+
+      console.log('Transcription job queued with ID:', data.jobId);
 
       // Start polling for the result
       const pollInterval = setInterval(async () => {
@@ -62,7 +65,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
           .single();
 
         if (pollError) {
-          console.error('Polling error:', pollError);
+          console.error('Error polling for transcription:', pollError);
           return;
         }
 
@@ -103,7 +106,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
             variant: "destructive",
           });
         }
-      }, 300000);
+      }, 300000); // 5 minutes timeout
 
     } catch (err) {
       console.error('Transcription error:', err);
