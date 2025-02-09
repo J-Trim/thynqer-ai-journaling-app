@@ -4,6 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranscriptionPolling } from './useTranscriptionPolling';
 
+interface TranscriptionResponse {
+  jobId?: string;
+  text?: string;
+}
+
 export const useAudioTranscription = () => {
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const { toast } = useToast();
@@ -11,7 +16,7 @@ export const useAudioTranscription = () => {
     return text;
   });
 
-  const handleAudioTranscription = async (audioFileName: string) => {
+  const handleAudioTranscription = async (audioFileName: string): Promise<TranscriptionResponse> => {
     try {
       setIsTranscriptionPending(true);
       console.log('Starting audio transcription process for:', audioFileName);

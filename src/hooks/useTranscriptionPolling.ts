@@ -4,6 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { handleError } from "@/utils/errorHandler";
 
+interface TranscriptionResponse {
+  jobId?: string;
+  text?: string;
+}
+
 export const useTranscriptionPolling = (
   onTranscriptionComplete: (text: string) => void
 ) => {
@@ -80,7 +85,7 @@ export const useTranscriptionPolling = (
     };
   }, [jobId, isTranscribing, checkTranscriptionStatus]);
 
-  const startTranscription = useCallback(async (audioFileName: string) => {
+  const startTranscription = useCallback(async (audioFileName: string): Promise<TranscriptionResponse> => {
     try {
       setIsTranscribing(true);
       setProgress(0);
@@ -106,6 +111,8 @@ export const useTranscriptionPolling = (
         title: "Processing",
         description: "Audio transcription has started...",
       });
+
+      return { jobId: data.jobId };
     } catch (error) {
       handleError({
         type: 'server',
@@ -116,6 +123,7 @@ export const useTranscriptionPolling = (
       setIsTranscribing(false);
       setError('Failed to process audio. Please try again.');
       setErrorType('server');
+      throw error;
     }
   }, [toast]);
 
