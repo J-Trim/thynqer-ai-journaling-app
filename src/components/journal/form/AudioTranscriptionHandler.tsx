@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -7,19 +7,23 @@ interface AudioTranscriptionHandlerProps {
   onTranscriptionComplete: (text: string) => void;
   onTranscriptionStart: () => void;
   onTranscriptionEnd: () => void;
+  audioUrl: string | null;
 }
 
 const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
   onTranscriptionComplete,
   onTranscriptionStart,
-  onTranscriptionEnd
+  onTranscriptionEnd,
+  audioUrl
 }) => {
   const { toast } = useToast();
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
 
-  const handleAudioTranscription = async (audioFileName: string) => {
+  const handleTranscription = async () => {
+    if (!audioUrl) return;
+
     try {
-      console.log('Starting audio transcription process for:', audioFileName);
+      console.log('Starting audio transcription process for:', audioUrl);
       onTranscriptionStart();
       setIsTranscriptionPending(true);
 
@@ -31,7 +35,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
       // Queue the transcription job
       const { data, error } = await supabase.functions.invoke('transcribe-audio', {
         body: { 
-          audioUrl: audioFileName,
+          audioUrl: audioUrl,
           userId: session.user.id
         }
       });
@@ -113,30 +117,12 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
     }
   };
 
-  // Listen for changes in the storage bucket
-  useEffect(() => {
-    const channel = supabase.channel('audio_files_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'storage',
-          table: 'objects',
-          filter: `bucket_id=eq.audio_files`
-        },
-        (payload) => {
-          console.log('New audio file detected:', payload);
-          if (payload.new && payload.new.name) {
-            handleAudioTranscription(payload.new.name);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Watch for audioUrl changes to start transcription
+  React.useEffect(() => {
+    if (audioUrl) {
+      handleTranscription();
+    }
+  }, [audioUrl]);
 
   return null;
 };

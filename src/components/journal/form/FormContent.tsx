@@ -8,6 +8,7 @@ import AudioPlayer from '../AudioPlayer';
 import TagSelector from '../../TagSelector';
 import MoodSelector from './MoodSelector';
 import { TransformationManager } from '../transformations/TransformationManager';
+import AudioTranscriptionHandler from './AudioTranscriptionHandler';
 import SaveControls from './SaveControls';
 import { useAudioRecording } from '@/hooks/useAudioRecording';
 import { supabase } from '@/integrations/supabase/client';
@@ -51,81 +52,6 @@ const FormContent: React.FC<FormContentProps> = ({
 
   const handleAudioSaved = async (url: string) => {
     setAudioUrl(url);
-    
-    try {
-      setIsTranscriptionPending(true);
-      console.log('Starting audio transcription process for:', url);
-      
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Authentication required');
-      }
-
-      // Create transcription job
-      const { data: jobData, error: queueError } = await supabase
-        .from('transcription_queue')
-        .insert({
-          audio_url: url,
-          user_id: session.user.id,
-          status: 'pending'
-        })
-        .select()
-        .single();
-
-      if (queueError) {
-        throw queueError;
-      }
-
-      // Start polling for transcription result
-      const pollInterval = setInterval(async () => {
-        const { data: result, error: pollError } = await supabase
-          .from('transcription_queue')
-          .select('status, result, error')
-          .eq('id', jobData.id)
-          .single();
-
-        if (pollError) {
-          clearInterval(pollInterval);
-          throw pollError;
-        }
-
-        if (result.status === 'completed' && result.result) {
-          clearInterval(pollInterval);
-          setTranscribedAudio(result.result);
-          toast({
-            title: "Success",
-            description: "Audio transcribed successfully",
-          });
-          setIsTranscriptionPending(false);
-        } else if (result.status === 'failed') {
-          clearInterval(pollInterval);
-          throw new Error(result.error || 'Transcription failed');
-        }
-      }, 5000); // Poll every 5 seconds
-
-      // Cleanup polling after 5 minutes
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (isTranscriptionPending) {
-          setIsTranscriptionPending(false);
-          toast({
-            title: "Timeout",
-            description: "Transcription is taking longer than expected. Please try again.",
-            variant: "destructive",
-          });
-        }
-      }, 300000); // 5 minutes timeout
-
-    } catch (error) {
-      console.error('Transcription error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process audio",
-        variant: "destructive",
-      });
-      setIsTranscriptionPending(false);
-    }
   };
 
   const {
@@ -189,6 +115,13 @@ const FormContent: React.FC<FormContentProps> = ({
           <AudioPlayer audioUrl={audioUrl} />
         </div>
       )}
+
+      <AudioTranscriptionHandler
+        audioUrl={audioUrl}
+        onTranscriptionComplete={setTranscribedAudio}
+        onTranscriptionStart={() => setIsTranscriptionPending(true)}
+        onTranscriptionEnd={() => setIsTranscriptionPending(false)}
+      />
 
       <TagSelector
         selectedTags={selectedTags}
