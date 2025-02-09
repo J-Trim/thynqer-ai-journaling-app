@@ -32,7 +32,8 @@ serve(async (req) => {
     }
 
     const userId = session.user.id;
-    const { audioUrl } = await req.json();
+    const body = await req.json();
+    const audioUrl = body?.audioUrl;
     
     if (!audioUrl) {
       console.error('Missing audioUrl in request');
@@ -68,7 +69,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in transcribe-audio:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'An error occurred while processing the transcription request'
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

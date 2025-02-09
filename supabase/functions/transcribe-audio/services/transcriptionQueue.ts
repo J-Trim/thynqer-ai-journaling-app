@@ -1,5 +1,5 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { logError } from '../utils/logger.ts';
 import { getMimeType } from '../utils/audio.ts';
 
@@ -160,14 +160,20 @@ export class TranscriptionQueue {
 
   private async updateJobStatus(jobId: string, status: TranscriptionJob['status'], data?: Partial<TranscriptionJob>) {
     const updateData = { status, ...data };
-    await this.supabase
+    const { error } = await this.supabase
       .from('transcription_queue')
       .update(updateData)
       .eq('id', jobId);
+    
+    if (error) {
+      console.error('Error updating job status:', error);
+      throw error;
+    }
   }
 
   async enqueueJob(audioUrl: string, userId: string): Promise<string> {
     try {
+      console.log('Enqueueing job for:', { audioUrl, userId });
       const { data, error } = await this.supabase
         .from('transcription_queue')
         .insert({
@@ -178,7 +184,12 @@ export class TranscriptionQueue {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error enqueueing job:', error);
+        throw error;
+      }
+      
+      console.log('Job enqueued successfully:', data.id);
       return data.id;
     } catch (error) {
       logError('enqueueJob', error, { audioUrl, userId });
@@ -188,6 +199,7 @@ export class TranscriptionQueue {
 
   async processNextBatch(batchSize = 5): Promise<void> {
     try {
+      console.log('Processing next batch of jobs...');
       const { data: jobs, error } = await this.supabase
         .from('transcription_queue')
         .select('*')
@@ -195,34 +207,59 @@ export class TranscriptionQueue {
         .order('created_at', { ascending: true })
         .limit(batchSize);
 
-      if (error) throw error;
-      if (!jobs?.length) return;
+      if (error) {
+        console.error('Error fetching pending jobs:', error);
+        throw error;
+      }
+
+      if (!jobs?.length) {
+        console.log('No pending jobs to process');
+        return;
+      }
+
+      console.log(`Found ${jobs.length} jobs to process`);
 
       const processJob = async (job: TranscriptionJob) => {
-        if (this.processingJobs.has(job.id)) return;
+        if (this.processingJobs.has(job.id)) {
+          console.log(`Job ${job.id} is already being processed`);
+          return;
+        }
+        
         this.processingJobs.add(job.id);
+        console.log(`Starting to process job ${job.id}`);
 
         try {
           await this.updateJobStatus(job.id, 'processing');
 
-          const audioFileName = job.audio_url.split('/').pop();
+          const audioFileName = job.audio_url;
           if (!audioFileName) {
             throw new Error('Invalid audio URL format');
           }
 
-          const mimeType = getMimeType(audioFileName);
-          console.log('Detected MIME type:', mimeType);
-
+          console.log('Getting signed URL for:', audioFileName);
           const signedUrl = await this.createSignedUrl(audioFileName);
+          
+          console.log('Downloading audio...');
           const audioArrayBuffer = await this.downloadAudio(signedUrl);
+          
+          const mimeType = getMimeType(audioFileName);
+          console.log('Creating audio blob with MIME type:', mimeType);
           const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
           
+          console.log('Calling Whisper API...');
           const whisperResponse = await this.callWhisperWithRetry(audioBlob, audioFileName);
           const processedResponse = this.processWhisperResponse(whisperResponse);
 
-          await this.updateJobStatus(job.id, 'completed', processedResponse);
+          console.log('Updating job with transcription result...');
+          await this.updateJobStatus(job.id, 'completed', {
+            result: processedResponse.text,
+            language: processedResponse.language
+          });
+
+          console.log(`Job ${job.id} completed successfully`);
 
         } catch (error) {
+          console.error(`Error processing job ${job.id}:`, error);
           logError('processJob', error, { jobId: job.id });
           await this.updateJobStatus(job.id, 'failed', { error: error.message });
         } finally {
@@ -236,6 +273,7 @@ export class TranscriptionQueue {
         await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
       }
     } catch (error) {
+      console.error('Error in processNextBatch:', error);
       logError('processNextBatch', error);
       throw error;
     }
