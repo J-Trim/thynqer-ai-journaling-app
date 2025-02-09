@@ -113,20 +113,28 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
     }
   };
 
-  // Listen for audio file name changes in Supabase storage
+  // Listen for changes in the storage bucket
   useEffect(() => {
-    const storageChanges = supabase.storage
-      .from('audio_files')
-      .on('INSERT', payload => {
-        console.log('New audio file detected:', payload);
-        if (payload.new) {
-          handleAudioTranscription(payload.new.name);
+    const channel = supabase.channel('audio_files_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'storage',
+          table: 'objects',
+          filter: `bucket_id=eq.audio_files`
+        },
+        (payload) => {
+          console.log('New audio file detected:', payload);
+          if (payload.new && payload.new.name) {
+            handleAudioTranscription(payload.new.name);
+          }
         }
-      })
+      )
       .subscribe();
 
     return () => {
-      storageChanges.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, []);
 
