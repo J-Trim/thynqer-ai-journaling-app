@@ -62,6 +62,7 @@ const JournalEntryContent = () => {
       />
 
       <AudioTranscriptionHandler
+        audioUrl={audioUrl}
         onTranscriptionComplete={setTranscribedAudio}
         onTranscriptionStart={() => setIsTranscriptionPending(true)}
         onTranscriptionEnd={() => setIsTranscriptionPending(false)}
