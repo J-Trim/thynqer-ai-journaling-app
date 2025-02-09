@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeFileName } from "@/utils/audio";
+import { handleError, isPermissionError, isDeviceError } from "@/utils/errorHandler";
 
 export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -16,7 +17,6 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
   const blobUrlRef = useRef<string | null>(null);
   const { toast } = useToast();
 
-  // Cleanup effect
   useEffect(() => {
     return () => {
       cleanupResources();
@@ -71,26 +71,27 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
       
       return { success: true, stream };
     } catch (error) {
-      console.error('Permission error:', error);
-      
-      let errorMessage = 'Could not access microphone.';
-      if (error instanceof DOMException) {
-        switch (error.name) {
-          case 'NotAllowedError':
-            errorMessage = 'Microphone access was denied. Please enable it in your browser settings.';
-            break;
-          case 'NotFoundError':
-            errorMessage = 'No microphone was found on your device.';
-            break;
-          case 'NotReadableError':
-            errorMessage = 'Your microphone is already in use by another application.';
-            break;
-          default:
-            errorMessage = `Microphone error: ${error.message}`;
-        }
+      let errorType: 'permission' | 'device' | 'general' = 'general';
+      let message = 'Could not access microphone.';
+
+      if (isPermissionError(error)) {
+        errorType = 'permission';
+        message = 'Microphone access was denied. Please enable it in your browser settings.';
+      } else if (isDeviceError(error)) {
+        errorType = 'device';
+        message = error instanceof Error && error.name === 'NotFoundError' 
+          ? 'No microphone was found on your device.'
+          : 'Your microphone is already in use by another application.';
       }
+
+      handleError({
+        type: errorType,
+        message,
+        context: 'MicrophoneAccess',
+        error
+      });
       
-      return { success: false, error: errorMessage };
+      return { success: false, error: message };
     }
   };
 
@@ -99,11 +100,6 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
       const { success, error, stream } = await requestPermissions();
       
       if (!success || !stream) {
-        toast({
-          title: "Microphone Access Error",
-          description: error || "Could not access microphone",
-          variant: "destructive",
-        });
         return;
       }
 
@@ -120,25 +116,25 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         };
 
         mediaRecorder.current.onerror = (event) => {
-          console.error('MediaRecorder error:', event);
-          toast({
-            title: "Recording Error",
-            description: "An error occurred while recording. Please try again.",
-            variant: "destructive",
+          handleError({
+            type: 'device',
+            message: 'Recording error occurred',
+            context: 'MediaRecorder',
+            error: event.error
           });
           cleanupResources();
         };
 
-        mediaRecorder.current.start(1000); // Collect chunks every second
+        mediaRecorder.current.start(1000);
         setIsRecording(true);
         setIsPaused(false);
         startTimer();
       } catch (error) {
-        console.error("Error starting recording:", error);
-        toast({
-          title: "Error",
-          description: "Could not start recording. Please check your microphone permissions.",
-          variant: "destructive",
+        handleError({
+          type: 'device',
+          message: 'Could not start recording',
+          context: 'RecordingStart',
+          error
         });
         cleanupResources();
       }
@@ -181,7 +177,6 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
             throw new Error('Recording exceeds maximum size limit of 100MB');
           }
 
-          // Create a temp URL for local preview if needed
           if (blobUrlRef.current) {
             URL.revokeObjectURL(blobUrlRef.current);
           }
@@ -207,11 +202,11 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
         audioChunks.current = [];
         mediaRecorder.current = null;
       } catch (error) {
-        console.error("Error stopping recording:", error);
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to save audio recording",
-          variant: "destructive",
+        handleError({
+          type: 'storage',
+          message: 'Failed to save audio recording',
+          context: 'AudioSave',
+          error
         });
       } finally {
         setIsProcessing(false);
@@ -228,3 +223,4 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
     stopRecording
   };
 };
+

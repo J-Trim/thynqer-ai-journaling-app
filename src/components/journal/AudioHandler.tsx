@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { handleError } from "@/utils/errorHandler";
+import { TransformationError } from "./transformations/TransformationError";
 
 interface AudioHandlerProps {
   onAudioSaved: (audioUrl: string) => void;
@@ -31,47 +33,53 @@ const AudioHandler = ({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [jobId, setJobId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'network' | 'validation' | 'server' | 'general' | null>(null);
   const { toast } = useToast();
 
   const checkTranscriptionStatus = useCallback(async () => {
     if (!jobId) return;
 
     try {
-      const { data: job, error } = await supabase
+      const { data: job, error: fetchError } = await supabase
         .from('transcription_queue')
         .select('status, result, error')
         .eq('id', jobId)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (fetchError) {
+        throw fetchError;
+      }
 
-      if (job) {
-        if (job.status === 'completed' && job.result) {
-          setIsTranscribing(false);
-          setProgress(100);
-          onTranscriptionComplete(job.result);
-          setJobId(null);
-          toast({
-            title: "Success",
-            description: "Audio transcribed successfully",
-          });
-        } else if (job.status === 'failed') {
-          setIsTranscribing(false);
-          setJobId(null);
-          throw new Error(job.error || 'Transcription failed');
-        } else if (job.status === 'processing') {
-          setProgress((prev) => Math.min(prev + 10, 90));
-        }
+      if (!job) {
+        throw new Error('Transcription job not found');
+      }
+
+      if (job.status === 'completed' && job.result) {
+        setIsTranscribing(false);
+        setProgress(100);
+        onTranscriptionComplete(job.result);
+        setJobId(null);
+        toast({
+          title: "Success",
+          description: "Audio transcribed successfully",
+        });
+      } else if (job.status === 'failed') {
+        throw new Error(job.error || 'Transcription failed');
+      } else if (job.status === 'processing') {
+        setProgress((prev) => Math.min(prev + 10, 90));
       }
     } catch (error) {
+      handleError({
+        type: 'server',
+        message: 'Failed to check transcription status',
+        context: 'TranscriptionStatusCheck',
+        error
+      });
       setIsTranscribing(false);
       setJobId(null);
-      console.error('Polling error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to check transcription status",
-        variant: "destructive",
-      });
+      setError('Failed to check transcription status. Please try again.');
+      setErrorType('server');
     }
   }, [jobId, onTranscriptionComplete, toast]);
 
@@ -93,37 +101,39 @@ const AudioHandler = ({
     try {
       setIsTranscribing(true);
       setProgress(0);
-      console.log('Starting audio transcription process for:', audioFileName);
+      setError(null);
+      setErrorType(null);
       
+      console.log('Starting audio transcription process for:', audioFileName);
       onAudioSaved(audioFileName);
       
-      console.log('Invoking transcribe-audio function...');
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+      const { data, error: functionError } = await supabase.functions.invoke('transcribe-audio', {
         body: { audioUrl: audioFileName }
       });
 
-      if (error) {
-        console.error('Function invocation error:', error);
-        throw error;
+      if (functionError) {
+        throw functionError;
       }
 
-      if (data?.jobId) {
-        setJobId(data.jobId);
-        toast({
-          title: "Processing",
-          description: "Audio transcription has started...",
-        });
-      } else {
-        throw new Error('No job ID received');
+      if (!data?.jobId) {
+        throw new Error('No job ID received from transcription service');
       }
-    } catch (error) {
-      console.error('Transcription error:', error);
-      setIsTranscribing(false);
+
+      setJobId(data.jobId);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process audio",
-        variant: "destructive",
+        title: "Processing",
+        description: "Audio transcription has started...",
       });
+    } catch (error) {
+      handleError({
+        type: 'server',
+        message: 'Failed to process audio',
+        context: 'AudioTranscription',
+        error
+      });
+      setIsTranscribing(false);
+      setError('Failed to process audio. Please try again.');
+      setErrorType('server');
     }
   };
 
@@ -158,6 +168,12 @@ const AudioHandler = ({
       role="region"
       aria-label="Audio recording controls"
     >
+      {error && (
+        <TransformationError 
+          error={error} 
+          type={errorType || 'general'} 
+        />
+      )}
       {recorder}
       {isTranscribing && (
         <div 
@@ -177,3 +193,4 @@ const AudioHandler = ({
 };
 
 export default AudioHandler;
+
