@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,11 +15,13 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
   onTranscriptionEnd
 }) => {
   const { toast } = useToast();
+  const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
 
   const handleAudioTranscription = async (audioFileName: string) => {
     try {
       console.log('Starting audio transcription process for:', audioFileName);
       onTranscriptionStart();
+      setIsTranscriptionPending(true);
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -59,6 +61,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
           console.log('Transcription completed:', jobData.result);
           onTranscriptionComplete(jobData.result);
           onTranscriptionEnd();
+          setIsTranscriptionPending(false);
           toast({
             title: "Success",
             description: "Audio transcribed successfully",
@@ -71,6 +74,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
             description: jobData.error || "Failed to transcribe audio",
             variant: "destructive",
           });
+          setIsTranscriptionPending(false);
           onTranscriptionEnd();
         }
       }, 3000); // Poll every 3 seconds
@@ -79,6 +83,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
       setTimeout(() => {
         clearInterval(pollInterval);
         if (isTranscriptionPending) {
+          setIsTranscriptionPending(false);
           onTranscriptionEnd();
           toast({
             title: "Timeout",
@@ -95,6 +100,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         description: error instanceof Error ? error.message : "Failed to transcribe audio",
         variant: "destructive",
       });
+      setIsTranscriptionPending(false);
       onTranscriptionEnd();
     }
   };
