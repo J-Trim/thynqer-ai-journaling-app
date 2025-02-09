@@ -9,6 +9,14 @@ interface TranscriptionJob {
   user_id: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   created_at: string;
+  language?: string;
+  duration?: number;
+  segments?: Array<{
+    start: number;
+    end: number;
+    text: string;
+    confidence?: number;
+  }>;
 }
 
 export class TranscriptionQueue {
@@ -78,7 +86,7 @@ export class TranscriptionQueue {
           const { data: signedUrlData, error: signedUrlError } = await this.supabase
             .storage
             .from('audio_files')
-            .createSignedUrl(audioFileName, 60); // URL expires in 60 seconds
+            .createSignedUrl(audioFileName, 60);
 
           if (signedUrlError || !signedUrlData?.signedUrl) {
             throw new Error(`Failed to create signed URL: ${signedUrlError?.message || 'No URL generated'}`);
@@ -96,10 +104,11 @@ export class TranscriptionQueue {
           const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
           console.log('Created audio blob with type:', mimeType);
 
-          // Prepare the form data for Whisper API
+          // Prepare the form data for Whisper API with verbose JSON format
           const formData = new FormData();
           formData.append('file', audioBlob, `audio.${audioFileName.split('.').pop()}`);
           formData.append('model', 'whisper-1');
+          formData.append('response_format', 'verbose_json');
 
           // Call Whisper API with proper error handling
           const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -117,12 +126,23 @@ export class TranscriptionQueue {
 
           const result = await response.json();
 
-          // Update the job with the transcription result
+          // Process and store the enhanced metadata
+          const segments = result.segments?.map((segment: any) => ({
+            start: segment.start,
+            end: segment.end,
+            text: segment.text.trim(),
+            confidence: segment.avg_logprob ? Math.exp(segment.avg_logprob) : undefined
+          })) || [];
+
+          // Update the job with the transcription result and metadata
           await this.supabase
             .from('transcription_queue')
             .update({ 
               status: 'completed',
-              result: result.text 
+              result: result.text,
+              language: result.language,
+              duration: result.duration,
+              segments: segments
             })
             .eq('id', job.id);
 

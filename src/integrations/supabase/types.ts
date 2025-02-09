@@ -340,9 +340,12 @@ export type Database = {
           audio_url: string
           completed_at: string | null
           created_at: string | null
+          duration: number | null
           error: string | null
           id: string
+          language: string | null
           result: string | null
+          segments: Json | null
           status: string
           updated_at: string | null
           user_id: string
@@ -351,9 +354,12 @@ export type Database = {
           audio_url: string
           completed_at?: string | null
           created_at?: string | null
+          duration?: number | null
           error?: string | null
           id?: string
+          language?: string | null
           result?: string | null
+          segments?: Json | null
           status: string
           updated_at?: string | null
           user_id: string
@@ -362,9 +368,12 @@ export type Database = {
           audio_url?: string
           completed_at?: string | null
           created_at?: string | null
+          duration?: number | null
           error?: string | null
           id?: string
+          language?: string | null
           result?: string | null
+          segments?: Json | null
           status?: string
           updated_at?: string | null
           user_id?: string
