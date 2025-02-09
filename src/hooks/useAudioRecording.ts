@@ -11,28 +11,37 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const mediaStream = useRef<MediaStream | null>(null);
-  const timerRef = useRef<number | null>(null);
   const audioChunks = useRef<Blob[]>([]);
+  const timerRef = useRef<number | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   // Cleanup effect
   useEffect(() => {
     return () => {
-      stopRecording();
-      if (mediaStream.current) {
-        mediaStream.current.getTracks().forEach(track => {
-          track.stop();
-          console.log('Audio track stopped and released');
-        });
-        mediaStream.current = null;
-      }
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      audioChunks.current = [];
+      cleanupResources();
     };
   }, []);
+
+  const cleanupResources = () => {
+    stopRecording();
+    if (mediaStream.current) {
+      mediaStream.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Audio track stopped and released');
+      });
+      mediaStream.current = null;
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    audioChunks.current = [];
+  };
 
   const startTimer = () => {
     if (timerRef.current) {
@@ -50,29 +59,6 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
     }
   };
 
-  const uploadAudio = async (audioBlob: Blob) => {
-    try {
-      const fileName = `${crypto.randomUUID()}.webm`;
-      const { data, error } = await supabase.storage
-        .from('audio_files')
-        .upload(sanitizeFileName(fileName), audioBlob, {
-          contentType: 'audio/webm',
-          upsert: false
-        });
-
-      if (error) {
-        console.error('Error uploading audio:', error);
-        throw error;
-      }
-
-      console.log('Audio uploaded successfully:', fileName);
-      return fileName;
-    } catch (error) {
-      console.error('Upload error:', error);
-      throw error;
-    }
-  };
-
   const requestPermissions = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -82,10 +68,6 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           autoGainControl: true,
         } 
       });
-      
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        await Notification.requestPermission();
-      }
       
       return { success: true, stream };
     } catch (error) {
@@ -144,10 +126,10 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
             description: "An error occurred while recording. Please try again.",
             variant: "destructive",
           });
-          stopRecording();
+          cleanupResources();
         };
 
-        mediaRecorder.current.start();
+        mediaRecorder.current.start(1000); // Collect chunks every second
         setIsRecording(true);
         setIsPaused(false);
         startTimer();
@@ -158,37 +140,28 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           description: "Could not start recording. Please check your microphone permissions.",
           variant: "destructive",
         });
-        // Cleanup on error
-        if (mediaStream.current) {
-          mediaStream.current.getTracks().forEach(track => track.stop());
-          mediaStream.current = null;
-        }
+        cleanupResources();
       }
-    } else {
-      if (mediaRecorder.current && isRecording) {
-        if (!isPaused) {
-          mediaRecorder.current.pause();
-          setIsPaused(true);
-          stopTimer();
-        } else {
-          mediaRecorder.current.resume();
-          setIsPaused(false);
-          startTimer();
-        }
+    } else if (mediaRecorder.current && isRecording) {
+      if (!isPaused) {
+        mediaRecorder.current.pause();
+        setIsPaused(true);
+        stopTimer();
+      } else {
+        mediaRecorder.current.resume();
+        setIsPaused(false);
+        startTimer();
       }
     }
   };
 
   const stopRecording = async () => {
-    if (mediaRecorder.current) {
+    if (mediaRecorder.current && isRecording) {
       setIsProcessing(true);
       try {
         mediaRecorder.current.stop();
         if (mediaStream.current) {
-          mediaStream.current.getTracks().forEach(track => {
-            track.stop();
-            console.log('Audio track stopped');
-          });
+          mediaStream.current.getTracks().forEach(track => track.stop());
           mediaStream.current = null;
         }
         
@@ -208,7 +181,22 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
             throw new Error('Recording exceeds maximum size limit of 100MB');
           }
 
-          const fileName = await uploadAudio(audioBlob);
+          // Create a temp URL for local preview if needed
+          if (blobUrlRef.current) {
+            URL.revokeObjectURL(blobUrlRef.current);
+          }
+          blobUrlRef.current = URL.createObjectURL(audioBlob);
+
+          const fileName = `${crypto.randomUUID()}.webm`;
+          const { data, error } = await supabase.storage
+            .from('audio_files')
+            .upload(sanitizeFileName(fileName), audioBlob, {
+              contentType: 'audio/webm',
+              upsert: false
+            });
+
+          if (error) throw error;
+
           onAudioSaved(fileName);
         }
 
@@ -240,4 +228,3 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
     stopRecording
   };
 };
-

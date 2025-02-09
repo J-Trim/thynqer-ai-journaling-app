@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import AudioRecorder from "@/components/AudioRecorder";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,52 +33,61 @@ const AudioHandler = ({
   const [jobId, setJobId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Poll for transcription status when we have a jobId
-  useEffect(() => {
-    if (!jobId || !isTranscribing) return;
+  const checkTranscriptionStatus = useCallback(async () => {
+    if (!jobId) return;
 
-    const pollInterval = setInterval(async () => {
-      try {
-        const { data: job, error } = await supabase
-          .from('transcription_queue')
-          .select('status, result, error')
-          .eq('id', jobId)
-          .single();
+    try {
+      const { data: job, error } = await supabase
+        .from('transcription_queue')
+        .select('status, result, error')
+        .eq('id', jobId)
+        .single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (job) {
-          if (job.status === 'completed' && job.result) {
-            clearInterval(pollInterval);
-            setIsTranscribing(false);
-            setProgress(100);
-            onTranscriptionComplete(job.result);
-            toast({
-              title: "Success",
-              description: "Audio transcribed successfully",
-            });
-          } else if (job.status === 'failed') {
-            clearInterval(pollInterval);
-            setIsTranscribing(false);
-            throw new Error(job.error || 'Transcription failed');
-          } else if (job.status === 'processing') {
-            setProgress((prev) => Math.min(prev + 10, 90));
-          }
+      if (job) {
+        if (job.status === 'completed' && job.result) {
+          setIsTranscribing(false);
+          setProgress(100);
+          onTranscriptionComplete(job.result);
+          setJobId(null);
+          toast({
+            title: "Success",
+            description: "Audio transcribed successfully",
+          });
+        } else if (job.status === 'failed') {
+          setIsTranscribing(false);
+          setJobId(null);
+          throw new Error(job.error || 'Transcription failed');
+        } else if (job.status === 'processing') {
+          setProgress((prev) => Math.min(prev + 10, 90));
         }
-      } catch (error) {
-        clearInterval(pollInterval);
-        setIsTranscribing(false);
-        console.error('Polling error:', error);
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to check transcription status",
-          variant: "destructive",
-        });
       }
-    }, 3000); // Poll every 3 seconds
+    } catch (error) {
+      setIsTranscribing(false);
+      setJobId(null);
+      console.error('Polling error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to check transcription status",
+        variant: "destructive",
+      });
+    }
+  }, [jobId, onTranscriptionComplete, toast]);
 
-    return () => clearInterval(pollInterval);
-  }, [jobId, isTranscribing, onTranscriptionComplete, toast]);
+  useEffect(() => {
+    let pollInterval: number | null = null;
+
+    if (jobId && isTranscribing) {
+      pollInterval = window.setInterval(checkTranscriptionStatus, 3000);
+    }
+
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [jobId, isTranscribing, checkTranscriptionStatus]);
 
   const handleAudioSaved = async (audioFileName: string) => {
     try {
@@ -86,7 +95,6 @@ const AudioHandler = ({
       setProgress(0);
       console.log('Starting audio transcription process for:', audioFileName);
       
-      // Save the audio URL first
       onAudioSaved(audioFileName);
       
       console.log('Invoking transcribe-audio function...');
