@@ -104,6 +104,12 @@ export class TranscriptionQueue {
           const audioBlob = new Blob([audioArrayBuffer], { type: mimeType });
           console.log('Created audio blob with type:', mimeType);
 
+          // Get the OpenAI API key securely from environment variables
+          const openAIKey = Deno.env.get('OPENAI_API_KEY');
+          if (!openAIKey) {
+            throw new Error('OpenAI API key not configured');
+          }
+
           // Prepare the form data for Whisper API with verbose JSON format
           const formData = new FormData();
           formData.append('file', audioBlob, `audio.${audioFileName.split('.').pop()}`);
@@ -111,16 +117,19 @@ export class TranscriptionQueue {
           formData.append('response_format', 'verbose_json');
 
           // Call Whisper API with proper error handling
+          console.log('Initiating Whisper API request...');
           const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+              'Authorization': `Bearer ${openAIKey}`,
             },
             body: formData
           });
 
           if (!response.ok) {
             const errorText = await response.text();
+            // Log error without including the full request details that might contain the API key
+            console.error(`Whisper API Error - Status: ${response.status}`);
             throw new Error(`Whisper API Error: ${errorText}`);
           }
 
@@ -173,3 +182,4 @@ export class TranscriptionQueue {
 }
 
 export const queue = new TranscriptionQueue();
+
