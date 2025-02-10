@@ -21,4 +21,3 @@ export const getMimeType = (filename: string): string => {
 export const sanitizeFileName = (filename: string): string => {
   return filename.replace(/[^a-zA-Z0-9.-]/g, '_');
 };
-
