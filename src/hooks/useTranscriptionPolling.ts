@@ -107,15 +107,15 @@ export const useTranscriptionPolling = (
 
       console.log('Transcription response:', data);
 
-      if (data?.result) {
+      if (data?.text) {
         // If we got an immediate result
-        onTranscriptionComplete(data.result);
+        onTranscriptionComplete(data.text);
         setIsTranscribing(false);
         toast({
           title: "Success",
           description: "Audio transcribed successfully",
         });
-        return { text: data.result };
+        return { text: data.text };
       }
 
       if (data?.jobId) {

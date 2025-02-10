@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTranscriptionPolling } from './useTranscriptionPolling';
@@ -13,6 +13,7 @@ export const useAudioTranscription = () => {
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const { toast } = useToast();
   const { startTranscription, isTranscribing, progress } = useTranscriptionPolling((text) => {
+    console.log('Transcription complete callback received:', text);
     return text;
   });
 
@@ -27,7 +28,7 @@ export const useAudioTranscription = () => {
       }
 
       const response = await startTranscription(audioFileName);
-      console.log('Transcription response:', response);
+      console.log('Transcription response received:', response);
       return response;
 
     } catch (error) {

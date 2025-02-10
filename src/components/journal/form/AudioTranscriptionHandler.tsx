@@ -31,12 +31,13 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         onTranscriptionStart();
         
         const response = await handleAudioTranscription(audioUrl);
+        console.log('Got transcription response:', response);
         
         if (response?.text) {
-          console.log('Transcription completed immediately:', response.text);
+          console.log('Transcription completed with text:', response.text);
           onTranscriptionComplete(response.text);
         } else {
-          console.log('Transcription job started:', response);
+          console.log('Transcription job started without immediate result:', response);
         }
       } catch (error) {
         console.error('Transcription handling error:', error);
