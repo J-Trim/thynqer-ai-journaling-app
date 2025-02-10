@@ -39,6 +39,10 @@ export class WhisperService {
   private async callWhisperAPI(audioBlob: Blob, fileName: string, attempt = 1): Promise<WhisperResponse> {
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIKey) {
+      logError('WhisperAPI', new Error('OpenAI API key not configured'), {
+        attempt,
+        fileName
+      });
       throw new Error('OpenAI API key not configured');
     }
 
