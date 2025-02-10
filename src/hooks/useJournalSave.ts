@@ -89,17 +89,16 @@ export const useJournalSave = ({
         return null;
       }
 
-      const fullText = transcribedAudio 
-        ? `${content}\n\n---\nTranscribed Audio:\n${transcribedAudio}`
-        : content;
-
       const entryData = {
         user_id: session.user.id,
         title: title || `Journal Entry - ${new Date().toLocaleDateString()}`,
-        text: fullText,
+        text: content,
         audio_url: audioUrl,
+        transcribed_audio: transcribedAudio,
         has_been_edited: !!lastSavedId,
       };
+
+      console.log('Saving entry with data:', entryData);
 
       let savedEntry;
       

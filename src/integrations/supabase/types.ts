@@ -137,6 +137,7 @@ export type Database = {
           tags: Json | null
           text: string | null
           title: string | null
+          transcribed_audio: string | null
           updated_at: string | null
           user_id: string
         }
@@ -150,6 +151,7 @@ export type Database = {
           tags?: Json | null
           text?: string | null
           title?: string | null
+          transcribed_audio?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -163,6 +165,7 @@ export type Database = {
           tags?: Json | null
           text?: string | null
           title?: string | null
+          transcribed_audio?: string | null
           updated_at?: string | null
           user_id?: string
         }
