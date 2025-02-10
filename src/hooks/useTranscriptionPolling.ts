@@ -39,6 +39,8 @@ export const useTranscriptionPolling = (
         throw new Error('Transcription job not found');
       }
 
+      console.log('Checking transcription status:', job);
+
       if (job.status === 'completed' && job.result) {
         setIsTranscribing(false);
         setProgress(100);
@@ -105,19 +107,19 @@ export const useTranscriptionPolling = (
 
       console.log('Transcription response:', data);
 
+      if (data?.result) {
+        // If we got an immediate result
+        onTranscriptionComplete(data.result);
+        setIsTranscribing(false);
+        toast({
+          title: "Success",
+          description: "Audio transcribed successfully",
+        });
+        return { text: data.result };
+      }
+
       if (data?.jobId) {
         setJobId(data.jobId);
-        
-        // If we got an immediate result, process it
-        if (data.result) {
-          onTranscriptionComplete(data.result);
-          toast({
-            title: "Success",
-            description: "Audio transcribed successfully",
-          });
-          return { jobId: data.jobId, text: data.result };
-        }
-
         toast({
           title: "Processing",
           description: "Audio transcription has started...",
@@ -125,7 +127,7 @@ export const useTranscriptionPolling = (
         return { jobId: data.jobId };
       }
 
-      throw new Error('No job ID received from transcription service');
+      throw new Error('No job ID or result received from transcription service');
     } catch (error) {
       handleError({
         type: 'server',
