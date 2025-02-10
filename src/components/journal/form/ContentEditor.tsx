@@ -23,14 +23,11 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
       hasTranscribedAudio: !!transcribedAudio
     });
     
-    // If there's transcribed audio, we need to preserve only the user's content
-    // by removing the transcribed section if present
     if (transcribedAudio) {
       const transcriptionMarker = 'Transcribed Audio:';
       const markerIndex = newValue.lastIndexOf(transcriptionMarker);
       
       if (markerIndex !== -1) {
-        // Extract only the user's content part
         const userContent = newValue.substring(0, markerIndex).trim();
         console.log('Extracted user content:', {
           userContent,
@@ -39,23 +36,21 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
         });
         onContentChange(userContent);
       } else {
-        // If no marker is found, update the content normally
         console.log('No transcription marker found, updating content directly');
         onContentChange(newValue);
       }
     } else {
-      // No transcribed audio, update content normally
       console.log('No transcribed audio, updating content directly');
       onContentChange(newValue);
     }
   };
 
-  // Create the display value by combining content and transcription
   const displayContent = transcribedAudio 
-    ? content + (content ? '\n\n' : '') + 'Transcribed Audio:\n' + transcribedAudio
+    ? `${content}${content ? '\n\n' : ''}Transcribed Audio:\n${transcribedAudio}`
     : content;
 
   console.log('Final display content:', {
+    displayContent,
     displayContentLength: displayContent.length,
     hasContent: !!content,
     hasTranscribedAudio: !!transcribedAudio
@@ -72,4 +67,3 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
 };
 
 export default ContentEditor;
-

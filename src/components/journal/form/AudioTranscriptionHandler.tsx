@@ -37,15 +37,20 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         
         if (isActive && response?.text) {
           console.log('Setting transcription text:', response.text);
-          onTranscriptionComplete(response.text);
-          toast({
-            title: "Success",
-            description: "Audio transcription completed",
-          });
+          if (typeof response.text === 'string') {
+            onTranscriptionComplete(response.text);
+            toast({
+              title: "Success",
+              description: "Audio transcription completed",
+            });
+          } else {
+            console.error('Invalid transcription text format:', response.text);
+          }
         } else {
           console.log('No text in response or component unmounted:', {
             isActive,
-            hasText: !!response?.text
+            hasText: !!response?.text,
+            responseText: response?.text
           });
         }
       } catch (error) {
@@ -75,4 +80,3 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
 };
 
 export default AudioTranscriptionHandler;
-
