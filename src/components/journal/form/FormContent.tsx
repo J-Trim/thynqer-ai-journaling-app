@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFormState } from './FormStateProvider';
@@ -54,7 +55,7 @@ const FormContent: React.FC<FormContentProps> = ({
   };
 
   const handleTranscriptionComplete = (text: string) => {
-    console.log('Transcription completed, setting text:', text);
+    console.log('Setting transcribed audio:', text);
     setTranscribedAudio(text);
   };
 
