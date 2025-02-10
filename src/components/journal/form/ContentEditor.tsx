@@ -8,20 +8,18 @@ interface ContentEditorProps {
 
 const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEditorProps) => {
   console.log('ContentEditor rendering with:', { content, transcribedAudio });
-  
+
   // Only append transcription if it exists and is not already part of the content
   const fullContent = transcribedAudio 
-    ? `${content}${content.endsWith('\n') ? '' : '\n\n'}---\nTranscribed Audio:\n${transcribedAudio}`
+    ? `${content}${content ? '\n\n' : ''}${transcribedAudio}`
     : content;
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     
     if (transcribedAudio) {
-      // Extract only the user's content by removing the transcribed section
-      const transcriptionMarker = `---\nTranscribed Audio:\n${transcribedAudio}`;
-      const parts = newValue.split(transcriptionMarker);
-      const userContent = parts[0].trim();
+      // Keep only the user's content by removing the transcribed section
+      const userContent = newValue.replace(transcribedAudio, '').trim();
       console.log('Updating content with user input:', userContent);
       onContentChange(userContent);
     } else {

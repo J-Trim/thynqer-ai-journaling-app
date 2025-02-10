@@ -29,7 +29,15 @@ export const useAudioTranscription = () => {
 
       const response = await startTranscription(audioFileName);
       console.log('Transcription response received:', response);
-      return response;
+
+      if (response?.text) {
+        setIsTranscriptionPending(false);
+        return { text: response.text };
+      } else if (response?.jobId) {
+        return { jobId: response.jobId };
+      }
+
+      throw new Error('Invalid transcription response');
 
     } catch (error) {
       console.error('Audio transcription error:', error);
@@ -39,35 +47,10 @@ export const useAudioTranscription = () => {
     }
   };
 
-  const cleanupAudioAndTranscription = async (audioUrl: string | null) => {
-    if (audioUrl) {
-      try {
-        const { error } = await supabase.storage
-          .from('audio_files')
-          .remove([audioUrl]);
-        
-        if (error) throw error;
-        
-        console.log('Audio cleanup completed successfully');
-        return true;
-      } catch (error) {
-        console.error('Error during audio cleanup:', error);
-        toast({
-          title: "Error",
-          description: "Failed to cleanup audio files",
-          variant: "destructive",
-        });
-        return false;
-      }
-    }
-    return true;
-  };
-
   return {
     isTranscriptionPending,
     setIsTranscriptionPending,
     handleAudioTranscription,
-    cleanupAudioAndTranscription,
     isTranscribing,
     progress
   };
