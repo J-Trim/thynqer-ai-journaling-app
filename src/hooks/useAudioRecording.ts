@@ -47,8 +47,13 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
       }
 
       try {
+        // Use a MIME type that works across browsers
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
         mediaRecorder.current = new MediaRecorder(stream, {
-          mimeType: 'audio/webm;codecs=opus'
+          mimeType
         });
         
         mediaRecorder.current.ondataavailable = (event) => {
@@ -111,7 +116,7 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
 
         if (audioChunks.current.length > 0) {
           const maxSize = 100 * 1024 * 1024; // 100MB limit
-          const audioBlob = new Blob(audioChunks.current, { type: 'audio/webm' });
+          const audioBlob = new Blob(audioChunks.current, { type: mediaRecorder.current.mimeType });
           
           if (audioBlob.size > maxSize) {
             throw new Error('Recording exceeds maximum size limit of 100MB');
@@ -122,11 +127,13 @@ export const useAudioRecording = (onAudioSaved: (url: string) => void) => {
           }
           blobUrlRef.current = URL.createObjectURL(audioBlob);
 
-          const fileName = `${crypto.randomUUID()}.webm`;
+          const extension = mediaRecorder.current.mimeType.includes('webm') ? 'webm' : 'mp4';
+          const fileName = `${crypto.randomUUID()}.${extension}`;
+          
           const { data, error } = await supabase.storage
             .from('audio_files')
             .upload(sanitizeFileName(fileName), audioBlob, {
-              contentType: 'audio/webm',
+              contentType: mediaRecorder.current.mimeType,
               upsert: false
             });
 

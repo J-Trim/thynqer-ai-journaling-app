@@ -1,5 +1,6 @@
 
 import { logError } from '../utils/logger.ts';
+import { getMimeType } from '../utils/audio.ts';
 
 interface WhisperResponse {
   text: string;
@@ -46,25 +47,30 @@ export class WhisperService {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Create proper FormData
+    // Create FormData with proper MIME type handling
     const formData = new FormData();
+    const mimeType = getMimeType(fileName);
+    const extension = fileName.split('.').pop() || 'webm';
     
-    // IMPORTANT: Always include the model parameter
+    // Always include required model parameter first
     formData.append('model', 'whisper-1');
     
-    // Append the audio file with correct filename and mime type
-    formData.append('file', audioBlob, `audio.${fileName.split('.').pop()}`);
+    // Append the audio file with correct filename and MIME type
+    formData.append('file', new Blob([audioBlob], { type: mimeType }), `audio.${extension}`);
     
-    // Additional optional parameters
+    // Add optional parameters
     formData.append('response_format', 'verbose_json');
 
-    console.log(`Attempt ${attempt}: Initiating Whisper API request for file ${fileName}`);
+    console.log(`Attempt ${attempt}: Initiating Whisper API request for file ${fileName}`, {
+      mimeType,
+      extension,
+      blobSize: audioBlob.size
+    });
     
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIKey}`,
-        // Let FormData set its own Content-Type with boundary
       },
       body: formData
     });
