@@ -32,13 +32,13 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         
         const response = await handleAudioTranscription(audioUrl);
         
-        if (response.jobId) {
+        if (response?.jobId) {
           console.log('Transcription job started with ID:', response.jobId);
           toast({
             title: "Processing",
             description: "Audio transcription in progress...",
           });
-        } else if (response.text) {
+        } else if (response?.text) {
           console.log('Transcription completed:', response.text);
           onTranscriptionComplete(response.text);
           toast({
