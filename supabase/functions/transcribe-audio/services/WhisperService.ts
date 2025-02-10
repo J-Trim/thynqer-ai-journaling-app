@@ -60,6 +60,7 @@ export class WhisperService {
     
     // Add optional parameters
     formData.append('response_format', 'verbose_json');
+    formData.append('language', 'en');  // Force English language detection
 
     console.log(`Attempt ${attempt}: Initiating Whisper API request for file ${fileName}`, {
       mimeType,
