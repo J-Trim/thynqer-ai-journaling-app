@@ -17,7 +17,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
   onTranscriptionEnd,
 }) => {
   const { toast } = useToast();
-  const { handleAudioTranscription, isTranscriptionPending, isTranscribing, progress } = useAudioTranscription();
+  const { handleAudioTranscription, isTranscriptionPending, isTranscribing, progress } = useAudioTranscription(onTranscriptionComplete);
 
   useEffect(() => {
     const transcribeAudio = async () => {
@@ -54,7 +54,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
     if (audioUrl) {
       transcribeAudio();
     }
-  }, [audioUrl]);
+  }, [audioUrl, onTranscriptionComplete, onTranscriptionStart, onTranscriptionEnd, handleAudioTranscription, toast]);
 
   return null;
 };
