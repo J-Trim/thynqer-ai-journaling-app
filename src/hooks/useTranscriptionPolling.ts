@@ -7,6 +7,7 @@ import { handleError } from "@/utils/errorHandler";
 interface TranscriptionResponse {
   jobId?: string;
   text?: string;
+  result?: string;
 }
 
 export const useTranscriptionPolling = (
@@ -102,17 +103,29 @@ export const useTranscriptionPolling = (
         throw functionError;
       }
 
-      if (!data?.jobId) {
-        throw new Error('No job ID received from transcription service');
+      console.log('Transcription response:', data);
+
+      if (data?.jobId) {
+        setJobId(data.jobId);
+        
+        // If we got an immediate result, process it
+        if (data.result) {
+          onTranscriptionComplete(data.result);
+          toast({
+            title: "Success",
+            description: "Audio transcribed successfully",
+          });
+          return { jobId: data.jobId, text: data.result };
+        }
+
+        toast({
+          title: "Processing",
+          description: "Audio transcription has started...",
+        });
+        return { jobId: data.jobId };
       }
 
-      setJobId(data.jobId);
-      toast({
-        title: "Processing",
-        description: "Audio transcription has started...",
-      });
-
-      return { jobId: data.jobId };
+      throw new Error('No job ID received from transcription service');
     } catch (error) {
       handleError({
         type: 'server',
@@ -125,7 +138,7 @@ export const useTranscriptionPolling = (
       setErrorType('server');
       throw error;
     }
-  }, [toast]);
+  }, [toast, onTranscriptionComplete]);
 
   return {
     isTranscribing,

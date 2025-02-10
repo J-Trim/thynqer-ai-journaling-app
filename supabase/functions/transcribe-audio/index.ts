@@ -69,22 +69,37 @@ serve(async (req) => {
 
     console.log('Enqueueing transcription job:', { audioUrl, userId });
 
-    // Enqueue the transcription job
+    // Enqueue the transcription job and wait for the result
     const jobId = await queue.enqueueJob(audioUrl, userId);
     console.log('Job enqueued with ID:', jobId);
 
     // Start processing in the background using EdgeRuntime.waitUntil
     EdgeRuntime.waitUntil(queue.processNextBatch());
 
+    // Check if the job was completed immediately (for fast transcriptions)
+    const { data: jobData, error: jobError } = await supabaseAdmin
+      .from('transcription_queue')
+      .select('result, status')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError) {
+      throw jobError;
+    }
+
+    // Return the result if available immediately, otherwise return the job ID
     return new Response(
       JSON.stringify({ 
-        status: 'queued',
+        status: jobData.status,
         jobId,
-        message: 'Transcription job has been queued and will be processed shortly'
+        result: jobData.result,
+        message: jobData.status === 'completed' 
+          ? 'Transcription completed' 
+          : 'Transcription job has been queued and will be processed shortly'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 202 
+        status: jobData.status === 'completed' ? 200 : 202 
       }
     );
   } catch (error) {
