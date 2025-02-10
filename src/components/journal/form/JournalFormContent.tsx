@@ -1,3 +1,4 @@
+
 import ContentEditor from "./ContentEditor";
 import TranscriptionDisplay from "./TranscriptionDisplay";
 
@@ -12,6 +13,8 @@ const JournalFormContent = ({
   transcribedAudio, 
   onContentChange 
 }: JournalFormContentProps) => {
+  console.log('JournalFormContent rendering with:', { content, transcribedAudio });
+  
   return (
     <div className="space-y-4">
       <ContentEditor

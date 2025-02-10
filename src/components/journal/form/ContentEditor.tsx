@@ -1,3 +1,4 @@
+
 import { Textarea } from "@/components/ui/textarea";
 
 interface ContentEditorProps {
@@ -9,17 +10,23 @@ interface ContentEditorProps {
 const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEditorProps) => {
   console.log('ContentEditor rendering with:', { content, transcribedAudio });
 
-  // Only append transcription if it exists and is not already part of the content
-  const fullContent = transcribedAudio 
-    ? `${content}${content ? '\n\n' : ''}${transcribedAudio}`
+  // Combine content with transcription if available
+  const displayContent = transcribedAudio 
+    ? content
+      ? `${content}\n\n${transcribedAudio}`
+      : transcribedAudio
     : content;
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     
     if (transcribedAudio) {
-      // Keep only the user's content by removing the transcribed section
-      const userContent = newValue.replace(transcribedAudio, '').trim();
+      // Remove transcribed section if present
+      const transcribedIndex = newValue.lastIndexOf(transcribedAudio);
+      const userContent = transcribedIndex >= 0
+        ? newValue.slice(0, transcribedIndex).trim()
+        : newValue;
+      
       console.log('Updating content with user input:', userContent);
       onContentChange(userContent);
     } else {
@@ -31,7 +38,7 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
   return (
     <Textarea
       placeholder="Start writing your thoughts..."
-      value={fullContent}
+      value={displayContent}
       onChange={handleContentChange}
       className="min-h-[200px] resize-y"
     />

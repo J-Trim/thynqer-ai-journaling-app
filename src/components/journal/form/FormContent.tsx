@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFormState } from './FormStateProvider';
@@ -52,6 +51,11 @@ const FormContent: React.FC<FormContentProps> = ({
 
   const handleAudioSaved = async (url: string) => {
     setAudioUrl(url);
+  };
+
+  const handleTranscriptionComplete = (text: string) => {
+    console.log('Transcription completed, setting text:', text);
+    setTranscribedAudio(text);
   };
 
   const {
@@ -118,7 +122,7 @@ const FormContent: React.FC<FormContentProps> = ({
 
       <AudioTranscriptionHandler
         audioUrl={audioUrl}
-        onTranscriptionComplete={setTranscribedAudio}
+        onTranscriptionComplete={handleTranscriptionComplete}
         onTranscriptionStart={() => setIsTranscriptionPending(true)}
         onTranscriptionEnd={() => setIsTranscriptionPending(false)}
       />
