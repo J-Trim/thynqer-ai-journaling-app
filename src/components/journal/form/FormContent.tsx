@@ -55,8 +55,12 @@ const FormContent: React.FC<FormContentProps> = ({
   };
 
   const handleTranscriptionComplete = (text: string) => {
-    console.log('Setting transcribed audio:', text);
+    console.log('Transcription completed, setting text:', text);
     setTranscribedAudio(text);
+    toast({
+      title: "Transcription Complete",
+      description: "Audio has been transcribed successfully",
+    });
   };
 
   const {

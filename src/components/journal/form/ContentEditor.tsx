@@ -10,10 +10,14 @@ interface ContentEditorProps {
 const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEditorProps) => {
   console.log('ContentEditor rendering with:', { content, transcribedAudio });
 
-  const displayContent = transcribedAudio ? content + '\n\n' + transcribedAudio : content;
+  // Ensure we have a valid display value by combining content and transcription
+  const displayContent = transcribedAudio
+    ? `${content}\n\nTranscribed Audio:\n${transcribedAudio}`
+    : content;
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
+    console.log('Content changed to:', newValue);
     onContentChange(newValue);
   };
 
