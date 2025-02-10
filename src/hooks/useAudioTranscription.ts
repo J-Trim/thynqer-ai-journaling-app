@@ -14,9 +14,8 @@ export const useAudioTranscription = (onTranscriptionComplete: (text: string) =>
   const { toast } = useToast();
   
   const { startTranscription, isTranscribing, progress } = useTranscriptionPolling(useCallback((text: string) => {
-    console.log('Received transcribed text:', text);
-    // Only call onTranscriptionComplete from the polling callback
-    onTranscriptionComplete(text);
+    console.log('Transcription complete callback received:', text);
+    onTranscriptionComplete(text); // Make sure we call the passed callback
     return text;
   }, [onTranscriptionComplete]));
 
@@ -33,10 +32,9 @@ export const useAudioTranscription = (onTranscriptionComplete: (text: string) =>
       const response = await startTranscription(audioFileName);
       console.log('Transcription response received:', response);
       
-      // Remove this to avoid double completion
-      // if (response.text) {
-      //   onTranscriptionComplete(response.text);
-      // }
+      if (response.text) {
+        onTranscriptionComplete(response.text);
+      }
       
       return response;
 
