@@ -9,15 +9,13 @@ interface TranscriptionResponse {
   text?: string;
 }
 
-export const useAudioTranscription = (onTranscriptionComplete: (text: string) => void) => {
+export const useAudioTranscription = () => {
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const { toast } = useToast();
-  
-  const { startTranscription, isTranscribing, progress } = useTranscriptionPolling(useCallback((text: string) => {
+  const { startTranscription, isTranscribing, progress } = useTranscriptionPolling(useCallback((text) => {
     console.log('Transcription complete callback received:', text);
-    onTranscriptionComplete(text); // Make sure we call the passed callback
     return text;
-  }, [onTranscriptionComplete]));
+  }, []));
 
   const handleAudioTranscription = async (audioFileName: string): Promise<TranscriptionResponse> => {
     try {
@@ -31,11 +29,6 @@ export const useAudioTranscription = (onTranscriptionComplete: (text: string) =>
 
       const response = await startTranscription(audioFileName);
       console.log('Transcription response received:', response);
-      
-      if (response.text) {
-        onTranscriptionComplete(response.text);
-      }
-      
       return response;
 
     } catch (error) {

@@ -1,4 +1,3 @@
-
 import { Textarea } from "@/components/ui/textarea";
 
 interface ContentEditorProps {
@@ -10,8 +9,9 @@ interface ContentEditorProps {
 const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEditorProps) => {
   console.log('ContentEditor rendering with:', { content, transcribedAudio });
   
+  // Only append transcription if it exists and is not already part of the content
   const fullContent = transcribedAudio 
-    ? `${content}${content ? '\n\n' : ''}Transcribed Audio:\n${transcribedAudio}`
+    ? `${content}${content.endsWith('\n') ? '' : '\n\n'}---\nTranscribed Audio:\n${transcribedAudio}`
     : content;
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -19,7 +19,7 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
     
     if (transcribedAudio) {
       // Extract only the user's content by removing the transcribed section
-      const transcriptionMarker = `Transcribed Audio:\n${transcribedAudio}`;
+      const transcriptionMarker = `---\nTranscribed Audio:\n${transcribedAudio}`;
       const parts = newValue.split(transcriptionMarker);
       const userContent = parts[0].trim();
       console.log('Updating content with user input:', userContent);
