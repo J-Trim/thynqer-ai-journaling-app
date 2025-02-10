@@ -46,16 +46,16 @@ export class WhisperService {
       throw new Error('OpenAI API key not configured');
     }
 
-    // Ensure we're creating a proper multipart/form-data request
+    // Create proper FormData
     const formData = new FormData();
-    
-    // Append the audio file with correct filename and mime type
-    const fileExtension = fileName.split('.').pop() || 'webm';
-    const mimeType = fileExtension === 'webm' ? 'audio/webm' : 'audio/mpeg';
-    formData.append('file', audioBlob, `audio.${fileExtension}`);
     
     // IMPORTANT: Always include the model parameter
     formData.append('model', 'whisper-1');
+    
+    // Append the audio file with correct filename and mime type
+    formData.append('file', audioBlob, `audio.${fileName.split('.').pop()}`);
+    
+    // Additional optional parameters
     formData.append('response_format', 'verbose_json');
 
     console.log(`Attempt ${attempt}: Initiating Whisper API request for file ${fileName}`);
@@ -64,7 +64,7 @@ export class WhisperService {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIKey}`,
-        // Let the FormData set its own Content-Type with boundary
+        // Let FormData set its own Content-Type with boundary
       },
       body: formData
     });
@@ -77,7 +77,7 @@ export class WhisperService {
           errorMessage += `: ${errorData.error.message || errorData.error}`;
         }
       } catch {
-        // Ignore JSON parse errors, use generic message
+        // If JSON parsing fails, use generic message
       }
       throw new Error(`Whisper API Error: ${errorMessage}`);
     }
