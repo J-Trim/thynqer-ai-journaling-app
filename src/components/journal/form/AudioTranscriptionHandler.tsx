@@ -17,7 +17,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
   onTranscriptionEnd,
 }) => {
   const { toast } = useToast();
-  const { handleAudioTranscription, isTranscriptionPending } = useAudioTranscription();
+  const { handleAudioTranscription } = useAudioTranscription();
 
   useEffect(() => {
     let isActive = true;
@@ -38,6 +38,10 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         if (isActive && response?.text) {
           console.log('Setting transcription text:', response.text);
           onTranscriptionComplete(response.text);
+          toast({
+            title: "Success",
+            description: "Audio transcription completed",
+          });
         }
       } catch (error) {
         console.error('Transcription handling error:', error);

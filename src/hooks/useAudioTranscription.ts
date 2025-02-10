@@ -12,13 +12,22 @@ interface TranscriptionResponse {
 export const useAudioTranscription = () => {
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const { toast } = useToast();
-  const { startTranscription, isTranscribing, progress } = useTranscriptionPolling(useCallback((text) => {
-    console.log('Transcription complete callback received:', text);
+  
+  // Create a stable callback for handling transcription completion
+  const handleTranscriptionComplete = useCallback((text: string) => {
+    console.log('Transcription complete, received text:', text);
     return text;
-  }, []));
+  }, []);
+
+  const { startTranscription, isTranscribing, progress } = useTranscriptionPolling(handleTranscriptionComplete);
 
   const handleAudioTranscription = async (audioFileName: string): Promise<TranscriptionResponse> => {
     try {
+      if (isTranscriptionPending) {
+        console.log('Transcription already in progress, skipping');
+        return {};
+      }
+
       setIsTranscriptionPending(true);
       console.log('Starting audio transcription process for:', audioFileName);
       
@@ -32,6 +41,10 @@ export const useAudioTranscription = () => {
 
       if (response?.text) {
         setIsTranscriptionPending(false);
+        toast({
+          title: "Transcription Complete",
+          description: "Audio has been transcribed successfully",
+        });
         return { text: response.text };
       } else if (response?.jobId) {
         return { jobId: response.jobId };
@@ -41,9 +54,8 @@ export const useAudioTranscription = () => {
 
     } catch (error) {
       console.error('Audio transcription error:', error);
-      throw error;
-    } finally {
       setIsTranscriptionPending(false);
+      throw error;
     }
   };
 
