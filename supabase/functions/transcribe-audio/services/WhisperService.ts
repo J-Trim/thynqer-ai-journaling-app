@@ -89,7 +89,9 @@ export class WhisperService {
       throw new Error(`Whisper API Error: ${errorMessage}`);
     }
 
-    return response.json();
+    const jsonResponse = await response.json();
+    console.log('Whisper API raw response:', jsonResponse);
+    return jsonResponse;
   }
 
   async transcribe(audioBlob: Blob, fileName: string): Promise<WhisperResponse> {
@@ -98,7 +100,11 @@ export class WhisperService {
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
         const response = await this.callWhisperAPI(audioBlob, fileName, attempt);
-        console.log('Whisper API response:', response);
+        console.log('Whisper API transcription result:', {
+          text: response.text,
+          language: response.language,
+          hasSegments: !!response.segments?.length
+        });
         return response;
       } catch (error) {
         lastError = error;
@@ -118,6 +124,7 @@ export class WhisperService {
   }
 
   processResponse(response: WhisperResponse) {
+    console.log('Processing Whisper response:', response);
     return {
       text: response.text,
       language: response.language,
@@ -131,3 +138,4 @@ export class WhisperService {
     };
   }
 }
+

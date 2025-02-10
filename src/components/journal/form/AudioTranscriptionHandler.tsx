@@ -42,6 +42,11 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
             title: "Success",
             description: "Audio transcription completed",
           });
+        } else {
+          console.log('No text in response or component unmounted:', {
+            isActive,
+            hasText: !!response?.text
+          });
         }
       } catch (error) {
         console.error('Transcription handling error:', error);
@@ -70,3 +75,4 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
 };
 
 export default AudioTranscriptionHandler;
+
