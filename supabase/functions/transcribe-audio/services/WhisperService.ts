@@ -96,7 +96,9 @@ export class WhisperService {
 
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
-        return await this.callWhisperAPI(audioBlob, fileName, attempt);
+        const response = await this.callWhisperAPI(audioBlob, fileName, attempt);
+        console.log('Whisper API response:', response);
+        return response;
       } catch (error) {
         lastError = error;
         console.error(`Attempt ${attempt} failed:`, error.message);

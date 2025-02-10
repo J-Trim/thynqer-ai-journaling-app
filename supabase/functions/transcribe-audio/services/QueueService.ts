@@ -105,7 +105,7 @@ export class QueueService {
       const whisperResponse = await this.whisperService.transcribe(audioBlob, audioFileName);
       const processedResponse = this.whisperService.processResponse(whisperResponse);
 
-      console.log('Updating job with transcription result...');
+      console.log('Updating job with transcription result:', processedResponse.text);
       await this.updateJobStatus(job.id, 'completed', {
         result: processedResponse.text
       });
