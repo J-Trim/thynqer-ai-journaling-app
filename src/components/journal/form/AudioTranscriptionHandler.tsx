@@ -35,24 +35,23 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
         const response = await handleAudioTranscription(audioUrl);
         console.log('Got transcription response:', response);
         
-        if (isActive && response?.text) {
-          console.log('Setting transcription text:', response.text);
-          if (typeof response.text === 'string') {
-            onTranscriptionComplete(response.text);
-            toast({
-              title: "Success",
-              description: "Audio transcription completed",
-            });
-          } else {
-            console.error('Invalid transcription text format:', response.text);
-          }
-        } else {
-          console.log('No text in response or component unmounted:', {
-            isActive,
-            hasText: !!response?.text,
-            responseText: response?.text
-          });
+        if (!isActive) {
+          console.log('Component unmounted, skipping transcription update');
+          return;
         }
+
+        if (!response?.text || typeof response.text !== 'string') {
+          console.error('Invalid or missing transcription text:', response);
+          return;
+        }
+
+        console.log('Setting transcription text:', response.text);
+        onTranscriptionComplete(response.text);
+        toast({
+          title: "Success",
+          description: "Audio transcription completed",
+        });
+
       } catch (error) {
         console.error('Transcription handling error:', error);
         toast({

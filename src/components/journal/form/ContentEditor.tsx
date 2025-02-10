@@ -45,15 +45,17 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
     }
   };
 
-  const displayContent = transcribedAudio 
-    ? `${content}${content ? '\n\n' : ''}Transcribed Audio:\n${transcribedAudio}`
-    : content;
+  let displayContent = content;
+  if (transcribedAudio && transcribedAudio.trim()) {
+    displayContent = `${content}${content ? '\n\n' : ''}Transcribed Audio:\n${transcribedAudio}`;
+  }
 
   console.log('Final display content:', {
     displayContent,
     displayContentLength: displayContent.length,
     hasContent: !!content,
-    hasTranscribedAudio: !!transcribedAudio
+    hasTranscribedAudio: !!transcribedAudio,
+    transcribedAudioContent: transcribedAudio
   });
 
   return (
