@@ -12,7 +12,8 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
     content, 
     transcribedAudio,
     contentLength: content?.length || 0,
-    transcribedAudioLength: transcribedAudio?.length || 0
+    transcribedAudioLength: transcribedAudio?.length || 0,
+    hasTranscribedAudio: !!transcribedAudio
   });
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -45,9 +46,9 @@ const ContentEditor = ({ content, transcribedAudio, onContentChange }: ContentEd
     }
   };
 
-  let displayContent = content;
+  let displayContent = content || '';
   if (transcribedAudio && transcribedAudio.trim()) {
-    displayContent = `${content}${content ? '\n\n' : ''}Transcribed Audio:\n${transcribedAudio}`;
+    displayContent = `${displayContent}${displayContent ? '\n\n' : ''}Transcribed Audio:\n${transcribedAudio}`;
   }
 
   console.log('Final display content:', {

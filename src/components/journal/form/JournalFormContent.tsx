@@ -17,7 +17,8 @@ const JournalFormContent = ({
     content, 
     transcribedAudio,
     contentLength: content?.length || 0,
-    transcribedAudioLength: transcribedAudio?.length || 0
+    transcribedAudioLength: transcribedAudio?.length || 0,
+    hasTranscribedAudio: !!transcribedAudio
   });
   
   return (
