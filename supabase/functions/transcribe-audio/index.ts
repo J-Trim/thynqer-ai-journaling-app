@@ -52,7 +52,7 @@ serve(async (req) => {
     const jobId = await queue.enqueueJob(audioUrl, userId);
     console.log('Job enqueued with ID:', jobId);
 
-    // Start processing in the background
+    // Start processing in the background using EdgeRuntime.waitUntil
     EdgeRuntime.waitUntil(queue.processNextBatch());
 
     return new Response(
@@ -80,4 +80,3 @@ serve(async (req) => {
     );
   }
 });
-
