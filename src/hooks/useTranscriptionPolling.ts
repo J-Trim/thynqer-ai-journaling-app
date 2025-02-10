@@ -111,6 +111,7 @@ export const useTranscriptionPolling = (
         // If we got an immediate result
         onTranscriptionComplete(data.text);
         setIsTranscribing(false);
+        setProgress(100);
         toast({
           title: "Success",
           description: "Audio transcribed successfully",
@@ -140,7 +141,7 @@ export const useTranscriptionPolling = (
       setErrorType('server');
       throw error;
     }
-  }, [toast, onTranscriptionComplete]);
+  }, [onTranscriptionComplete, toast]);
 
   return {
     isTranscribing,

@@ -12,10 +12,10 @@ interface TranscriptionResponse {
 export const useAudioTranscription = () => {
   const [isTranscriptionPending, setIsTranscriptionPending] = useState(false);
   const { toast } = useToast();
-  const { startTranscription, isTranscribing, progress } = useTranscriptionPolling((text) => {
+  const { startTranscription, isTranscribing, progress } = useTranscriptionPolling(useCallback((text) => {
     console.log('Transcription complete callback received:', text);
     return text;
-  });
+  }, []));
 
   const handleAudioTranscription = async (audioFileName: string): Promise<TranscriptionResponse> => {
     try {
