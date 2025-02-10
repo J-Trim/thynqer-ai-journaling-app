@@ -17,7 +17,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
   onTranscriptionEnd,
 }) => {
   const { toast } = useToast();
-  const { handleAudioTranscription, isTranscriptionPending } = useAudioTranscription();
+  const { handleAudioTranscription, isTranscriptionPending, isTranscribing, progress } = useAudioTranscription();
 
   useEffect(() => {
     const transcribeAudio = async () => {
@@ -29,25 +29,22 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
       try {
         console.log('Starting transcription for:', audioUrl);
         onTranscriptionStart();
-
-        const transcriptionResult = await handleAudioTranscription(audioUrl);
         
-        if (transcriptionResult?.jobId) {
-          console.log('Transcription job started with ID:', transcriptionResult.jobId);
+        const response = await handleAudioTranscription(audioUrl);
+        
+        if (response.jobId) {
+          console.log('Transcription job started with ID:', response.jobId);
           toast({
             title: "Processing",
             description: "Audio transcription in progress...",
           });
-        } else if (transcriptionResult?.text) {
-          console.log('Transcription completed:', transcriptionResult.text);
-          onTranscriptionComplete(transcriptionResult.text);
+        } else if (response.text) {
+          console.log('Transcription completed:', response.text);
+          onTranscriptionComplete(response.text);
           toast({
             title: "Success",
             description: "Audio transcribed successfully",
           });
-        } else {
-          console.error('Invalid transcription response:', transcriptionResult);
-          throw new Error('Invalid transcription response');
         }
       } catch (error) {
         console.error('Transcription handling error:', error);
