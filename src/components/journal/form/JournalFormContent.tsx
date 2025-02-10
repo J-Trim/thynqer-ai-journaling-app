@@ -13,7 +13,12 @@ const JournalFormContent = ({
   transcribedAudio, 
   onContentChange 
 }: JournalFormContentProps) => {
-  console.log('JournalFormContent rendering with:', { content, transcribedAudio });
+  console.log('JournalFormContent rendering with:', { 
+    content, 
+    transcribedAudio,
+    contentLength: content?.length || 0,
+    transcribedAudioLength: transcribedAudio?.length || 0
+  });
   
   return (
     <div className="space-y-4">
