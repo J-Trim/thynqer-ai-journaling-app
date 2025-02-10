@@ -1,6 +1,7 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { queue } from './services/transcriptionQueue.ts';
 
 const corsHeaders = {
@@ -17,13 +18,33 @@ serve(async (req) => {
   try {
     console.log('Received transcribe-audio request');
     
-    // Get auth session
-    const { data: { session }, error: sessionError } = await req.auth();
-    
-    if (sessionError || !session?.user?.id) {
-      console.error('Authentication error:', sessionError);
+    // Get auth session using the supabase client instead of req.auth
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    // Create Supabase client with service role key
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
+    // Get user from the token
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user?.id) {
+      console.error('Authentication error:', userError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - No valid session found' }), 
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }), 
         { 
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -31,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
     const body = await req.json();
     const audioUrl = body?.audioUrl;
     
