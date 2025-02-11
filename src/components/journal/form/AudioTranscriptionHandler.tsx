@@ -78,7 +78,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
     return () => {
       isActive = false;
     };
-  }, [audioUrl, onTranscriptionComplete, onTranscriptionStart, onTranscriptionEnd]);
+  }, [audioUrl, onTranscriptionComplete, onTranscriptionStart, onTranscriptionEnd, handleAudioTranscription, toast]);
 
   return null;
 };
