@@ -45,7 +45,12 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
           return;
         }
 
-        console.log('Setting transcription text:', response.text);
+        console.log('Setting transcription text:', {
+          text: response.text,
+          length: response.text.length,
+          callback: !!onTranscriptionComplete
+        });
+        
         onTranscriptionComplete(response.text);
         toast({
           title: "Success",
@@ -73,7 +78,7 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
     return () => {
       isActive = false;
     };
-  }, [audioUrl]);
+  }, [audioUrl, onTranscriptionComplete, onTranscriptionStart, onTranscriptionEnd]);
 
   return null;
 };
