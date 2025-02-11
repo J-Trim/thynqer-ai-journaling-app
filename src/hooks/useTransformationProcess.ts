@@ -36,14 +36,22 @@ export const useTransformationProcess = ({
       type,
       entryId,
       textLength: entryText?.length,
-      hasCustomPrompts: customPrompts?.length > 0
+      hasCustomPrompts: customPrompts?.length > 0,
+      inputTextDetails: {
+        exactText: entryText,
+        trimmedLength: entryText?.trim().length,
+        hasWhitespace: /^\s|\s$/.test(entryText || ''),
+        containsSpecialChars: /[^\w\s]/.test(entryText || ''),
+        encodedLength: encodeURIComponent(entryText || '').length
+      }
     });
 
     if (!type || !entryText?.trim()) {
       console.log('Missing required data:', { 
         type, 
         hasText: !!entryText?.trim(),
-        textLength: entryText?.length 
+        textLength: entryText?.length,
+        trimmedTextLength: entryText?.trim().length 
       });
       return false;
     }
@@ -83,10 +91,14 @@ export const useTransformationProcess = ({
         finalEntryId,
         textLength: entryText.length,
         type,
-        customPromptsCount: customPrompts.length
+        customPromptsCount: customPrompts.length,
+        textDetails: {
+          exactText: entryText,
+          trimmedLength: entryText.trim().length,
+          diffFromTrimmed: entryText.length - entryText.trim().length
+        }
       });
 
-      // Use transformationService to handle the transformation
       const result = await transformationService.transformText(
         finalEntryId,
         entryText,
@@ -97,13 +109,27 @@ export const useTransformationProcess = ({
       console.log('Transformation result received:', {
         transformedTextLength: result.transformedText.length,
         type: result.type,
-        success: !!result.transformedText
+        success: !!result.transformedText,
+        resultDetails: {
+          exactText: result.transformedText,
+          trimmedLength: result.transformedText.trim().length,
+          hasWhitespace: /^\s|\s$/.test(result.transformedText),
+          containsSpecialChars: /[^\w\s]/.test(result.transformedText),
+          whitespaceLocations: result.transformedText
+            .split('')
+            .map((char, i) => char === ' ' ? i : null)
+            .filter(i => i !== null)
+        }
       });
 
       console.log('Setting last transformation:', {
         textPreview: result.transformedText.substring(0, 50) + '...',
-        type: result.type
+        type: result.type,
+        exactText: result.transformedText,
+        textLength: result.transformedText.length,
+        trimmedLength: result.transformedText.trim().length
       });
+      
       setLastTransformation(result.transformedText, result.type);
       
       // Log query invalidation
@@ -112,8 +138,6 @@ export const useTransformationProcess = ({
         data: queryClient.getQueryData(['transformations', finalEntryId])
       });
       
-      console.log('Invalidating queries for entry:', finalEntryId);
-      // Invalidate and refetch
       await queryClient.invalidateQueries({ 
         queryKey: ['transformations', finalEntryId],
         refetchType: 'active'

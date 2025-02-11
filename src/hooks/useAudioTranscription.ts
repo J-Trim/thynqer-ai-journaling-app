@@ -18,7 +18,10 @@ export const useAudioTranscription = () => {
     console.log('Transcription complete callback triggered:', {
       textLength: text.length,
       textPreview: text.substring(0, 50) + '...',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      exactText: text,
+      hasWhitespace: /^\s|\s$/.test(text),
+      whitespaceLocations: text.split('').map((char, i) => char === ' ' ? i : null).filter(i => i !== null)
     });
     return text;
   }, []);
@@ -64,14 +67,25 @@ export const useAudioTranscription = () => {
       console.log('Transcription response received:', {
         hasText: !!response?.text,
         hasJobId: !!response?.jobId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        rawResponse: JSON.stringify(response),
+        textDetails: response?.text ? {
+          length: response.text.length,
+          exactText: response.text,
+          hasWhitespace: /^\s|\s$/.test(response.text),
+          containsSpecialChars: /[^\w\s]/.test(response.text),
+          encodedLength: encodeURIComponent(response.text).length
+        } : null
       });
 
       if (response?.text) {
         console.log('Immediate transcription result:', {
           textLength: response.text.length,
           textPreview: response.text.substring(0, 50) + '...',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          exactText: response.text,
+          trimmedLength: response.text.trim().length,
+          diffFromTrimmed: response.text.length - response.text.trim().length
         });
         setIsTranscriptionPending(false);
         toast({
