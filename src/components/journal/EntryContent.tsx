@@ -1,3 +1,4 @@
+
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,16 +14,11 @@ interface EntryContentProps {
 const EntryContent = ({ content, transcribedAudio, onContentChange }: EntryContentProps) => {
   const [showTranscription, setShowTranscription] = useState(false);
   
-  // Combine main content with transcribed audio for the editable area
-  const fullContent = transcribedAudio 
-    ? `${content || ''}\n\n${transcribedAudio}`
-    : content || '';
-
   return (
     <div className="space-y-4">
       <Textarea
         placeholder="Start writing your thoughts..."
-        value={fullContent}
+        value={content}
         onChange={(e) => onContentChange(e.target.value)}
         className="min-h-[200px] resize-y"
       />
