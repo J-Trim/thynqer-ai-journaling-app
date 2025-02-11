@@ -32,7 +32,6 @@ export const transformationService = {
       console.error('Improve prompt error:', {
         code: error.code || 'IMPROVE_PROMPT_ERROR',
         message: error.message,
-        details: error.details,
         name: error.name,
         context: { prompt }
       });
@@ -55,7 +54,6 @@ export const transformationService = {
       console.error('Error fetching default prompt:', {
         code: error.code,
         message: error.message,
-        details: error.details,
         context: { type }
       });
       return null;
@@ -123,7 +121,7 @@ export const transformationService = {
       console.error('Session error:', {
         code: sessionError.code || 'SESSION_ERROR',
         message: sessionError.message,
-        details: sessionError.details,
+        name: sessionError.name,
         context
       });
       throw this.createTransformationError('SESSION_ERROR', sessionError, context);
@@ -171,7 +169,7 @@ export const transformationService = {
         console.error('Transform function error:', {
           code: transformError.code || 'TRANSFORM_ERROR',
           message: transformError.message,
-          details: transformError.details,
+          name: transformError.name,
           context: { ...context, templateLength: promptTemplate?.length }
         });
         throw this.createTransformationError('TRANSFORM_ERROR', transformError, context);
@@ -196,7 +194,7 @@ export const transformationService = {
         console.error('Save error:', {
           code: saveError.code || 'SAVE_ERROR',
           message: saveError.message,
-          details: saveError.details,
+          name: saveError.name,
           context: { 
             ...context,
             transformedTextLength: data.transformedText.length 
