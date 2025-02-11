@@ -63,7 +63,7 @@ export const useTransformationProcess = ({
         customPrompts
       );
 
-      setLastTransformation(result.transformedText);
+      setLastTransformation(result.transformedText, result.type);
       queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
       
       toast({
