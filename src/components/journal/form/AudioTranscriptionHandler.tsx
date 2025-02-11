@@ -71,7 +71,9 @@ const AudioTranscriptionHandler: React.FC<AudioTranscriptionHandlerProps> = ({
       }
     };
 
-    if (audioUrl) {
+    // Only transcribe if this is a new audio file (not an existing entry)
+    const isNewAudioFile = audioUrl && !document.location.pathname.includes('/journal/');
+    if (isNewAudioFile) {
       transcribeAudio();
     }
 
