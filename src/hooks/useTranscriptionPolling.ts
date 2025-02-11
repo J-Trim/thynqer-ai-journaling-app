@@ -25,6 +25,8 @@ export const useTranscriptionPolling = (
     if (!jobId) return;
 
     try {
+      console.log('Checking transcription status for job:', jobId);
+      
       const { data: job, error: fetchError } = await supabase
         .from('transcription_queue')
         .select('status, result, error')
@@ -75,11 +77,13 @@ export const useTranscriptionPolling = (
     if (jobId && isTranscribing) {
       abortControllerRef.current = new AbortController();
       pollInterval = window.setInterval(checkTranscriptionStatus, 3000);
+      console.log('Started polling for job:', jobId);
     }
 
     return () => {
       if (pollInterval) {
         clearInterval(pollInterval);
+        console.log('Stopped polling for job:', jobId);
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
