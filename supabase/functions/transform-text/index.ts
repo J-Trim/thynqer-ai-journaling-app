@@ -1,25 +1,26 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders, handleCors } from "./utils/cors.ts";
-import { getSystemPrompt, callDeepSeek } from "./services/deepseek.ts";
-import { checkCache, saveToCache } from "./services/cache.ts";
-import { generateInputHash } from "./utils/hash.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
-  const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     console.log('Starting transformation request...');
     
-    const { text, transformationType, customTemplate } = await req.json();
+    const { text, transformationType } = await req.json();
     
     console.log('Received request with:', {
       hasText: !!text,
-      transformationType,
-      hasCustomTemplate: !!customTemplate
+      transformationType
     });
 
     if (!text?.trim()) {
@@ -43,14 +44,25 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Generate hash and check cache
-    const inputHash = await generateInputHash(text, customTemplate);
-    const cachedResult = await checkCache(supabase, inputHash, transformationType);
+    // Generate hash for caching
+    const textEncoder = new TextEncoder();
+    const hashData = textEncoder.encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', hashData);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const inputHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-    if (cachedResult) {
+    // Check cache
+    const { data: cacheHit } = await supabase
+      .from('summary_cache')
+      .select('cached_result')
+      .eq('input_hash', inputHash)
+      .eq('transformation_type', transformationType)
+      .single();
+
+    if (cacheHit?.cached_result) {
       console.log('Cache hit found, returning cached result');
       return new Response(
-        JSON.stringify({ transformedText: cachedResult }),
+        JSON.stringify({ transformedText: cacheHit.cached_result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -58,35 +70,84 @@ serve(async (req: Request) => {
     // If no cache hit, proceed with transformation
     console.log('No cache hit found, proceeding with DeepSeek transformation');
 
-    const basePrompt = customTemplate || getSystemPrompt(transformationType);
+    // Prepare the prompt based on transformation type
+    const getSystemPrompt = (type: string): string => {
+      const prompts: Record<string, string> = {
+        'Quick Summary': 'Provide a concise summary of the main points.',
+        'Emotional Analysis': 'Analyze the emotional tone and key feelings expressed.',
+        'Key Insights': 'Extract the most important insights and learnings.',
+        'Action Items': 'List specific action items or next steps mentioned.',
+        'Questions': 'Generate thoughtful follow-up questions based on the content.'
+      };
+      return prompts[type] || 'Transform this text while maintaining its core meaning and intent.';
+    };
+
     const enhancedPrompt = `
       You are a thoughtful AI assistant analyzing journal entries.
       
       INSTRUCTIONS:
-      ${basePrompt}
-      
-      Please provide:
-      1. A clear summary of the key themes and insights
-      2. The overall emotional sentiment (positive, neutral, or negative)
-      3. A thoughtful follow-up question to promote deeper reflection
-      
-      Format your response with clear sections.
+      ${getSystemPrompt(transformationType)}
       
       TEXT TO ANALYZE:
       ${text}
+      
+      Please provide:
+      1. A clear analysis based on the instruction type
+      2. Keep your response focused and concise
+      3. Maintain a supportive and constructive tone
     `;
     
-    const transformedText = await callDeepSeek(enhancedPrompt, deepSeekKey);
+    // Call DeepSeek API
+    const deepSeekResponse = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${deepSeekKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that transforms text based on specific instructions.'
+          },
+          {
+            role: 'user',
+            content: enhancedPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      }),
+    });
+
+    if (!deepSeekResponse.ok) {
+      const error = await deepSeekResponse.text();
+      console.error('DeepSeek API error:', error);
+      throw new Error(`DeepSeek API error: ${error}`);
+    }
+
+    const data = await deepSeekResponse.json();
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response format from DeepSeek');
+    }
+
+    const transformedText = data.choices[0].message.content;
     
     // Cache the result
-    await saveToCache(
-      supabase,
-      inputHash,
-      transformationType,
-      text,
-      transformedText,
-      customTemplate
-    );
+    const { error: cacheError } = await supabase
+      .from('summary_cache')
+      .insert({
+        input_hash: inputHash,
+        transformation_type: transformationType,
+        input_text: text,
+        cached_result: transformedText,
+        prompt_template: getSystemPrompt(transformationType)
+      });
+
+    if (cacheError) {
+      console.error('Error caching result:', cacheError);
+    }
 
     console.log('Successfully transformed text, length:', transformedText.length);
 
@@ -108,4 +169,3 @@ serve(async (req: Request) => {
     );
   }
 });
-
