@@ -30,9 +30,27 @@ export class QueueService {
     this.whisperService = new WhisperService();
   }
 
+  private sanitizeTranscriptionText(text: string): string {
+    if (!text) return '';
+    
+    // Remove excess whitespace and normalize line endings
+    return text
+      .trim()
+      .replace(/\s+/g, ' ')        // Replace multiple spaces with single space
+      .replace(/[\r\n]+/g, '\n')   // Normalize line endings
+      .replace(/\n\s+/g, '\n')     // Remove whitespace after newlines
+      .replace(/\s+\n/g, '\n');    // Remove whitespace before newlines
+  }
+
   private async updateJobStatus(jobId: string, status: TranscriptionJob['status'], data?: Partial<TranscriptionJob>) {
     console.log(`Updating job ${jobId} status to ${status}`, data);
-    const updateData = { status, ...data };
+    const updateData = { 
+      status, 
+      ...data,
+      // If result is present, sanitize it
+      ...(data?.result && { result: this.sanitizeTranscriptionText(data.result) })
+    };
+    
     const { error } = await this.supabase
       .from('transcription_queue')
       .update(updateData)
@@ -157,3 +175,4 @@ export class QueueService {
 }
 
 export const queue = new QueueService();
+
