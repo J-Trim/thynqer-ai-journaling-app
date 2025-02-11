@@ -4,17 +4,20 @@ import ContentEditor from "./ContentEditor";
 import TranscriptionDisplay from "./TranscriptionDisplay";
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { TransformationsList } from "../TransformationsList";
 
 interface JournalFormContentProps {
   content: string;
   transcribedAudio: string | null;
   onContentChange: (value: string) => void;
+  entryId?: string;
 }
 
 const JournalFormContent = ({ 
   content, 
   transcribedAudio, 
-  onContentChange 
+  onContentChange,
+  entryId 
 }: JournalFormContentProps) => {
   // Memoize content change handler
   const handleContentChange = useCallback((value: string) => {
@@ -35,6 +38,7 @@ const JournalFormContent = ({
         onContentChange={handleContentChange}
       />
       <TranscriptionDisplay transcribedAudio={transcribedAudio} />
+      {entryId && <TransformationsList entryId={entryId} />}
     </div>
   );
 };
