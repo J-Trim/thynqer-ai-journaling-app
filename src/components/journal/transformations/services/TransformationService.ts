@@ -84,6 +84,21 @@ export const transformationService = {
         throw new Error('No transformation data received');
       }
 
+      // Save the transformation to the summaries table
+      const { error: saveError } = await supabase
+        .from('summaries')
+        .insert({
+          entry_id: entryId,
+          user_id: session.user.id,
+          transformed_text: transformationData.transformedText,
+          transformation_type: type
+        });
+
+      if (saveError) {
+        console.error('Error saving transformation:', saveError);
+        throw new Error(`Failed to save transformation: ${saveError.message}`);
+      }
+
       return transformationData;
     } catch (error) {
       console.error('Error in transformText:', error);
