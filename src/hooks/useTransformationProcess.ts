@@ -66,7 +66,20 @@ export const useTransformationProcess = ({
       );
 
       setLastTransformation(result.transformedText, result.type);
-      queryClient.invalidateQueries({ queryKey: ['transformations', finalEntryId] });
+      
+      // Log query invalidation
+      console.log('Invalidating transformation queries:', {
+        queryKey: ['transformations', finalEntryId],
+        currentData: queryClient.getQueryData(['transformations', finalEntryId])
+      });
+      
+      // Invalidate and refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: ['transformations', finalEntryId],
+        refetchType: 'active'
+      });
+      
+      console.log('Query invalidation complete');
       
       toast({
         description: "Transformation completed successfully",
