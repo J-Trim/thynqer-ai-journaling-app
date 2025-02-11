@@ -52,6 +52,37 @@ export const transformationService = {
     return data?.prompt_template || null;
   },
 
+  findMatchingCustomPrompt(
+    transformationType: ValidTransformation,
+    customPrompts: Array<{ prompt_name: string; prompt_template: string }>
+  ) {
+    if (!customPrompts?.length) return null;
+
+    // Normalize the transformation type for comparison
+    const normalizedType = transformationType.toLowerCase().trim();
+
+    // First try exact match
+    let customPrompt = customPrompts.find(p => 
+      p.prompt_name === transformationType
+    );
+
+    // If no exact match, try case-insensitive match
+    if (!customPrompt) {
+      customPrompt = customPrompts.find(p => 
+        p.prompt_name.toLowerCase().trim() === normalizedType
+      );
+    }
+
+    // Log the matching result for debugging
+    console.log('Custom prompt matching:', {
+      type: transformationType,
+      found: !!customPrompt,
+      promptName: customPrompt?.prompt_name
+    });
+
+    return customPrompt;
+  },
+
   async transformText(
     entryId: string,
     entryText: string,
@@ -79,11 +110,8 @@ export const transformationService = {
     }
 
     try {
-      // Get prompt template (custom or default)
-      const customPrompt = customPrompts?.find(p => 
-        p.prompt_name.toLowerCase() === transformationType.toLowerCase()
-      );
-      
+      // Find matching custom prompt with improved matching logic
+      const customPrompt = this.findMatchingCustomPrompt(transformationType, customPrompts);
       let promptTemplate = customPrompt?.prompt_template;
       
       if (!promptTemplate) {
@@ -92,7 +120,12 @@ export const transformationService = {
       }
 
       // Call transform-text function
-      console.log('Calling transform-text with template:', promptTemplate?.substring(0, 50));
+      console.log('Calling transform-text with template:', {
+        type: transformationType,
+        isCustom: !!customPrompt,
+        templatePreview: promptTemplate?.substring(0, 50)
+      });
+
       const { data, error: transformError } = await supabase.functions.invoke('transform-text', {
         body: { 
           text: entryText,
