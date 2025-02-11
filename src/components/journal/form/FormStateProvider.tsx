@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useJournalFormState } from '@/hooks/useJournalFormState';
 
 interface FormStateContextType {
@@ -23,7 +23,7 @@ interface FormStateContextType {
   setLastSavedId: (value: string | null) => void;
   mood: number | null;
   setMood: (value: number) => void;
-  resetForm: () => void;  // Add the resetForm function type
+  resetForm: () => void;
 }
 
 const FormStateContext = createContext<FormStateContextType | undefined>(undefined);
@@ -41,8 +41,55 @@ export const FormStateProvider: React.FC<FormStateProviderProps> = ({
 }) => {
   const formState = useJournalFormState(id, initialData);
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    title: formState.title,
+    setTitle: formState.setTitle,
+    content: formState.content,
+    setContent: formState.setContent,
+    transcribedAudio: formState.transcribedAudio,
+    setTranscribedAudio: formState.setTranscribedAudio,
+    audioUrl: formState.audioUrl,
+    setAudioUrl: formState.setAudioUrl,
+    isTranscriptionPending: formState.isTranscriptionPending,
+    setIsTranscriptionPending: formState.setIsTranscriptionPending,
+    selectedTags: formState.selectedTags,
+    setSelectedTags: formState.setSelectedTags,
+    showTags: formState.showTags,
+    setShowTags: formState.setShowTags,
+    transformationEnabled: formState.transformationEnabled,
+    setTransformationEnabled: formState.setTransformationEnabled,
+    lastSavedId: formState.lastSavedId,
+    setLastSavedId: formState.setLastSavedId,
+    mood: formState.mood,
+    setMood: formState.setMood,
+    resetForm: formState.resetForm
+  }), [
+    formState.title,
+    formState.content,
+    formState.transcribedAudio,
+    formState.audioUrl,
+    formState.isTranscriptionPending,
+    formState.selectedTags,
+    formState.showTags,
+    formState.transformationEnabled,
+    formState.lastSavedId,
+    formState.mood,
+    formState.setTitle,
+    formState.setContent,
+    formState.setTranscribedAudio,
+    formState.setAudioUrl,
+    formState.setIsTranscriptionPending,
+    formState.setSelectedTags,
+    formState.setShowTags,
+    formState.setTransformationEnabled,
+    formState.setLastSavedId,
+    formState.setMood,
+    formState.resetForm
+  ]);
+
   return (
-    <FormStateContext.Provider value={formState}>
+    <FormStateContext.Provider value={contextValue}>
       {children}
     </FormStateContext.Provider>
   );
@@ -55,4 +102,3 @@ export const useFormState = () => {
   }
   return context;
 };
-
