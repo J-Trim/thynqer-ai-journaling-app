@@ -8,6 +8,7 @@ type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 interface TransformationError extends Error {
   code?: string;
   details?: string;
+  context?: Record<string, any>;
 }
 
 export interface TransformationResult {
@@ -28,8 +29,14 @@ export const transformationService = {
     });
 
     if (error) {
-      console.error('Improve prompt error:', error);
-      throw this.createTransformationError('IMPROVE_PROMPT_ERROR', error);
+      console.error('Improve prompt error:', {
+        code: error.code || 'IMPROVE_PROMPT_ERROR',
+        message: error.message,
+        details: error.details,
+        name: error.name,
+        context: { prompt }
+      });
+      throw this.createTransformationError('IMPROVE_PROMPT_ERROR', error, { prompt });
     }
 
     return data;
@@ -45,7 +52,12 @@ export const transformationService = {
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching default prompt:', error);
+      console.error('Error fetching default prompt:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        context: { type }
+      });
       return null;
     }
 
@@ -77,7 +89,8 @@ export const transformationService = {
     console.log('Custom prompt matching:', {
       type: transformationType,
       found: !!customPrompt,
-      promptName: customPrompt?.prompt_name
+      promptName: customPrompt?.prompt_name,
+      availablePrompts: customPrompts.map(p => p.prompt_name)
     });
 
     return customPrompt;
@@ -89,11 +102,15 @@ export const transformationService = {
     transformationType: ValidTransformation,
     customPrompts: Array<{ prompt_name: string, prompt_template: string }>,
   ): Promise<TransformationResult> {
-    console.log('Starting transformation:', {
+    const context = {
+      entryId,
       type: transformationType,
       textLength: entryText?.length,
-      hasCustomPrompts: customPrompts?.length > 0
-    });
+      hasCustomPrompts: customPrompts?.length > 0,
+      customPromptsCount: customPrompts?.length
+    };
+
+    console.log('Starting transformation:', context);
 
     // Input validation
     if (!entryId) throw new Error('Entry ID is required');
@@ -101,11 +118,22 @@ export const transformationService = {
     if (!transformationType) throw new Error('Transformation type is required');
 
     // Get session
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', {
+        code: sessionError.code || 'SESSION_ERROR',
+        message: sessionError.message,
+        details: sessionError.details,
+        context
+      });
+      throw this.createTransformationError('SESSION_ERROR', sessionError, context);
+    }
+
     if (!session) {
       throw this.createTransformationError(
         'AUTH_ERROR',
-        new Error('Authentication required')
+        new Error('Authentication required'),
+        context
       );
     }
 
@@ -116,14 +144,19 @@ export const transformationService = {
       
       if (!promptTemplate) {
         promptTemplate = await this.getDefaultPromptTemplate(transformationType);
-        console.log('Using default prompt template:', !!promptTemplate);
+        console.log('Using default prompt template:', {
+          type: transformationType,
+          hasTemplate: !!promptTemplate,
+          templatePreview: promptTemplate?.substring(0, 50)
+        });
       }
 
       // Call transform-text function
-      console.log('Calling transform-text with template:', {
+      console.log('Calling transform-text with:', {
         type: transformationType,
         isCustom: !!customPrompt,
-        templatePreview: promptTemplate?.substring(0, 50)
+        templatePreview: promptTemplate?.substring(0, 50),
+        context
       });
 
       const { data, error: transformError } = await supabase.functions.invoke('transform-text', {
@@ -135,7 +168,13 @@ export const transformationService = {
       });
 
       if (transformError) {
-        throw this.createTransformationError('TRANSFORM_ERROR', transformError);
+        console.error('Transform function error:', {
+          code: transformError.code || 'TRANSFORM_ERROR',
+          message: transformError.message,
+          details: transformError.details,
+          context: { ...context, templateLength: promptTemplate?.length }
+        });
+        throw this.createTransformationError('TRANSFORM_ERROR', transformError, context);
       }
 
       if (!data?.transformedText) {
@@ -154,7 +193,16 @@ export const transformationService = {
         });
 
       if (saveError) {
-        throw this.createTransformationError('SAVE_ERROR', saveError);
+        console.error('Save error:', {
+          code: saveError.code || 'SAVE_ERROR',
+          message: saveError.message,
+          details: saveError.details,
+          context: { 
+            ...context,
+            transformedTextLength: data.transformedText.length 
+          }
+        });
+        throw this.createTransformationError('SAVE_ERROR', saveError, context);
       }
 
       return {
@@ -163,18 +211,30 @@ export const transformationService = {
       };
 
     } catch (error) {
-      console.error('Transformation error:', error);
+      const transformError = error as Error;
+      console.error('Transformation error:', {
+        name: transformError.name,
+        message: transformError.message,
+        stack: transformError.stack,
+        context
+      });
       throw this.createTransformationError(
         'TRANSFORM_ERROR',
-        error as Error
+        transformError,
+        context
       );
     }
   },
 
-  createTransformationError(code: string, originalError: Error): TransformationError {
+  createTransformationError(
+    code: string, 
+    originalError: Error, 
+    context?: Record<string, any>
+  ): TransformationError {
     const error = new Error(originalError.message) as TransformationError;
     error.code = code;
     error.details = originalError.toString();
+    error.context = context;
     return error;
   }
 };
