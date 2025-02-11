@@ -22,6 +22,7 @@ const JournalEntryContent = () => {
     setTranscribedAudio,
     setIsTranscriptionPending,
     selectedTags,
+    lastSavedId,
   } = useFormState();
 
   const {
@@ -33,7 +34,7 @@ const JournalEntryContent = () => {
     content,
     audioUrl,
     transcribedAudio,
-    lastSavedId: null,
+    lastSavedId: id || lastSavedId,
     selectedTags,
     onSuccess: () => navigate('/journal')
   });
@@ -59,6 +60,7 @@ const JournalEntryContent = () => {
         onCancel={handleCancel}
         isSaving={isSaving}
         isExistingEntry={!!id}
+        entryId={id || lastSavedId}
       />
 
       <AudioTranscriptionHandler

@@ -8,17 +8,14 @@ import AudioPlayer from '../AudioPlayer';
 import TagSelector from '../../TagSelector';
 import MoodSelector from './MoodSelector';
 import { TransformationManager } from '../transformations/TransformationManager';
-import AudioTranscriptionHandler from './AudioTranscriptionHandler';
 import SaveControls from './SaveControls';
-import { useAudioRecording } from '@/hooks/useAudioRecording';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface FormContentProps {
-  onSave: () => Promise<{ id: string }>;
+  onSave: () => Promise<{ id: string } | null>;
   onCancel: () => void;
   isSaving: boolean;
   isExistingEntry?: boolean;
+  entryId?: string;
 }
 
 const FormContent: React.FC<FormContentProps> = ({
@@ -26,6 +23,7 @@ const FormContent: React.FC<FormContentProps> = ({
   onCancel,
   isSaving,
   isExistingEntry = false,
+  entryId,
 }) => {
   const navigate = useNavigate();
   const {
@@ -34,47 +32,14 @@ const FormContent: React.FC<FormContentProps> = ({
     content,
     setContent,
     transcribedAudio,
-    setTranscribedAudio,
     audioUrl,
-    setAudioUrl,
     isTranscriptionPending,
-    setIsTranscriptionPending,
     selectedTags,
     setSelectedTags,
-    showTags,
-    lastSavedId,
     mood,
     setMood,
     resetForm
   } = useFormState();
-
-  const { toast } = useToast();
-
-  const handleAudioSaved = async (url: string) => {
-    setAudioUrl(url);
-  };
-
-  const handleTranscriptionComplete = (text: string) => {
-    console.log('Transcription completed, setting text:', text);
-    setTranscribedAudio(text);
-    // If no manual content is present, update the editor content
-    if (!content || content.trim() === '') {
-      setContent(text);
-    }
-    toast({
-      title: "Transcription Complete",
-      description: "Audio has been transcribed successfully",
-    });
-  };
-
-  const {
-    isRecording,
-    isPaused,
-    recordingTime,
-    isProcessing,
-    toggleRecording,
-    stopRecording
-  } = useAudioRecording(handleAudioSaved);
 
   const handleTagToggle = (tagId: string) => {
     setSelectedTags((prev: string[]) => 
@@ -84,34 +49,11 @@ const FormContent: React.FC<FormContentProps> = ({
     );
   };
 
-  const handleSave = async () => {
-    try {
-      const result = await onSave();
-      if (result) {
-        resetForm();
-        navigate('/journal');
-      }
-    } catch (error) {
-      console.error('Error saving entry:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save journal entry",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="space-y-4">
       <JournalFormHeader 
         title={title}
         onTitleChange={setTitle}
-        isRecording={isRecording}
-        isPaused={isPaused}
-        isProcessing={isProcessing}
-        recordingTime={recordingTime}
-        onToggleRecording={toggleRecording}
-        onStopRecording={stopRecording}
         isExistingEntry={isExistingEntry}
       />
       
@@ -121,6 +63,7 @@ const FormContent: React.FC<FormContentProps> = ({
         content={content}
         transcribedAudio={transcribedAudio}
         onContentChange={setContent}
+        entryId={entryId}
       />
 
       {audioUrl && (
@@ -128,13 +71,6 @@ const FormContent: React.FC<FormContentProps> = ({
           <AudioPlayer audioUrl={audioUrl} />
         </div>
       )}
-
-      <AudioTranscriptionHandler
-        audioUrl={audioUrl}
-        onTranscriptionComplete={handleTranscriptionComplete}
-        onTranscriptionStart={() => setIsTranscriptionPending(true)}
-        onTranscriptionEnd={() => setIsTranscriptionPending(false)}
-      />
 
       <TagSelector
         selectedTags={selectedTags}
@@ -146,9 +82,9 @@ const FormContent: React.FC<FormContentProps> = ({
       {(content || transcribedAudio) && (
         <div className="mt-8">
           <TransformationManager
-            entryId={lastSavedId || ''}
+            entryId={entryId || ''}
             entryText={content || transcribedAudio || ''}
-            onSaveEntry={!lastSavedId ? onSave : undefined}
+            onSaveEntry={!entryId ? onSave : undefined}
           />
         </div>
       )}
@@ -158,7 +94,7 @@ const FormContent: React.FC<FormContentProps> = ({
           resetForm();
           navigate('/journal');
         }}
-        onSave={handleSave}
+        onSave={onSave}
         isSaving={isSaving}
         isTranscriptionPending={isTranscriptionPending}
       />
