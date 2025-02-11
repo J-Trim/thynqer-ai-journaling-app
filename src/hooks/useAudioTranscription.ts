@@ -15,7 +15,11 @@ export const useAudioTranscription = () => {
   
   // Create a stable callback for handling transcription completion
   const handleTranscriptionComplete = useCallback((text: string) => {
-    console.log('Transcription complete, received text:', text);
+    console.log('Transcription complete callback triggered:', {
+      textLength: text.length,
+      textPreview: text.substring(0, 50) + '...',
+      timestamp: new Date().toISOString()
+    });
     return text;
   }, []);
 
@@ -23,23 +27,52 @@ export const useAudioTranscription = () => {
 
   const handleAudioTranscription = async (audioFileName: string): Promise<TranscriptionResponse> => {
     try {
+      console.log('Audio transcription requested:', {
+        fileName: audioFileName,
+        isPending: isTranscriptionPending,
+        timestamp: new Date().toISOString()
+      });
+
       if (isTranscriptionPending) {
-        console.log('Transcription already in progress, skipping');
+        console.log('Transcription already in progress, skipping:', {
+          fileName: audioFileName,
+          timestamp: new Date().toISOString()
+        });
         return {};
       }
 
+      console.log('Setting transcription pending state to true');
       setIsTranscriptionPending(true);
-      console.log('Starting audio transcription process for:', audioFileName);
       
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session?.user) {
+        console.error('Authentication error:', {
+          error: sessionError,
+          hasSession: !!session,
+          timestamp: new Date().toISOString()
+        });
         throw new Error('Authentication required');
       }
 
+      console.log('Starting transcription process:', {
+        fileName: audioFileName,
+        userId: session.user.id,
+        timestamp: new Date().toISOString()
+      });
+
       const response = await startTranscription(audioFileName);
-      console.log('Transcription response received:', response);
+      console.log('Transcription response received:', {
+        hasText: !!response?.text,
+        hasJobId: !!response?.jobId,
+        timestamp: new Date().toISOString()
+      });
 
       if (response?.text) {
+        console.log('Immediate transcription result:', {
+          textLength: response.text.length,
+          textPreview: response.text.substring(0, 50) + '...',
+          timestamp: new Date().toISOString()
+        });
         setIsTranscriptionPending(false);
         toast({
           title: "Transcription Complete",
@@ -47,13 +80,22 @@ export const useAudioTranscription = () => {
         });
         return { text: response.text };
       } else if (response?.jobId) {
+        console.log('Queued transcription job:', {
+          jobId: response.jobId,
+          timestamp: new Date().toISOString()
+        });
         return { jobId: response.jobId };
       }
 
       throw new Error('Invalid transcription response');
 
     } catch (error) {
-      console.error('Audio transcription error:', error);
+      console.error('Audio transcription error:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        fileName: audioFileName,
+        timestamp: new Date().toISOString()
+      });
       setIsTranscriptionPending(false);
       throw error;
     }
