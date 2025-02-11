@@ -43,6 +43,7 @@ export const useTransformationProcess = ({
     try {
       let finalEntryId = entryId;
       
+      // If no entry ID exists, save the entry first
       if (!entryId && onSaveEntry) {
         console.log('No entry ID found, forcing save before transformation...');
         setSaving(true);
@@ -56,6 +57,7 @@ export const useTransformationProcess = ({
         setSaving(false);
       }
 
+      // Use transformationService to handle the transformation
       const result = await transformationService.transformText(
         finalEntryId,
         entryText,
