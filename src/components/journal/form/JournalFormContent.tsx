@@ -16,20 +16,14 @@ const JournalFormContent = ({
   transcribedAudio, 
   onContentChange 
 }: JournalFormContentProps) => {
-  console.log('JournalFormContent rendering with:', { 
-    content, 
-    transcribedAudio,
-    contentLength: content?.length || 0,
-    transcribedAudioLength: transcribedAudio?.length || 0,
-    hasTranscribedAudio: !!transcribedAudio
-  });
-
   // Memoize content change handler
   const handleContentChange = useCallback((value: string) => {
-    console.log('Content change:', {
-      newValue: value,
-      length: value.length
-    });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Content change:', {
+        newValue: value,
+        length: value.length
+      });
+    }
     onContentChange(value);
   }, [onContentChange]);
   
