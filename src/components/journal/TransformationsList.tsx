@@ -51,7 +51,6 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
         throw error;
       }
       
-      console.log('Retrieved transformations:', data);
       return data;
     },
     enabled: !!entryId,
@@ -83,7 +82,6 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
       toast({
         description: "Transformation deleted successfully",
       });
-      console.log('Transformation deleted successfully');
     },
     onError: (error) => {
       console.error('Error deleting transformation:', error);
@@ -93,21 +91,6 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
       });
     },
   });
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        description: "Transformation copied to clipboard",
-      });
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      toast({
-        variant: "destructive",
-        description: "Failed to copy to clipboard",
-      });
-    }
-  };
 
   const handleDelete = (transformationId: string) => {
     setTransformationToDelete(transformationId);

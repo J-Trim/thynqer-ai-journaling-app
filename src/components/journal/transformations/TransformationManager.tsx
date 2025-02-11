@@ -62,14 +62,20 @@ export const TransformationManager = ({
 
   const handleTransformWrapper = useCallback(() => {
     if (selectedType && entryText) {
+      console.log('Starting transformation with:', {
+        type: selectedType,
+        textLength: entryText.length,
+        entryId
+      });
       return handleTransform(selectedType);
     }
     if (!entryText) {
+      console.log('Transform prevented - no text provided');
       setError("Please enter some text to transform");
       return Promise.resolve(false);
     }
     return Promise.resolve(false);
-  }, [handleTransform, selectedType, entryText, setError]);
+  }, [handleTransform, selectedType, entryText, setError, entryId]);
 
   return (
     <div className="space-y-6">
