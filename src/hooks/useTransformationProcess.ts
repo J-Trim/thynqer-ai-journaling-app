@@ -52,9 +52,10 @@ export const useTransformationProcess = ({
     setTransforming(true);
     setError(null);
 
+    // Declare finalEntryId outside try block so it's accessible in catch
+    let finalEntryId = entryId;
+
     try {
-      let finalEntryId = entryId;
-      
       // If no entry ID exists, save the entry first
       if (!entryId && onSaveEntry) {
         console.log('No entry ID found, forcing save before transformation...', {
