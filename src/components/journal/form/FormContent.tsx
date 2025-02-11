@@ -57,6 +57,10 @@ const FormContent: React.FC<FormContentProps> = ({
   const handleTranscriptionComplete = (text: string) => {
     console.log('Transcription completed, setting text:', text);
     setTranscribedAudio(text);
+    // If no manual content is present, update the editor content
+    if (!content || content.trim() === '') {
+      setContent(text);
+    }
     toast({
       title: "Transcription Complete",
       description: "Audio has been transcribed successfully",
