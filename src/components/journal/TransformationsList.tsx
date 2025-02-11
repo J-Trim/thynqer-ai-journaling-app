@@ -92,6 +92,21 @@ export const TransformationsList = ({ entryId }: TransformationsListProps) => {
     },
   });
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        description: "Transformation copied to clipboard",
+      });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      toast({
+        variant: "destructive",
+        description: "Failed to copy to clipboard",
+      });
+    }
+  };
+
   const handleDelete = (transformationId: string) => {
     setTransformationToDelete(transformationId);
   };
