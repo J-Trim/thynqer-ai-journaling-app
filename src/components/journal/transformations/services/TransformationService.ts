@@ -67,6 +67,7 @@ export const transformationService = {
         promptTemplate = customPrompt.prompt_template;
       }
 
+      // Call transform-text function with the prompt template
       const { data: transformationData, error: transformError } = await supabase.functions.invoke('transform-text', {
         body: { 
           text: entryText,
