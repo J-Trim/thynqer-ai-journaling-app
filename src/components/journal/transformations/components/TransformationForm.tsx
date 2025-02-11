@@ -1,12 +1,10 @@
 
-import { memo, useEffect } from 'react';
+import { memo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Database } from "@/integrations/supabase/types";
 import { TRANSFORMATION_TYPES } from "@/utils/transformationTypes";
 import { ErrorBoundary } from 'react-error-boundary';
-import { transformationService } from '../services/TransformationService';
-import { useQuery } from '@tanstack/react-query';
 
 type ValidTransformation = Database["public"]["Enums"]["valid_transformation"];
 
@@ -31,17 +29,10 @@ const TransformationFormContent = ({
 }: TransformationFormProps) => {
   console.log('Rendering TransformationForm with activeGroup:', activeGroup);
 
-  // Fetch default prompts
-  const { data: defaultPrompts, isLoading: isLoadingPrompts } = useQuery({
-    queryKey: ['defaultPrompts'],
-    queryFn: transformationService.getDefaultPrompts,
-  });
-
-  console.log('Default prompts loaded:', defaultPrompts);
-
-  const handleTransform = () => {
+  const handleTransform = async () => {
     if (selectedType) {
-      onTransform(selectedType);
+      console.log('Starting transformation with type:', selectedType);
+      await onTransform(selectedType);
     }
   };
 
@@ -57,19 +48,10 @@ const TransformationFormContent = ({
       }));
     }
     
-    // Get predefined transformations for this group
     const groupItems = TRANSFORMATION_TYPES[activeGroup]?.items || [];
+    console.log('Available transformation items:', groupItems);
     
-    // Filter to only include items that have a corresponding default prompt
-    const availableItems = defaultPrompts 
-      ? groupItems.filter(item => 
-          defaultPrompts.some(prompt => prompt.transformation_type === item)
-        )
-      : [];
-    
-    console.log('Available transformation items for group:', activeGroup, availableItems);
-    
-    return availableItems.map(item => ({
+    return groupItems.map(item => ({
       value: item,
       label: item
     }));
@@ -79,10 +61,6 @@ const TransformationFormContent = ({
 
   if (!activeGroup) {
     return null;
-  }
-
-  if (isLoadingPrompts) {
-    return <div>Loading available transformations...</div>;
   }
 
   return (
