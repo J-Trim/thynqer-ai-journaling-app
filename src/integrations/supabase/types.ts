@@ -435,6 +435,7 @@ export type Database = {
         | "Therapy Insights"
         | "Daily Summary"
         | "Social Share"
+        | "Long-Term Analysis"
     }
     CompositeTypes: {
       [_ in never]: never

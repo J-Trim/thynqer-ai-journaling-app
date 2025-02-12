@@ -12,7 +12,8 @@ export const TRANSFORMATION_TYPES = {
       'Key Insights',
       'Emotional Analysis',
       'Therapy Insights',
-      'Daily Summary'
+      'Daily Summary',
+      'Long-Term Analysis'
     ] satisfies ValidTransformation[]
   },
   "Action": {
