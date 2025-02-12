@@ -260,6 +260,7 @@ export type Database = {
           created_at: string | null
           entry_id: string
           id: string
+          transformation_type: Database["public"]["Enums"]["valid_transformation"]
           transformed_text: string
           user_id: string
         }
@@ -267,6 +268,7 @@ export type Database = {
           created_at?: string | null
           entry_id: string
           id?: string
+          transformation_type: Database["public"]["Enums"]["valid_transformation"]
           transformed_text: string
           user_id: string
         }
@@ -274,6 +276,7 @@ export type Database = {
           created_at?: string | null
           entry_id?: string
           id?: string
+          transformation_type?: Database["public"]["Enums"]["valid_transformation"]
           transformed_text?: string
           user_id?: string
         }
@@ -431,6 +434,7 @@ export type Database = {
         | "Questions"
         | "Therapy Insights"
         | "Daily Summary"
+        | "Social Share"
     }
     CompositeTypes: {
       [_ in never]: never
