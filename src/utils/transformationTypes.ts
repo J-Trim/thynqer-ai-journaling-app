@@ -13,20 +13,20 @@ export const TRANSFORMATION_TYPES = {
       'Emotional Analysis',
       'Therapy Insights',
       'Daily Summary'
-    ] as ValidTransformation[]
+    ] satisfies ValidTransformation[]
   },
   "Action": {
     icon: Briefcase,
     items: [
       'Action Items',
       'Questions'
-    ] as ValidTransformation[]
+    ] satisfies ValidTransformation[]
   },
   "Share": {
     icon: Share2,
     items: [
       'Social Share'
-    ] as ValidTransformation[]
+    ] satisfies ValidTransformation[]
   },
   "Custom": {
     icon: PenTool,
