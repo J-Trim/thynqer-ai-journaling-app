@@ -70,3 +70,4 @@ export default function JournalInsights({ journalEntry }: JournalInsightsProps) 
     </div>
   );
 }
+
