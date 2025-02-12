@@ -35,6 +35,22 @@ const AudioRecorder = ({
     }
   });
 
+  const handleToggleRecording = () => {
+    if (externalToggleRecording) {
+      externalToggleRecording();
+    } else {
+      toggleRecording();
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (externalStopRecording) {
+      externalStopRecording();
+    } else {
+      stopRecording();
+    }
+  };
+
   return (
     <div className={`flex flex-col items-center space-y-4 p-6 bg-secondary rounded-lg shadow-sm animate-fade-in ${isDisabled ? 'opacity-50' : ''}`}>
       <AudioRecorderTimer recordingTime={recordingTime} />
@@ -42,8 +58,8 @@ const AudioRecorder = ({
         isRecording={externalIsRecording !== undefined ? externalIsRecording : isRecording}
         isPaused={externalIsPaused !== undefined ? externalIsPaused : isPaused}
         isProcessing={externalIsProcessing !== undefined ? externalIsProcessing : isProcessing}
-        onToggleRecording={externalToggleRecording || toggleRecording}
-        onStopRecording={externalStopRecording || stopRecording}
+        onToggleRecording={handleToggleRecording}
+        onStopRecording={handleStopRecording}
         isDisabled={isDisabled}
       />
       {isProcessing && (

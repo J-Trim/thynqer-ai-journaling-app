@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useFormState } from './FormStateProvider';
 import JournalFormHeader from './JournalFormHeader';
 import JournalFormContent from './JournalFormContent';
+import AudioHandler from '../AudioHandler';
 import AudioPlayer from '../AudioPlayer';
 import TagSelector from '../../TagSelector';
 import MoodSelector from './MoodSelector';
@@ -31,9 +32,10 @@ const FormContent: React.FC<FormContentProps> = ({
     setTitle,
     content,
     setContent,
-    handleReorder,
     transcribedAudio,
+    setTranscribedAudio,
     audioUrl,
+    setAudioUrl,
     isTranscriptionPending,
     selectedTags,
     setSelectedTags,
@@ -50,6 +52,14 @@ const FormContent: React.FC<FormContentProps> = ({
     );
   };
 
+  const handleAudioSaved = (url: string) => {
+    setAudioUrl(url);
+  };
+
+  const handleTranscriptionComplete = (text: string) => {
+    setTranscribedAudio(text);
+  };
+
   return (
     <div className="space-y-4">
       <JournalFormHeader 
@@ -60,11 +70,16 @@ const FormContent: React.FC<FormContentProps> = ({
       
       <MoodSelector value={mood} onChange={setMood} />
       
+      <AudioHandler
+        onAudioSaved={handleAudioSaved}
+        onTranscriptionComplete={handleTranscriptionComplete}
+        isExistingEntry={isExistingEntry}
+      />
+      
       <JournalFormContent
         content={content}
         transcribedAudio={transcribedAudio}
         onContentChange={setContent}
-        onReorder={handleReorder}
         entryId={entryId}
       />
 

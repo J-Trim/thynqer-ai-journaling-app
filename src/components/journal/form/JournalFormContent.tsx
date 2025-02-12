@@ -10,7 +10,6 @@ interface JournalFormContentProps {
   content: string;
   transcribedAudio: string | null;
   onContentChange: (value: string) => void;
-  onReorder?: (value: string) => void;
   entryId?: string;
 }
 
@@ -18,7 +17,6 @@ const JournalFormContent = ({
   content, 
   transcribedAudio, 
   onContentChange,
-  onReorder,
   entryId 
 }: JournalFormContentProps) => {
   // Memoize content change handler
@@ -31,13 +29,6 @@ const JournalFormContent = ({
     }
     onContentChange(value);
   }, [onContentChange]);
-  
-  // Handle reordering
-  const handleReorder = useCallback((value: string) => {
-    if (onReorder) {
-      onReorder(value);
-    }
-  }, [onReorder]);
 
   return (
     <div className="space-y-4">
@@ -45,7 +36,6 @@ const JournalFormContent = ({
         content={content}
         transcribedAudio={transcribedAudio}
         onContentChange={handleContentChange}
-        onReorder={handleReorder}
       />
       <TranscriptionDisplay transcribedAudio={transcribedAudio} />
       {entryId && <TransformationsList entryId={entryId} />}
