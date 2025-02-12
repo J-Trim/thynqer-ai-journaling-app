@@ -430,6 +430,7 @@ export type Database = {
         | "Action Items"
         | "Questions"
         | "Therapy Insights"
+        | "Daily Summary"
     }
     CompositeTypes: {
       [_ in never]: never
