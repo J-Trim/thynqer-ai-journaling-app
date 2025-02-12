@@ -31,6 +31,7 @@ const FormContent: React.FC<FormContentProps> = ({
     setTitle,
     content,
     setContent,
+    handleReorder,
     transcribedAudio,
     audioUrl,
     isTranscriptionPending,
@@ -63,6 +64,7 @@ const FormContent: React.FC<FormContentProps> = ({
         content={content}
         transcribedAudio={transcribedAudio}
         onContentChange={setContent}
+        onReorder={handleReorder}
         entryId={entryId}
       />
 

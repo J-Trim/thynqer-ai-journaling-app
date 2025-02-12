@@ -30,6 +30,11 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
     setMood(null);
   };
 
+  // Handle content reordering
+  const handleReorder = (newContent: string) => {
+    setContent(newContent);
+  };
+
   // Load initial data when editing an existing entry
   useEffect(() => {
     if (initialData) {
@@ -71,6 +76,7 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
     setTitle,
     content,
     setContent,
+    handleReorder,
     transcribedAudio,
     setTranscribedAudio,
     audioUrl,
@@ -90,4 +96,3 @@ export const useJournalFormState = (id?: string, initialData?: any) => {
     resetForm,
   };
 };
-
