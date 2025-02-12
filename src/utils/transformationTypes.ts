@@ -11,6 +11,7 @@ export const TRANSFORMATION_TYPES = {
       'Quick Summary',
       'Key Insights',
       'Emotional Analysis',
+      'Therapy Insights'
     ] as ValidTransformation[]
   },
   "Action": {

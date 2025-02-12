@@ -429,6 +429,7 @@ export type Database = {
         | "Emotional Analysis"
         | "Action Items"
         | "Questions"
+        | "Therapy Insights"
     }
     CompositeTypes: {
       [_ in never]: never
