@@ -22,6 +22,12 @@ export const TRANSFORMATION_TYPES = {
       'Questions'
     ] as ValidTransformation[]
   },
+  "Share": {
+    icon: Share2,
+    items: [
+      'Social Share'
+    ] as ValidTransformation[]
+  },
   "Custom": {
     icon: PenTool,
     items: [] as ValidTransformation[]
